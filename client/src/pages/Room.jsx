@@ -5,6 +5,7 @@ import { getSocket } from '../socket.js';
 import Chat from '../components/Chat.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
 import Codenames from '../games/Codenames.jsx';
+import Battleship from '../games/Battleship.jsx';
 
 export default function Room() {
   const { id } = useParams();
@@ -63,10 +64,11 @@ export default function Room() {
 
       <div className="room-body">
         <div className="game-area">
-          {room.gameKey === 'codenames' ? (
+          {room.gameKey === 'codenames' && (
             <Codenames room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
-          ) : (
-            <p>Jeu non disponible.</p>
+          )}
+          {room.gameKey === 'bataille' && (
+            <Battleship room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
         </div>
 

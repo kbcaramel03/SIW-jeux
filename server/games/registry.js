@@ -1,6 +1,7 @@
 // Catalogue des jeux. `ready: true` = jouable, sinon "bientôt disponible".
 // Au fur et à mesure qu'on code les jeux, on les passe à ready: true.
 import * as codenames from './codenames.js';
+import * as battleship from './battleship.js';
 
 export const GAMES = {
   codenames: {
@@ -14,7 +15,12 @@ export const GAMES = {
     view: codenames.viewFor,
     action: applyCodenamesAction,
   },
-  bataille: { key: 'bataille', label: 'Bataille navale', emoji: '🚢', minPlayers: 2, maxPlayers: 2, ready: false },
+  bataille: {
+    key: 'bataille', label: 'Bataille navale', emoji: '🚢', minPlayers: 2, maxPlayers: 2, ready: true,
+    create: battleship.createBattleship,
+    view: battleship.viewFor,
+    action: applyBattleshipAction,
+  },
   uno: { key: 'uno', label: 'Uno', emoji: '🎴', minPlayers: 2, maxPlayers: 8, ready: false },
   flip7: { key: 'flip7', label: 'Flip 7', emoji: '🔢', minPlayers: 2, maxPlayers: 8, ready: false },
   bullshit: { key: 'bullshit', label: 'Bullshit', emoji: '🤥', minPlayers: 3, maxPlayers: 8, ready: false },
@@ -43,6 +49,19 @@ function applyCodenamesAction(state, userId, payload) {
       return codenames.confirmCard(state, userId);
     case 'pass':
       return codenames.passTurn(state, userId);
+    default:
+      throw new Error('Action inconnue.');
+  }
+}
+
+function applyBattleshipAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'shuffle':
+      return battleship.shuffleFleet(state, userId);
+    case 'ready':
+      return battleship.setReady(state, userId, payload.value !== false);
+    case 'fire':
+      return battleship.fire(state, userId, payload.x, payload.y);
     default:
       throw new Error('Action inconnue.');
   }

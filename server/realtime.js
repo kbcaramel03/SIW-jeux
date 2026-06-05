@@ -138,6 +138,8 @@ export function createRealtime(httpServer) {
         game: null,
         createdAt: Date.now(),
       };
+      // On crée directement la partie (plus besoin de cliquer "Lancer la partie").
+      room.game = GAMES[gameKey].create(room.options);
       rooms.set(id, room);
       broadcastLobby();
       ack?.({ roomId: id });

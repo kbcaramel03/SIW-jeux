@@ -2,21 +2,23 @@
    Soirée Jeux — thème girly, dynamique & doux
    =========================================================== */
 :root {
-  --pink: #ff5fa2;
-  --pink-soft: #ffd6e8;
-  --rose: #ff8fb8;
-  --purple: #a855f7;
-  --violet: #7c5cff;
-  --peach: #ffb38a;
-  --mint: #5ee0c0;
-  --sky: #59c1ff;
-  --ink: #3a2b4d;
-  --ink-soft: #8a7da3;
+  /* palette girly mais SOBRE : rose poudré + mauve + ivoire */
+  --pink: #cf7b97;        /* rose poudré (accent principal) */
+  --pink-soft: #f1dde4;
+  --rose: #d9a7b6;
+  --purple: #9a83b4;      /* mauve doux */
+  --violet: #8a76a6;
+  --peach: #d8b59a;
+  --mint: #93c4b2;
+  --sky: #94b1cd;
+  --gold: #c2a36b;
+  --ink: #463c52;
+  --ink-soft: #8d8499;
   --card: #ffffff;
-  --radius: 22px;
+  --radius: 20px;
   --radius-sm: 14px;
-  --shadow: 0 14px 40px rgba(150, 70, 160, 0.18);
-  --shadow-sm: 0 6px 18px rgba(150, 70, 160, 0.14);
+  --shadow: 0 12px 34px rgba(110, 80, 120, 0.13);
+  --shadow-sm: 0 5px 16px rgba(110, 80, 120, 0.10);
   --font-head: 'Fredoka', 'Segoe UI', sans-serif;
   --font-body: 'Quicksand', 'Segoe UI', sans-serif;
   --font-brand: 'Pacifico', cursive;
@@ -30,13 +32,8 @@ body {
   font-weight: 500;
   color: var(--ink);
   min-height: 100vh;
-  background: linear-gradient(135deg, #ffe0ee 0%, #f3d9ff 40%, #d9ecff 75%, #e7fff7 100%);
-  background-size: 300% 300%;
-  animation: bgshift 22s ease infinite;
-}
-@keyframes bgshift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  background: linear-gradient(165deg, #faf6f7 0%, #f5eef4 55%, #f0eef6 100%);
+  background-attachment: fixed;
 }
 
 h1, h2, h3, h4 { font-family: var(--font-head); font-weight: 600; color: var(--ink); }
@@ -72,10 +69,10 @@ h1, h2, h3, h4 { font-family: var(--font-head); font-weight: 600; color: var(--i
 .btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(0.97); }
 .btn:active:not(:disabled) { transform: translateY(0) scale(0.98); filter: brightness(0.94); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-/* couleurs PLEINES (pas de dégradé) */
-.btn-primary { background: #ff6fae; box-shadow: 0 5px 14px rgba(255, 111, 174, 0.36); }
-.btn-secondary { background: #a98bf5; box-shadow: 0 5px 14px rgba(169, 139, 245, 0.34); }
-.btn-danger { background: #fb7185; box-shadow: 0 5px 14px rgba(251, 113, 133, 0.32); }
+/* couleurs PLEINES et douces (pas de dégradé) */
+.btn-primary { background: var(--pink); box-shadow: 0 5px 14px rgba(207, 123, 151, 0.30); }
+.btn-secondary { background: var(--purple); box-shadow: 0 5px 14px rgba(154, 131, 180, 0.30); }
+.btn-danger { background: #cf7a86; box-shadow: 0 5px 14px rgba(207, 122, 134, 0.28); }
 .btn-ghost { background: #fff; color: var(--ink); border: 2px solid #efe6fb; box-shadow: none; }
 .btn-ghost:hover:not(:disabled) { background: #faf6ff; filter: none; border-color: #e2d3fb; }
 .btn-block { width: 100%; margin-top: 10px; }
@@ -156,7 +153,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 /* ====== Room ====== */
 .room-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 .room-header h2 { margin: 0; flex: 1; }
-.badge { display: inline-flex; align-items: center; gap: 6px; background: #ff6fae; color: #fff; padding: 5px 13px; border-radius: 20px; font-size: 0.8rem; font-family: var(--font-head); font-weight: 600; }
+.badge { display: inline-flex; align-items: center; gap: 6px; background: var(--pink); color: #fff; padding: 5px 13px; border-radius: 20px; font-size: 0.8rem; font-family: var(--font-head); font-weight: 600; }
 .room-body { display: grid; grid-template-columns: 1fr 330px; gap: 16px; align-items: start; }
 .room-side { display: flex; flex-direction: column; gap: 16px; }
 .player-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 7px; }
@@ -260,10 +257,45 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .cn-topbar-duet { justify-content: flex-start; gap: 18px; }
 .cn-topbar-duet .cn-turn { text-align: left; }
 
+/* ====== Bataille navale ====== */
+.screen-shake { animation: screenShake 0.45s ease; }
+@keyframes screenShake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-7px, 4px) rotate(-0.5deg); }
+  30% { transform: translate(8px, -5px); }
+  45% { transform: translate(-7px, 5px); }
+  60% { transform: translate(6px, 4px); }
+  75% { transform: translate(-4px, -3px); }
+  90% { transform: translate(3px, 2px); }
+}
+.bs-arena { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+.bs-side { background: rgba(255, 255, 255, 0.66); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow-sm); }
+.bs-side h4 { margin: 0 0 10px; }
+.bs-yourturn { font-family: var(--font-body); font-size: 0.74rem; font-weight: 700; color: #fff; background: var(--pink); padding: 2px 9px; border-radius: 10px; margin-left: 6px; }
+.bs-grid-wrap { display: flex; justify-content: center; }
+.bs-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; width: 100%; max-width: 330px; aspect-ratio: 1; }
+.bs-cell { aspect-ratio: 1; border: none; border-radius: 5px; background: #dbe8f4; cursor: default; padding: 0; position: relative; transition: transform 0.08s, background 0.15s; }
+.bs-cell.ship { background: #9fb0c2; }
+.bs-cell.fireable { cursor: crosshair; background: #cde0f1; }
+.bs-cell.fireable:hover { background: #b9d4ee; transform: scale(1.1); }
+.bs-cell.miss { background: #b0c0cf; }
+.bs-cell.miss::after { content: ''; position: absolute; inset: 36%; border-radius: 50%; background: #6c7e91; }
+.bs-cell.hit { background: #ff7b54; animation: hitpop 0.3s ease; }
+.bs-cell.sunk { background: #c2352b; }
+.bs-cell.hit::after, .bs-cell.sunk::after { content: ''; position: absolute; inset: 20%; border-radius: 3px; background: radial-gradient(circle, rgba(255,255,255,0.65), transparent 62%); }
+@keyframes hitpop { 0% { transform: scale(0.4); } 60% { transform: scale(1.28); } 100% { transform: scale(1); } }
+.bs-grid-empty { padding: 28px; text-align: center; }
+.bs-fleet { margin-top: 10px; }
+.bs-fleet-ships { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.bs-ship-pip { display: inline-flex; gap: 2px; }
+.bs-ship-pip i { width: 7px; height: 12px; border-radius: 2px; background: #8aa0b6; display: block; }
+.bs-ship-pip.sunk i { background: #c2352b; }
+
 /* ====== Responsive ====== */
 @media (max-width: 860px) {
   .rail { display: none; }
   .room-body { grid-template-columns: 1fr; }
   .cn-teams { grid-template-columns: 1fr; }
+  .bs-arena { grid-template-columns: 1fr; }
   .room-side { flex-direction: column-reverse; }
 }
