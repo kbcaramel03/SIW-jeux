@@ -160,6 +160,7 @@ input:focus { border-color: var(--purple); }
 .cn-controls { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 .cn-count-input { width: 70px; flex: none; }
 .cn-wait { text-align: center; margin-top: 12px; }
+.cn-mode-hint { text-align: center; font-weight: 700; color: var(--purple); margin: 6px 0; }
 .cn-over { text-align: center; margin-top: 14px; }
 .cn-over h3 { font-size: 1.3rem; }
 .cn-log { margin-top: 12px; font-size: 0.8rem; color: var(--ink-soft); max-height: 110px; overflow-y: auto; }

@@ -48,6 +48,7 @@ export function createCodenames() {
   return {
     type: 'codenames',
     phase: 'setup', // setup -> playing -> over
+    mode: null, // 'versus' (2 équipes) ou 'coop' (une équipe), défini au démarrage
     board,
     startingTeam,
     turn: startingTeam,
@@ -83,13 +84,31 @@ export function assignRole(state, userId, team, role) {
   }
 }
 
+// Une équipe peut jouer si elle a un·e maître-espion ET au moins un agent.
+// (Comme une personne ne peut tenir qu'un rôle, cela implique au moins 2 joueuses.)
+export function canPlay(state, team) {
+  return !!state.teams[team].spymaster && state.teams[team].operatives.length > 0;
+}
+
 export function startGame(state) {
   if (state.phase !== 'setup') throw new Error('Déjà démarrée.');
-  for (const t of ['red', 'blue']) {
-    if (!state.teams[t].spymaster) throw new Error('Chaque équipe a besoin d\'un·e maître-espion.');
+  const redOk = canPlay(state, 'red');
+  const blueOk = canPlay(state, 'blue');
+  if (!redOk && !blueOk) {
+    throw new Error('Il faut au moins une équipe avec un·e maître-espion ET un·e agent (donc 2 joueuses min).');
   }
+
+  // 2 équipes complètes -> versus classique ; sinon -> coopératif (une seule équipe).
+  state.mode = redOk && blueOk ? 'versus' : 'coop';
+  // Le tour commence sur une équipe capable de jouer.
+  if (!canPlay(state, state.turn)) state.turn = redOk ? 'red' : 'blue';
+
   state.phase = 'playing';
-  state.log.push(`La partie commence ! L'équipe ${state.startingTeam === 'red' ? 'rouge' : 'bleue'} joue en premier.`);
+  if (state.mode === 'coop') {
+    state.log.push('Mode coopératif : trouvez toutes vos cartes sans toucher l\'assassin !');
+  } else {
+    state.log.push(`La partie commence ! L'équipe ${state.turn === 'red' ? 'rouge' : 'bleue'} joue en premier.`);
+  }
 }
 
 export function giveClue(state, userId, word, count) {
@@ -104,13 +123,16 @@ export function giveClue(state, userId, word, count) {
 }
 
 function endTurn(state) {
-  state.turn = state.turn === 'red' ? 'blue' : 'red';
+  const other = state.turn === 'red' ? 'blue' : 'red';
+  // En versus on alterne ; en coop (ou si l'autre équipe ne peut pas jouer) on reste.
+  if (state.mode === 'versus' || canPlay(state, other)) state.turn = other;
   state.clue = null;
   state.guessesLeft = 0;
 }
 
 function checkWin(state) {
   for (const t of ['red', 'blue']) {
+    if (!canPlay(state, t)) continue; // une équipe sans agents ne peut pas gagner
     const remaining = state.board.filter((c) => c.color === t && !c.revealed).length;
     if (remaining === 0) {
       state.phase = 'over';
@@ -135,10 +157,15 @@ export function guessCard(state, userId, cardIndex) {
   state.log.push(`Carte révélée : "${card.word}" (${card.color}).`);
 
   if (card.color === 'assassin') {
-    // L'équipe qui révèle l'assassin perd immédiatement.
+    // L'assassin met fin à la partie immédiatement.
     state.phase = 'over';
-    state.winner = state.turn === 'red' ? 'blue' : 'red';
-    state.log.push(`💀 Assassin ! L'équipe ${state.turn === 'red' ? 'rouge' : 'bleue'} perd.`);
+    if (state.mode === 'coop') {
+      state.winner = null; // partie perdue en coopératif
+      state.log.push('💀 Assassin ! Partie perdue.');
+    } else {
+      state.winner = state.turn === 'red' ? 'blue' : 'red';
+      state.log.push(`💀 Assassin ! L'équipe ${state.turn === 'red' ? 'rouge' : 'bleue'} perd.`);
+    }
     return;
   }
 
@@ -179,6 +206,7 @@ export function viewFor(state, userId) {
   return {
     type: 'codenames',
     phase: state.phase,
+    mode: state.mode,
     board,
     turn: state.turn,
     clue: state.clue,

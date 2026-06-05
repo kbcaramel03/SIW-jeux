@@ -32,7 +32,15 @@ export default function Codenames({ room, isHost, onAction, onNewGame }) {
       <Controls game={game} me={me} onAction={onAction} />
       {game.phase === 'over' && (
         <div className="cn-over">
-          <h3>{game.winner === 'red' ? '🟥 Équipe rouge gagne !' : '🟦 Équipe bleue gagne !'}</h3>
+          <h3>
+            {game.winner === null
+              ? '💀 Assassin… Partie perdue !'
+              : game.mode === 'coop'
+                ? '🎉 Gagné ! Toutes les cartes trouvées !'
+                : game.winner === 'red'
+                  ? '🟥 Équipe rouge gagne !'
+                  : '🟦 Équipe bleue gagne !'}
+          </h3>
           {isHost && <button className="btn btn-primary" onClick={onNewGame}>Rejouer</button>}
         </div>
       )}
@@ -66,20 +74,30 @@ function TeamPanel({ team, game, me, nameById, onAction }) {
 }
 
 function Setup({ game, me, isHost, nameById, onAction }) {
-  const ready = game.teams.red.spymaster && game.teams.blue.spymaster;
+  const canPlay = (t) => !!game.teams[t].spymaster && game.teams[t].operatives.length > 0;
+  const redOk = canPlay('red');
+  const blueOk = canPlay('blue');
+  const ready = redOk || blueOk;
+  const mode = redOk && blueOk ? 'versus' : ready ? 'coop' : null;
   return (
     <div className="cn-setup card">
       <h3>Composez les équipes</h3>
       <p className="muted">
-        Chaque équipe a besoin d'un·e maître-espion (qui voit les couleurs) et d'au moins un agent.
+        Une équipe = un·e maître-espion (qui voit les couleurs) + au moins un·e agent.<br />
+        🎮 <strong>2 équipes complètes</strong> = rouge contre bleu. <strong>Une seule équipe</strong> (2–3 joueuses) = mode coopératif.
       </p>
       <div className="cn-teams">
         <TeamPanel team="red" game={game} me={me} nameById={nameById} onAction={onAction} />
         <TeamPanel team="blue" game={game} me={me} nameById={nameById} onAction={onAction} />
       </div>
+      {mode && (
+        <p className="cn-mode-hint">
+          {mode === 'versus' ? '⚔️ Partie en mode 2 équipes' : '🤝 Partie en mode coopératif'}
+        </p>
+      )}
       {isHost ? (
         <button className="btn btn-primary btn-block" disabled={!ready} onClick={() => onAction({ kind: 'start' })}>
-          {ready ? 'Démarrer la partie' : 'Il faut un maître-espion par équipe'}
+          {ready ? 'Démarrer la partie' : 'Il faut au moins 1 équipe : maître-espion + agent'}
         </button>
       ) : (
         <p className="muted">En attente que l'hôte démarre…</p>
