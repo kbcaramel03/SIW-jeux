@@ -1,13 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Check } from 'lucide-react';
+import { Paper, TextField, Button, Typography, Stack, Alert, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Sparkles } from 'lucide-react';
 import { useAuth } from '../auth.jsx';
-
-const GENDERS = [
-  { val: 'F', label: 'Une fille' },
-  { val: 'M', label: 'Un mec' },
-  { val: 'A', label: 'Autre' },
-];
 
 export default function Register() {
   const { register } = useAuth();
@@ -36,51 +31,45 @@ export default function Register() {
   if (done) {
     return (
       <div className="auth-page">
-        <div className="card auth-card">
-          <h1 className="auth-logo">Trop bien !</h1>
-          <p className="auth-subtitle">
-            Ton inscription est partie. Khadija doit la valider avant que tu puisses te connecter — tiens-la au courant girl !
-          </p>
-          <Link to="/login" className="btn btn-primary btn-block">Retour à la connexion</Link>
-        </div>
+        <Paper elevation={1} className="auth-card fade-up" sx={{ p: 3.5 }}>
+          <Typography variant="h4" className="auth-logo">Trop bien !</Typography>
+          <Typography color="text.secondary" sx={{ mb: 2.5, fontWeight: 600 }}>
+            Ton inscription est partie. Khadija doit la valider avant que tu puisses te connecter — tiens-la au courant !
+          </Typography>
+          <Button component={Link} to="/login" variant="contained" fullWidth>Retour à la connexion</Button>
+        </Paper>
       </div>
     );
   }
 
   return (
     <div className="auth-page">
-      <div className="card auth-card">
-        <h1 className="auth-logo">Rejoins la team</h1>
-        <p className="auth-subtitle">Inscris-toi girlll (ou blg), c'est validé par l'admin</p>
+      <Paper elevation={1} className="auth-card fade-up" sx={{ p: 3.5 }}>
+        <Typography variant="h4" className="auth-logo">Rejoins la team</Typography>
+        <Typography color="text.secondary" sx={{ mb: 2.5, fontWeight: 600 }}>Inscris-toi girlll (ou blg), c'est validé par l'admin</Typography>
         <form onSubmit={submit}>
-          <label>T'es qui ? (prénom affiché)</label>
-          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="ton prénom" autoFocus />
-
-          <label>Tu es…</label>
-          <div className="gender-row">
-            {GENDERS.map((g) => (
-              <button type="button" key={g.val}
-                className={`gender-opt ${gender === g.val ? 'on' : ''}`}
-                onClick={() => setGender(g.val)}>
-                {gender === g.val && <Check size={15} />}
-                {g.label}
-              </button>
-            ))}
-          </div>
-
-          <label>Ton identifiant (pour te connecter)</label>
-          <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="pseudo unique" />
-          <label>Ton mot de passe</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••" />
-          {error && <p className="error">{error}</p>}
-          <button className="btn btn-primary btn-block" disabled={busy}>
-            <Sparkles size={18} /> {busy ? 'On t\'inscrit…' : "C'est parti"}
-          </button>
+          <Stack spacing={2}>
+            <TextField label="T'es qui ? (prénom affiché)" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
+            <div>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.8, fontWeight: 600 }}>Tu es…</Typography>
+              <ToggleButtonGroup value={gender} exclusive onChange={(_, v) => v && setGender(v)} fullWidth color="primary">
+                <ToggleButton value="F">Une fille</ToggleButton>
+                <ToggleButton value="M">Un mec</ToggleButton>
+                <ToggleButton value="A">Autre</ToggleButton>
+              </ToggleButtonGroup>
+            </div>
+            <TextField label="Ton identifiant (pour te connecter)" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <TextField label="Ton mot de passe" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            {error && <Alert severity="error">{error}</Alert>}
+            <Button type="submit" variant="contained" size="large" fullWidth disabled={busy} startIcon={<Sparkles size={18} />}>
+              {busy ? 'On t\'inscrit…' : "C'est parti"}
+            </Button>
+          </Stack>
         </form>
-        <p className="auth-switch">
-          Déjà dans la team ? <Link to="/login">Connecte-toi</Link>
-        </p>
-      </div>
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          Déjà dans la team ? <Link to="/login" className="link-accent">Connecte-toi</Link>
+        </Typography>
+      </Paper>
     </div>
   );
 }

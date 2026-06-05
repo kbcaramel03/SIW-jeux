@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Paper, TextField, Button, Typography, Stack, Alert } from '@mui/material';
 import { Settings, KeyRound } from 'lucide-react';
 import { apiPost } from '../api.js';
 import { useAuth } from '../auth.jsx';
@@ -26,24 +27,24 @@ export default function Account() {
   }
 
   return (
-    <div className="account fade-up">
-      <div className="card auth-card">
-        <h1 className="section-title" style={{ justifyContent: 'center' }}><Settings size={24} /> Mon compte</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', margin: '8px 0 16px' }}>
+    <div className="auth-page fade-up">
+      <Paper elevation={1} className="auth-card" sx={{ p: 3.5 }}>
+        <Typography variant="h5" className="section-title" sx={{ justifyContent: 'center' }}><Settings size={24} /> Mon compte</Typography>
+        <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="center" sx={{ my: 2 }}>
           <Avatar name={user.displayName} gender={user.gender} size={40} />
           <span><strong>{user.displayName}</strong> · {user.role === 'admin' ? 'admin' : 'membre'}</span>
-        </div>
-        <h3 className="section-title"><KeyRound size={18} /> Changer mon mot de passe</h3>
+        </Stack>
+        <Typography variant="subtitle1" className="section-title" sx={{ mb: 1 }}><KeyRound size={18} /> Changer mon mot de passe</Typography>
         <form onSubmit={submit}>
-          <label>Mot de passe actuel</label>
-          <input type="password" value={currentPassword} onChange={(e) => setCurrent(e.target.value)} />
-          <label>Nouveau mot de passe</label>
-          <input type="password" value={newPassword} onChange={(e) => setNew(e.target.value)} />
-          {error && <p className="error">{error}</p>}
-          {msg && <p className="success">{msg}</p>}
-          <button className="btn btn-primary btn-block">Mettre à jour</button>
+          <Stack spacing={2}>
+            <TextField label="Mot de passe actuel" type="password" value={currentPassword} onChange={(e) => setCurrent(e.target.value)} />
+            <TextField label="Nouveau mot de passe" type="password" value={newPassword} onChange={(e) => setNew(e.target.value)} />
+            {error && <Alert severity="error">{error}</Alert>}
+            {msg && <Alert severity="success">{msg}</Alert>}
+            <Button type="submit" variant="contained" fullWidth>Mettre à jour</Button>
+          </Stack>
         </form>
-      </div>
+      </Paper>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Paper, Button, Typography, Stack, Alert, Chip } from '@mui/material';
 import { Crown, Check, X, RotateCcw, Trash2, ShieldPlus, ShieldMinus } from 'lucide-react';
 import { apiGet, apiPost, apiDelete } from '../api.js';
 import { Avatar } from '../components/OnlineRail.jsx';
@@ -29,59 +30,57 @@ export default function Admin() {
 
   return (
     <div className="admin fade-up">
-      <h1><Crown size={26} color="#f59e0b" /> Panel Admin</h1>
-      {error && <p className="error">{error}</p>}
+      <Typography variant="h4" className="section-title" sx={{ mb: 2 }}><Crown size={26} color="#c2a36b" /> Panel Admin</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <section className="card">
-        <h2>En attente de validation ({pending.length})</h2>
+      <Paper elevation={1} sx={{ p: 2.5, mb: 2.5 }}>
+        <Typography variant="h6" sx={{ mb: 1.5 }}>En attente de validation ({pending.length})</Typography>
         {pending.length === 0 ? (
-          <p className="muted">Rien à valider, t'es à jour girl</p>
+          <Typography color="text.secondary">Rien à valider, t'es à jour</Typography>
         ) : (
-          <ul className="admin-list">
+          <Stack spacing={1.2}>
             {pending.map((u) => (
-              <li key={u.id}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <Paper key={u.id} variant="outlined" className="admin-row" sx={{ p: 1.3 }}>
+                <Stack direction="row" spacing={1.2} alignItems="center">
                   <Avatar name={u.displayName} gender={u.gender} />
                   <span><strong>{u.displayName}</strong> <span className="muted">@{u.username}</span></span>
-                </div>
-                <div className="admin-actions">
-                  <button className="btn btn-primary btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/approve`))}><Check size={15} /> Valider</button>
-                  <button className="btn btn-danger btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/reject`))}><X size={15} /> Refuser</button>
-                </div>
-              </li>
+                </Stack>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                  <Button size="small" variant="contained" startIcon={<Check size={15} />} onClick={() => act(() => apiPost(`/admin/users/${u.id}/approve`))}>Valider</Button>
+                  <Button size="small" variant="contained" color="error" startIcon={<X size={15} />} onClick={() => act(() => apiPost(`/admin/users/${u.id}/reject`))}>Refuser</Button>
+                </Stack>
+              </Paper>
             ))}
-          </ul>
+          </Stack>
         )}
-      </section>
+      </Paper>
 
-      <section className="card">
-        <h2>Tous les comptes ({others.length})</h2>
-        <ul className="admin-list">
+      <Paper elevation={1} sx={{ p: 2.5 }}>
+        <Typography variant="h6" sx={{ mb: 1.5 }}>Tous les comptes ({others.length})</Typography>
+        <Stack spacing={1.2}>
           {others.map((u) => (
-            <li key={u.id}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <Paper key={u.id} variant="outlined" className="admin-row" sx={{ p: 1.3 }}>
+              <Stack direction="row" spacing={1.2} alignItems="center" sx={{ flexWrap: 'wrap' }}>
                 <Avatar name={u.displayName} gender={u.gender} />
-                <span>
-                  <strong>{u.displayName}</strong> <span className="muted">@{u.username}</span>{' '}
-                  <span className="tag">{u.role === 'admin' ? 'admin' : 'membre'}</span>{' '}
-                  <span className="tag">{STATUS_LABEL[u.status]}</span>
-                </span>
-              </div>
-              <div className="admin-actions">
+                <span><strong>{u.displayName}</strong> <span className="muted">@{u.username}</span></span>
+                <Chip size="small" label={u.role === 'admin' ? 'admin' : 'membre'} />
+                <Chip size="small" variant="outlined" label={STATUS_LABEL[u.status]} />
+              </Stack>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                 {u.role === 'admin' ? (
-                  <button className="btn btn-ghost btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/role`, { role: 'member' }))}><ShieldMinus size={14} /> Retirer admin</button>
+                  <Button size="small" variant="outlined" startIcon={<ShieldMinus size={14} />} onClick={() => act(() => apiPost(`/admin/users/${u.id}/role`, { role: 'member' }))}>Retirer admin</Button>
                 ) : (
-                  <button className="btn btn-ghost btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/role`, { role: 'admin' }))}><ShieldPlus size={14} /> Passer admin</button>
+                  <Button size="small" variant="outlined" startIcon={<ShieldPlus size={14} />} onClick={() => act(() => apiPost(`/admin/users/${u.id}/role`, { role: 'admin' }))}>Passer admin</Button>
                 )}
                 {u.status === 'rejected' && (
-                  <button className="btn btn-secondary btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/approve`))}><RotateCcw size={14} /> Réactiver</button>
+                  <Button size="small" variant="contained" color="secondary" startIcon={<RotateCcw size={14} />} onClick={() => act(() => apiPost(`/admin/users/${u.id}/approve`))}>Réactiver</Button>
                 )}
-                <button className="btn btn-danger btn-mini" onClick={() => act(() => apiDelete(`/admin/users/${u.id}`))}><Trash2 size={14} /></button>
-              </div>
-            </li>
+                <Button size="small" variant="contained" color="error" onClick={() => act(() => apiDelete(`/admin/users/${u.id}`))}><Trash2 size={14} /></Button>
+              </Stack>
+            </Paper>
           ))}
-        </ul>
-      </section>
+        </Stack>
+      </Paper>
     </div>
   );
 }

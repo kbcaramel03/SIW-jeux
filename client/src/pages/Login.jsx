@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Paper, TextField, Button, Typography, Stack, Alert } from '@mui/material';
 import { LogIn } from 'lucide-react';
 import { useAuth } from '../auth.jsx';
 
@@ -27,23 +28,23 @@ export default function Login() {
 
   return (
     <div className="auth-page">
-      <div className="card auth-card">
-        <h1 className="auth-logo">Soirée Jeux</h1>
-        <p className="auth-subtitle">Connecte-toi blg, la team t'attend</p>
+      <Paper elevation={1} className="auth-card fade-up" sx={{ p: 3.5 }}>
+        <Typography variant="h4" className="auth-logo">Soirée Jeux</Typography>
+        <Typography color="text.secondary" sx={{ mb: 2.5, fontWeight: 600 }}>Connecte-toi blg, la team t'attend</Typography>
         <form onSubmit={submit}>
-          <label>Ton identifiant</label>
-          <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="genre ton pseudo" autoFocus />
-          <label>Ton mot de passe</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••" />
-          {error && <p className="error">{error}</p>}
-          <button className="btn btn-primary btn-block" disabled={busy}>
-            <LogIn size={18} /> {busy ? 'On y va…' : 'Go, je me connecte'}
-          </button>
+          <Stack spacing={2}>
+            <TextField label="Ton identifiant" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
+            <TextField label="Ton mot de passe" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            {error && <Alert severity="error">{error}</Alert>}
+            <Button type="submit" variant="contained" size="large" fullWidth disabled={busy} startIcon={<LogIn size={18} />}>
+              {busy ? 'On y va…' : 'Go, je me connecte'}
+            </Button>
+          </Stack>
         </form>
-        <p className="auth-switch">
-          Pas encore dans la team ? <Link to="/register">Inscris-toi ici</Link>
-        </p>
-      </div>
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          Pas encore dans la team ? <Link to="/register" className="link-accent">Inscris-toi ici</Link>
+        </Typography>
+      </Paper>
     </div>
   );
 }

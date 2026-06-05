@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { AppBar, Toolbar, Button, Box } from '@mui/material';
 import { Crown, Settings, LogOut, Heart } from 'lucide-react';
 import { useAuth } from './auth.jsx';
 import OnlineRail from './components/OnlineRail.jsx';
@@ -13,16 +14,16 @@ function NavBar() {
   const { user, logout } = useAuth();
   if (!user) return null;
   return (
-    <header className="navbar">
-      <Link to="/" className="brand"><Heart size={20} fill="#ff5fa2" stroke="#ff5fa2" /> Soirée Jeux</Link>
-      <nav>
+    <AppBar position="sticky" elevation={0} sx={{ background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', color: 'text.primary' }}>
+      <Toolbar sx={{ gap: 1, maxWidth: 1240, mx: 'auto', width: '100%' }}>
+        <Link to="/" className="brand" style={{ flexGrow: 1 }}><Heart size={20} fill="#cf7b97" stroke="#cf7b97" /> Soirée Jeux</Link>
         {user.role === 'admin' && (
-          <Link to="/admin" className="nav-link"><Crown size={18} /> Admin</Link>
+          <Button component={Link} to="/admin" color="inherit" startIcon={<Crown size={18} />}>Admin</Button>
         )}
-        <Link to="/compte" className="nav-link"><Settings size={18} /> {user.displayName}</Link>
-        <button className="btn btn-ghost btn-mini" onClick={logout}><LogOut size={16} /> Déco</button>
-      </nav>
-    </header>
+        <Button component={Link} to="/compte" color="inherit" startIcon={<Settings size={18} />}>{user.displayName}</Button>
+        <Button onClick={logout} variant="outlined" color="primary" size="small" startIcon={<LogOut size={16} />}>Déco</Button>
+      </Toolbar>
+    </AppBar>
   );
 }
 
@@ -40,7 +41,7 @@ export default function App() {
   return (
     <div className="app">
       <NavBar />
-      <div className="shell">
+      <Box className="shell">
         {user && <OnlineRail />}
         <main className="main">
           <Routes>
@@ -53,7 +54,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-      </div>
+      </Box>
     </div>
   );
 }

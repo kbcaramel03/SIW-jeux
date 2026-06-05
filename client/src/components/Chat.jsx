@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { TextField, IconButton } from '@mui/material';
 import { Send, Smile } from 'lucide-react';
 import { getSocket } from '../socket.js';
 
@@ -45,9 +46,9 @@ export default function Chat({ messages, meId }) {
       )}
 
       <form className="chat-input" onSubmit={send}>
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Écris un message…" maxLength={400} />
-        <button type="button" className="emoji-btn" onClick={() => setShowEmoji((s) => !s)} title="Emojis"><Smile size={20} /></button>
-        <button className="btn btn-primary btn-mini"><Send size={16} /></button>
+        <TextField size="small" fullWidth value={text} onChange={(e) => setText(e.target.value)} placeholder="Écris un message…" inputProps={{ maxLength: 400 }} />
+        <IconButton onClick={() => setShowEmoji((s) => !s)} title="Emojis" sx={{ border: '1px solid #efe6fb' }}><Smile size={20} /></IconButton>
+        <IconButton type="submit" color="primary" sx={{ bgcolor: 'primary.main', color: '#fff', '&:hover': { bgcolor: 'primary.dark' } }}><Send size={18} /></IconButton>
       </form>
     </div>
   );

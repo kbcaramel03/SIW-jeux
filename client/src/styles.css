@@ -90,6 +90,9 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .error { color: #e11d48; font-weight: 600; margin: 10px 0 0; }
 .success { color: #0d9488; font-weight: 600; margin: 10px 0 0; }
 .muted { color: var(--ink-soft); }
+.link-accent { color: var(--pink); font-weight: 700; text-decoration: none; }
+.link-accent:hover { text-decoration: underline; }
+.admin-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .center-screen { display: flex; justify-content: center; align-items: center; min-height: 60vh; color: var(--ink-soft); font-family: var(--font-head); }
 
 /* ====== Auth ====== */

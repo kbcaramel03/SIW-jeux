@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Paper, Button, TextField, Typography, Stack, ToggleButtonGroup, ToggleButton, Alert, Chip } from '@mui/material';
 import { Search, Ship, Layers, Dices, Drama, Eye, Paintbrush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords } from 'lucide-react';
 import { getSocket } from '../socket.js';
 
@@ -14,7 +15,7 @@ export default function Lobby() {
   const [rooms, setRooms] = useState([]);
   const [selected, setSelected] = useState(null);
   const [roomName, setRoomName] = useState('');
-  const [cnMode, setCnMode] = useState('versus'); // mode Code Names choisi
+  const [cnMode, setCnMode] = useState('versus');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -23,7 +24,6 @@ export default function Lobby() {
     const onRooms = (list) => setRooms(list);
     socket.on('lobby:games', onGames);
     socket.on('lobby:rooms', onRooms);
-    // On quitte tout salon précédent ET on redemande les listes (corrige l'affichage vide au retour).
     socket.emit('room:leave');
     socket.emit('lobby:refresh');
     return () => {
@@ -52,8 +52,8 @@ export default function Lobby() {
 
   return (
     <div className="lobby fade-up">
-      <section className="lobby-section">
-        <h2 className="section-title"><Gamepad2 size={22} /> On joue à quoi ?</h2>
+      <Paper elevation={1} className="lobby-section" sx={{ p: 2.5 }}>
+        <Typography variant="h5" className="section-title" sx={{ mb: 2 }}><Gamepad2 size={22} /> On joue à quoi ?</Typography>
         <div className="games-grid">
           {games.map((g) => {
             const Ic = GAME_ICONS[g.key] || Gamepad2;
@@ -72,62 +72,51 @@ export default function Lobby() {
             );
           })}
         </div>
-        {selected === 'codenames' && (
-          <div className="mode-choice">
-            <span className="mode-choice-label">Mode :</span>
-            <button
-              className={`mode-pill ${cnMode === 'duet' ? 'on' : ''}`}
-              onClick={() => setCnMode('duet')}
-            >
-              <Users2 size={16} /> Duo coopératif <em>2-3 joueurs</em>
-            </button>
-            <button
-              className={`mode-pill ${cnMode === 'versus' ? 'on' : ''}`}
-              onClick={() => setCnMode('versus')}
-            >
-              <Swords size={16} /> Versus 2 équipes <em>4 joueurs et +</em>
-            </button>
-          </div>
-        )}
-        {selected && (
-          <div className="create-row">
-            <input
-              value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
-              placeholder="Nom du salon (optionnel)"
-            />
-            <button className="btn btn-primary" onClick={createRoom}><Plus size={18} /> Créer le salon</button>
-          </div>
-        )}
-      </section>
 
-      <section className="lobby-section">
-        <h2 className="section-title"><DoorOpen size={22} /> Salons ouverts</h2>
-        {error && <p className="error">{error}</p>}
+        {selected === 'codenames' && (
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, flexWrap: 'wrap', gap: 1 }}>
+            <Typography color="text.secondary" sx={{ fontWeight: 600 }}>Mode :</Typography>
+            <ToggleButtonGroup value={cnMode} exclusive color="primary" onChange={(_, v) => v && setCnMode(v)} size="small">
+              <ToggleButton value="duet"><Users2 size={16} />&nbsp;Duo coopératif</ToggleButton>
+              <ToggleButton value="versus"><Swords size={16} />&nbsp;Versus 2 équipes</ToggleButton>
+            </ToggleButtonGroup>
+            <Typography variant="caption" color="text.secondary">{cnMode === 'duet' ? '2-3 joueurs' : '4 joueurs et +'}</Typography>
+          </Stack>
+        )}
+
+        {selected && (
+          <Stack direction="row" spacing={1.5} sx={{ mt: 2, flexWrap: 'wrap', gap: 1.5 }}>
+            <TextField size="small" sx={{ flex: 1, minWidth: 180 }} value={roomName} onChange={(e) => setRoomName(e.target.value)} placeholder="Nom du salon (optionnel)" />
+            <Button variant="contained" onClick={createRoom} startIcon={<Plus size={18} />}>Créer le salon</Button>
+          </Stack>
+        )}
+      </Paper>
+
+      <Paper elevation={1} className="lobby-section" sx={{ p: 2.5 }}>
+        <Typography variant="h5" className="section-title" sx={{ mb: 2 }}><DoorOpen size={22} /> Salons ouverts</Typography>
+        {error && <Alert severity="error" sx={{ mb: 1.5 }}>{error}</Alert>}
         {rooms.length === 0 ? (
-          <p className="muted">Aucun salon là, sois le premier à en lancer un !</p>
+          <Typography color="text.secondary">Aucun salon là, sois le premier à en lancer un !</Typography>
         ) : (
-          <ul className="room-list">
+          <Stack spacing={1.2}>
             {rooms.map((r) => {
               const Ic = GAME_ICONS[r.gameKey] || Gamepad2;
               return (
-                <li key={r.id} className="room-card">
+                <Paper key={r.id} variant="outlined" className="room-card" sx={{ p: 1.5 }}>
                   <div className="room-main">
                     <span className="ic"><Ic size={22} /></span>
                     <div>
                       <strong>{r.name}</strong>
-                      <div className="room-sub">
-                        {r.gameLabel} · {r.players}/{r.maxPlayers}{r.inProgress ? ' · en cours' : ''}
-                      </div>
+                      <div className="room-sub">{r.gameLabel} · {r.players}/{r.maxPlayers}{r.inProgress ? ' · en cours' : ''}</div>
                     </div>
                   </div>
-                  <button className="btn btn-secondary btn-mini" onClick={() => joinRoom(r.id)}>Rejoindre</button>
-                </li>
+                  <Button variant="contained" color="secondary" size="small" onClick={() => joinRoom(r.id)}>Rejoindre</Button>
+                </Paper>
               );
             })}
-          </ul>
+          </Stack>
         )}
-      </section>
+      </Paper>
     </div>
   );
 }

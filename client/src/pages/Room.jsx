@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Paper, Button, Chip, Typography, Alert } from '@mui/material';
 import { ChevronLeft, Users, MessageCircle, Crown } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import Chat from '../components/Chat.jsx';
@@ -55,12 +56,12 @@ export default function Room() {
   return (
     <div className="room fade-up">
       <div className="room-header">
-        <button className="btn btn-ghost btn-mini" onClick={() => navigate('/')}><ChevronLeft size={16} /> Lobby</button>
-        <h2>{room.name}</h2>
-        <span className="badge">{room.gameLabel}</span>
+        <Button variant="outlined" size="small" onClick={() => navigate('/')} startIcon={<ChevronLeft size={16} />}>Lobby</Button>
+        <Typography variant="h5" sx={{ flex: 1 }}>{room.name}</Typography>
+        <Chip color="primary" label={room.gameLabel} />
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {error && <Alert severity="error" sx={{ mb: 1.5 }}>{error}</Alert>}
 
       <div className="room-body">
         <div className="game-area">
@@ -73,22 +74,22 @@ export default function Room() {
         </div>
 
         <aside className="room-side">
-          <div className="players-box card">
+          <Paper elevation={1} className="players-box" sx={{ p: 2 }}>
             <h3 className="section-title"><Users size={18} /> Joueurs ({room.players.length})</h3>
             <ul className="player-list">
               {room.players.map((p) => (
                 <li key={p.id}>
                   <Avatar name={p.displayName} gender={p.gender} />
                   <span>{p.displayName}{p.id === room.me.id ? ' (toi)' : ''}</span>
-                  {p.id === room.hostId && <Crown size={15} color="#f59e0b" />}
+                  {p.id === room.hostId && <Crown size={15} color="#c2a36b" />}
                 </li>
               ))}
             </ul>
-          </div>
-          <div className="chat-box card">
+          </Paper>
+          <Paper elevation={1} className="chat-box" sx={{ p: 2 }}>
             <h3 className="section-title"><MessageCircle size={18} /> Chat</h3>
             <Chat messages={room.chat} meId={room.me.id} />
-          </div>
+          </Paper>
         </aside>
       </div>
     </div>
