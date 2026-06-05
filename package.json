@@ -9,7 +9,7 @@
     "dev:server": "node --watch server/index.js",
     "dev:client": "npm --prefix client run dev",
     "seed": "node server/seed.js",
-    "build": "npm --prefix client install && npm --prefix client run build",
+    "build": "cd client && npm install && npm run build",
     "start": "node server/index.js"
   },
   "dependencies": {
