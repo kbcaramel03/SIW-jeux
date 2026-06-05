@@ -7,6 +7,7 @@ import Chat from '../components/Chat.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
 import Codenames from '../games/Codenames.jsx';
 import Battleship from '../games/Battleship.jsx';
+import Uno from '../games/Uno.jsx';
 
 export default function Room() {
   const { id } = useParams();
@@ -70,6 +71,9 @@ export default function Room() {
           )}
           {room.gameKey === 'bataille' && (
             <Battleship room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'uno' && (
+            <Uno room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
         </div>
 

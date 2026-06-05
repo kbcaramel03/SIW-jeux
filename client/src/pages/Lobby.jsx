@@ -67,7 +67,7 @@ export default function Lobby() {
                 {!g.ready && <span className="soon-tag">bientôt</span>}
                 <span className="tile-icon"><Ic size={24} /></span>
                 <span className="game-label">{g.label}</span>
-                <span className="game-meta">{g.minPlayers}–{g.maxPlayers} joueurs</span>
+                <span className="game-meta">{g.minPlayers === g.maxPlayers ? `${g.minPlayers} joueurs` : `${g.minPlayers}–${g.maxPlayers} joueurs`}</span>
               </button>
             );
           })}

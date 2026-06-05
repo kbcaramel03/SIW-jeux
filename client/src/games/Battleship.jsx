@@ -30,9 +30,10 @@ export default function Battleship({ room, isHost, onAction, onNewGame }) {
   }, [game.lastEvent?.seq]);
 
   useEffect(() => {
-    if (game.phase === 'over') {
+    // Confettis + son de victoire uniquement pour le gagnant.
+    if (game.phase === 'over' && game.iWon) {
       winConfetti();
-      if (game.iWon) boomSound(true);
+      boomSound(true);
     }
   }, [game.phase]);
 

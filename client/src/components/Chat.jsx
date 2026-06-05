@@ -10,10 +10,12 @@ const EMOJIS = ['😂','🤣','😭','😍','🥰','😘','😎','🤩','🥳','
 export default function Chat({ messages, meId }) {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
-  const endRef = useRef(null);
+  const listRef = useRef(null);
 
+  // On fait défiler uniquement la zone de messages, jamais la page entière.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   function send(e) {
@@ -27,14 +29,13 @@ export default function Chat({ messages, meId }) {
 
   return (
     <div className="chat">
-      <div className="chat-messages">
+      <div className="chat-messages" ref={listRef}>
         {messages.map((m) => (
           <div key={m.id} className={`chat-msg ${m.userId === 'system' ? 'system' : ''} ${m.userId === meId ? 'mine' : ''}`}>
             {m.userId !== 'system' && m.userId !== meId && <span className="chat-author">{m.displayName}</span>}
             <span className="chat-text">{m.text}</span>
           </div>
         ))}
-        <div ref={endRef} />
       </div>
 
       {showEmoji && (

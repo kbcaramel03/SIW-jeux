@@ -2,6 +2,7 @@
 // Au fur et à mesure qu'on code les jeux, on les passe à ready: true.
 import * as codenames from './codenames.js';
 import * as battleship from './battleship.js';
+import * as uno from './uno.js';
 
 export const GAMES = {
   codenames: {
@@ -21,7 +22,12 @@ export const GAMES = {
     view: battleship.viewFor,
     action: applyBattleshipAction,
   },
-  uno: { key: 'uno', label: 'Uno', emoji: '🎴', minPlayers: 2, maxPlayers: 8, ready: false },
+  uno: {
+    key: 'uno', label: 'Uno', emoji: '🎴', minPlayers: 2, maxPlayers: 8, ready: true,
+    create: uno.createUno,
+    view: uno.viewFor,
+    action: applyUnoAction,
+  },
   flip7: { key: 'flip7', label: 'Flip 7', emoji: '🔢', minPlayers: 2, maxPlayers: 8, ready: false },
   bullshit: { key: 'bullshit', label: 'Bullshit', emoji: '🤥', minPlayers: 3, maxPlayers: 8, ready: false },
   conspiracy: { key: 'conspiracy', label: 'Conspiracy', emoji: '🕯️', minPlayers: 4, maxPlayers: 10, ready: false },
@@ -49,6 +55,23 @@ function applyCodenamesAction(state, userId, payload) {
       return codenames.confirmCard(state, userId);
     case 'pass':
       return codenames.passTurn(state, userId);
+    default:
+      throw new Error('Action inconnue.');
+  }
+}
+
+function applyUnoAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join':
+      return uno.joinUno(state, userId);
+    case 'start':
+      return uno.startUno(state, userId);
+    case 'play':
+      return uno.playCard(state, userId, payload.cardId, payload.color);
+    case 'draw':
+      return uno.drawUno(state, userId);
+    case 'pass':
+      return uno.passUno(state, userId);
     default:
       throw new Error('Action inconnue.');
   }
