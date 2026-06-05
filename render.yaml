@@ -1,0 +1,16 @@
+# Configuration de déploiement Render (Blueprint).
+# Render lit ce fichier pour créer automatiquement le service web.
+services:
+  - type: web
+    name: soiree-jeux
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true   # Render génère un secret aléatoire
+      - key: DATABASE_URL
+        sync: false           # à coller à la main : l'URL de la base Neon
