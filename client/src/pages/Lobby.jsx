@@ -53,7 +53,7 @@ export default function Lobby() {
   return (
     <div className="lobby fade-up">
       <Paper elevation={1} className="lobby-section" sx={{ p: 2.5 }}>
-        <Typography variant="h5" className="section-title" sx={{ mb: 2 }}><Gamepad2 size={22} /> On joue à quoi ?</Typography>
+        <Typography variant="h5" className="section-title" sx={{ mb: 2 }}><Gamepad2 size={22} /> On joue à quoi girls ?</Typography>
         <div className="games-grid">
           {games.map((g) => {
             const Ic = GAME_ICONS[g.key] || Gamepad2;

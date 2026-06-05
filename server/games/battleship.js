@@ -126,6 +126,19 @@ export function fire(state, userId, x, y) {
   if (result === 'miss') state.turn = opp;
 }
 
+// Pour chaque case de bateau : orientation + position (pour dessiner la coque).
+function shipSegments(board) {
+  const map = {};
+  for (const s of board.ships) {
+    const horizontal = s.cells.length > 1 && s.cells[0][1] === s.cells[1][1];
+    s.cells.forEach(([x, y], i) => {
+      const part = s.cells.length === 1 ? 'single' : i === 0 ? 'start' : i === s.cells.length - 1 ? 'end' : 'mid';
+      map[`${x},${y}`] = { orient: horizontal ? 'h' : 'v', part, head: i === 0 };
+    });
+  }
+  return map;
+}
+
 // Vue personnalisée : je vois MES bateaux, mais pas ceux de l'adversaire (sauf coulés / fin).
 export function viewFor(state, userId) {
   const isSeat = state.seats.includes(userId);
@@ -135,24 +148,28 @@ export function viewFor(state, userId) {
   function myBoardView() {
     const b = state.boards[userId];
     if (!b) return null;
-    return b.grid.map((row) => row.map((c) => ({
+    const seg = shipSegments(b);
+    return b.grid.map((row, y) => row.map((c, x) => ({
       ship: c.ship !== null,
       fired: c.fired,
       sunk: c.ship !== null && b.ships.find((s) => s.id === c.ship)?.sunk === true,
+      seg: c.ship !== null ? seg[`${x},${y}`] : null,
     })));
   }
 
   function enemyBoardView() {
     const b = opp ? state.boards[opp] : null;
     if (!b) return null;
-    return b.grid.map((row) => row.map((c) => {
+    const seg = shipSegments(b);
+    return b.grid.map((row, y) => row.map((c, x) => {
       const ship = c.ship !== null ? b.ships.find((s) => s.id === c.ship) : null;
-      const revealShip = over || (c.fired && c.ship !== null) || (ship && ship.sunk);
+      const revealShip = over || (ship && ship.sunk);
       return {
         fired: c.fired,
         hit: c.fired && c.ship !== null,
         sunk: ship ? ship.sunk : false,
         ship: revealShip ? c.ship !== null : false,
+        seg: revealShip ? seg[`${x},${y}`] : null,
       };
     }));
   }

@@ -30,19 +30,19 @@ export default function Login() {
     <div className="auth-page">
       <Paper elevation={1} className="auth-card fade-up" sx={{ p: 3.5 }}>
         <Typography variant="h4" className="auth-logo">Soirée Jeux</Typography>
-        <Typography color="text.secondary" sx={{ mb: 2.5, fontWeight: 600 }}>Connecte-toi blg, la team t'attend</Typography>
+        <Typography color="text.secondary" sx={{ mb: 2.5, fontWeight: 600 }}>Connecte-toi blg</Typography>
         <form onSubmit={submit}>
           <Stack spacing={2}>
             <TextField label="Ton identifiant" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
             <TextField label="Ton mot de passe" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             {error && <Alert severity="error">{error}</Alert>}
             <Button type="submit" variant="contained" size="large" fullWidth disabled={busy} startIcon={<LogIn size={18} />}>
-              {busy ? 'On y va…' : 'Go, je me connecte'}
+              {busy ? 'On y va…' : 'Goooo'}
             </Button>
           </Stack>
         </form>
         <Typography variant="body2" sx={{ mt: 2 }}>
-          Pas encore dans la team ? <Link to="/register" className="link-accent">Inscris-toi ici</Link>
+          Pas encore de compte ? <Link to="/register" className="link-accent">Inscris-toi ici</Link>
         </Typography>
       </Paper>
     </div>

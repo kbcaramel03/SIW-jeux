@@ -276,9 +276,26 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .bs-side h4 { margin: 0 0 10px; }
 .bs-yourturn { font-family: var(--font-body); font-size: 0.74rem; font-weight: 700; color: #fff; background: var(--pink); padding: 2px 9px; border-radius: 10px; margin-left: 6px; }
 .bs-grid-wrap { display: flex; justify-content: center; }
-.bs-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; width: 100%; max-width: 330px; aspect-ratio: 1; }
-.bs-cell { aspect-ratio: 1; border: none; border-radius: 5px; background: #dbe8f4; cursor: default; padding: 0; position: relative; transition: transform 0.08s, background 0.15s; }
-.bs-cell.ship { background: #9fb0c2; }
+.bs-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; width: 100%; max-width: 350px; aspect-ratio: 1; }
+.bs-grid.sm { max-width: 215px; gap: 2px; }
+.bs-cell { aspect-ratio: 1; border: none; border-radius: 5px; background: #dbe8f4; cursor: default; padding: 0; position: relative; transition: transform 0.08s, background 0.15s; display: flex; align-items: center; justify-content: center; }
+/* coque de bateau (visible sur MA flotte / bateaux coulés) */
+.bs-cell.ship { background: #79899e; }
+.bs-cell.ship.orient-h.part-start { border-top-left-radius: 48%; border-bottom-left-radius: 48%; }
+.bs-cell.ship.orient-h.part-end { border-top-right-radius: 48%; border-bottom-right-radius: 48%; }
+.bs-cell.ship.orient-v.part-start { border-top-left-radius: 48%; border-top-right-radius: 48%; }
+.bs-cell.ship.orient-v.part-end { border-bottom-left-radius: 48%; border-bottom-right-radius: 48%; }
+.bs-cell.ship.part-single { border-radius: 48%; }
+.bs-cell .ship-ic { width: 64%; height: 64%; color: #eef2f7; }
+.bs-cell.orient-v .ship-ic { transform: rotate(90deg); }
+/* bannière de tour + surbrillance du plateau actif */
+.bs-turn-banner { display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center;
+  font-family: var(--font-head); font-weight: 600; font-size: 1.05rem; padding: 10px; border-radius: 14px; margin-bottom: 14px; }
+.bs-turn-banner.mine { background: #d7f0e2; color: #1f7a52; }
+.bs-turn-banner.theirs { background: #efe7ee; color: var(--ink-soft); }
+.bs-side-main.active { box-shadow: 0 0 0 3px var(--pink), var(--shadow-sm); }
+.bs-side-mine { opacity: 0.92; }
+.bs-side-mine h4 { font-size: 0.92rem; color: var(--ink-soft); }
 .bs-cell.fireable { cursor: crosshair; background: #cde0f1; }
 .bs-cell.fireable:hover { background: #b9d4ee; transform: scale(1.1); }
 .bs-cell.miss { background: #b0c0cf; }
