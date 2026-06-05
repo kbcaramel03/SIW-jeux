@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, Crown, Users, Check, SkipForward, Sparkles, ShieldCheck, Timer, UserSearch } from 'lucide-react';
+import { Eye, Crown, Users, Check, SkipForward, Sparkles, ShieldCheck, Timer, UserSearch, LogIn, Handshake } from 'lucide-react';
 
 // Affiche le jeu Code Names. Reçoit la vue personnalisée du serveur.
 export default function Codenames({ room, isHost, onAction, onNewGame }) {
@@ -22,12 +22,14 @@ export default function Codenames({ room, isHost, onAction, onNewGame }) {
   }
 
   if (game.phase === 'setup') {
-    return <Setup game={game} me={me} isHost={isHost} nameById={nameById} onAction={onAction} />;
+    return game.mode === 'duet'
+      ? <DuetSetup game={game} me={me} isHost={isHost} nameById={nameById} onAction={onAction} />
+      : <VersusSetup game={game} me={me} isHost={isHost} nameById={nameById} onAction={onAction} />;
   }
 
   return (
     <div className="cn fade-up">
-      <TopBar game={game} />
+      <TopBar game={game} me={me} nameById={nameById} />
       <Board game={game} me={me} nameById={nameById} onAction={onAction} />
       <Controls game={game} me={me} onAction={onAction} />
       {game.phase === 'over' && <Over game={game} isHost={isHost} onNewGame={onNewGame} />}
@@ -38,50 +40,97 @@ export default function Codenames({ room, isHost, onAction, onNewGame }) {
   );
 }
 
-/* ---------- SETUP : composition ---------- */
-function TeamPanel({ side, game, nameById, onAction }) {
+function sideMembers(team) {
+  return [team.spymaster, ...team.operatives].filter(Boolean);
+}
+
+/* ---------- SETUP VERSUS (4+) ---------- */
+function VersusTeam({ side, game, nameById, onAction }) {
   const t = game.teams[side];
-  const label = side === 'red' ? 'Rouge' : 'Bleue';
+  const label = side === 'red' ? 'Rose' : 'Bleue';
   return (
     <div className={`cn-team cn-team-${side}`}>
       <h4>Équipe {label}</h4>
       <div className="cn-role">
         <Crown size={16} /> <span>Maître-espion :</span>
-        <strong>{t.spymaster ? nameById[t.spymaster] || '—' : '(vide)'}</strong>
+        <strong>{t.spymaster ? nameById[t.spymaster] || '—' : '(personne)'}</strong>
         <button className="btn btn-secondary btn-mini" onClick={() => onAction({ kind: 'assign', team: side, role: 'spymaster' })}>Prendre</button>
       </div>
       <div className="cn-role">
         <Users size={16} /> <span>Agents :</span>
-        <strong>{t.operatives.map((id) => nameById[id] || '?').join(', ') || '(vide)'}</strong>
+        <strong>{t.operatives.map((id) => nameById[id] || '?').join(', ') || '(personne)'}</strong>
         <button className="btn btn-secondary btn-mini" onClick={() => onAction({ kind: 'assign', team: side, role: 'operative' })}>Rejoindre</button>
       </div>
     </div>
   );
 }
 
-function Setup({ game, isHost, nameById, onAction }) {
+function VersusSetup({ game, isHost, nameById, onAction }) {
   const canPlay = (t) => !!game.teams[t].spymaster && game.teams[t].operatives.length > 0;
-  const manned = (t) => !!game.teams[t].spymaster || game.teams[t].operatives.length > 0;
-  const versusReady = canPlay('red') && canPlay('blue');
-  const duetReady = manned('red') && manned('blue');
-  const ready = versusReady || duetReady;
-  const mode = versusReady ? 'versus' : duetReady ? 'duet' : null;
-
+  const ready = canPlay('red') && canPlay('blue');
   return (
     <div className="cn-setup card">
-      <h3 className="section-title"><UserSearch size={20} /> Composez les équipes</h3>
+      <h3 className="section-title"><UserSearch size={20} /> Code Names · Versus</h3>
       <p className="cn-hint-text">
-        <strong>À 4 joueurs et +</strong> : deux équipes complètes (un maître-espion + des agents chacune) = mode <strong>Versus</strong> (rouge contre bleu).<br />
-        <strong>À 2-3 joueurs</strong> : au moins une personne de chaque côté = mode <strong>Duo coopératif</strong> (vous vous faites deviner les mots, contre le jeu).
+        Deux équipes s'affrontent. Dans chaque équipe : <strong>un maître-espion</strong> (il voit les couleurs et donne les indices)
+        et <strong>au moins un agent</strong> (il devine). Première équipe à trouver tous ses mots gagne.
       </p>
       <div className="cn-teams">
-        <TeamPanel side="red" game={game} nameById={nameById} onAction={onAction} />
-        <TeamPanel side="blue" game={game} nameById={nameById} onAction={onAction} />
+        <VersusTeam side="red" game={game} nameById={nameById} onAction={onAction} />
+        <VersusTeam side="blue" game={game} nameById={nameById} onAction={onAction} />
       </div>
-      {mode && <p className="cn-mode-hint">{mode === 'versus' ? 'Partie en mode Versus (2 équipes)' : 'Partie en mode Duo coopératif'}</p>}
       {isHost ? (
         <button className="btn btn-primary btn-block" disabled={!ready} onClick={() => onAction({ kind: 'start' })}>
-          {ready ? 'Démarrer la partie' : 'Il faut au moins 1 joueur de chaque côté'}
+          {ready ? 'Démarrer la partie' : 'Chaque équipe a besoin d\'un maître-espion + un agent'}
+        </button>
+      ) : (
+        <p className="muted" style={{ textAlign: 'center' }}>En attente que l'hôte démarre…</p>
+      )}
+    </div>
+  );
+}
+
+/* ---------- SETUP DUO (2-3) ---------- */
+function DuetSide({ side, game, me, nameById, onAction }) {
+  const members = sideMembers(game.teams[side]);
+  const mine = members.includes(me);
+  const label = side === 'red' ? 'Rose' : 'Bleu';
+  return (
+    <div className={`cn-team cn-team-${side}`}>
+      <h4>Côté {label}</h4>
+      <ul className="duet-members">
+        {members.length === 0
+          ? <li className="muted">Personne pour l'instant</li>
+          : members.map((id) => <li key={id}>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</li>)}
+      </ul>
+      <button
+        className={`btn btn-mini ${mine ? 'btn-ghost' : 'btn-secondary'}`}
+        disabled={mine}
+        onClick={() => onAction({ kind: 'assign', team: side, role: 'operative' })}
+      >
+        <LogIn size={15} /> {mine ? 'Tu es ici' : 'Rejoindre ce côté'}
+      </button>
+    </div>
+  );
+}
+
+function DuetSetup({ game, me, isHost, nameById, onAction }) {
+  const manned = (t) => sideMembers(game.teams[t]).length > 0;
+  const ready = manned('red') && manned('blue');
+  return (
+    <div className="cn-setup card">
+      <h3 className="section-title"><Handshake size={20} /> Code Names · Duo coopératif</h3>
+      <p className="cn-hint-text">
+        Vous jouez <strong>ensemble contre le jeu</strong>. Chacun rejoint un côté : à tour de rôle, un côté <strong>fait deviner</strong>
+        ses mots à l'autre. Objectif commun : trouver les <strong>15 agents</strong> en <strong>9 tours</strong>, sans tomber sur un assassin.
+      </p>
+      <div className="cn-teams">
+        <DuetSide side="red" game={game} me={me} nameById={nameById} onAction={onAction} />
+        <DuetSide side="blue" game={game} me={me} nameById={nameById} onAction={onAction} />
+      </div>
+      {isHost ? (
+        <button className="btn btn-primary btn-block" disabled={!ready} onClick={() => onAction({ kind: 'start' })}>
+          {ready ? 'Démarrer le Duo' : 'Il faut au moins une personne de chaque côté'}
         </button>
       ) : (
         <p className="muted" style={{ textAlign: 'center' }}>En attente que l'hôte démarre…</p>
@@ -91,7 +140,7 @@ function Setup({ game, isHost, nameById, onAction }) {
 }
 
 /* ---------- BARRE DU HAUT ---------- */
-function TopBar({ game }) {
+function TopBar({ game, me, nameById }) {
   const cluePill = game.clue && (
     <span className="cn-clue-pill">
       « {game.clue.word} » — {game.clue.count}
@@ -100,14 +149,20 @@ function TopBar({ game }) {
   );
 
   if (game.mode === 'duet') {
+    const activeNames = sideMembers(game.teams[game.turn]).map((id) => nameById[id] || '?').join(', ');
+    let line;
+    if (game.phase !== 'playing') line = null;
+    else if (game.isClueGiver) line = <strong>À toi de faire deviner — donne un indice !</strong>;
+    else if (game.isGuesser) line = <><strong>{activeNames}</strong> te fait deviner — à toi de trouver !</>;
+    else line = <><strong>{activeNames}</strong> fait deviner…</>;
     return (
-      <div className="cn-topbar">
+      <div className="cn-topbar cn-topbar-duet">
         <div className="duet-stats">
           <span className="duet-chip agents"><ShieldCheck size={16} /> {game.agentsFound}/{game.agentsTotal} agents</span>
           <span className="duet-chip turns"><Timer size={16} /> {game.turnsLeft} tours</span>
         </div>
         <div className="cn-turn">
-          {game.phase === 'playing' && <>Côté {game.turn === 'red' ? 'rouge' : 'bleu'} fait deviner</>}
+          {line}
           <div>{cluePill}</div>
         </div>
       </div>
@@ -117,7 +172,7 @@ function TopBar({ game }) {
     <div className="cn-topbar">
       <span className="cn-count cn-count-red">{game.counts.red}</span>
       <div className="cn-turn">
-        {game.phase === 'playing' && <>Au tour de l'équipe {game.turn === 'red' ? 'rouge' : 'bleue'}</>}
+        {game.phase === 'playing' && <>Au tour de l'équipe {game.turn === 'red' ? 'rose' : 'bleue'}</>}
         <div>{cluePill}</div>
       </div>
       <span className="cn-count cn-count-blue">{game.counts.blue}</span>
@@ -130,7 +185,6 @@ function Board({ game, me, nameById, onAction }) {
   const canGuess = game.phase === 'playing' && game.clue && game.isGuesser;
   const mySelection = game.selections?.[me];
 
-  // index -> liste de prénoms qui ont sélectionné cette carte
   const pickers = {};
   for (const [uid, idx] of Object.entries(game.selections || {})) {
     (pickers[idx] ||= []).push(nameById[uid] || '?');
@@ -173,7 +227,6 @@ function Controls({ game, me, onAction }) {
   const [count, setCount] = useState(1);
   if (game.phase !== 'playing') return null;
 
-  // Donneur d'indice (maître-espion en versus, côté actif en duo) sans indice posé
   if (game.isClueGiver && !game.clue) {
     return (
       <form
@@ -193,7 +246,6 @@ function Controls({ game, me, onAction }) {
     );
   }
 
-  // Devineur : sélection puis validation
   if (game.isGuesser && game.clue) {
     const hasSelection = game.selections?.[me] !== undefined;
     return (
@@ -210,13 +262,13 @@ function Controls({ game, me, onAction }) {
   return <p className="muted cn-wait">En attente de l'autre équipe…</p>;
 }
 
-/* ---------- FIN DE PARTIE ---------- */
+/* ---------- FIN ---------- */
 function Over({ game, isHost, onNewGame }) {
   let title;
   if (game.mode === 'duet') {
     title = game.result === 'won' ? 'Gagné ! Les 15 agents sont trouvés !' : 'Perdu… ce sera mieux la prochaine fois !';
   } else {
-    title = game.winner === 'red' ? "L'équipe rouge gagne !" : "L'équipe bleue gagne !";
+    title = game.winner === 'red' ? "L'équipe rose gagne !" : "L'équipe bleue gagne !";
   }
   return (
     <div className="cn-over">

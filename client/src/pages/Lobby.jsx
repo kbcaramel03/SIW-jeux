@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Ship, Layers, Dices, Drama, Eye, Paintbrush, Moon, Gamepad2, DoorOpen, Plus } from 'lucide-react';
+import { Search, Ship, Layers, Dices, Drama, Eye, Paintbrush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords } from 'lucide-react';
 import { getSocket } from '../socket.js';
 
 const GAME_ICONS = {
@@ -14,6 +14,7 @@ export default function Lobby() {
   const [rooms, setRooms] = useState([]);
   const [selected, setSelected] = useState(null);
   const [roomName, setRoomName] = useState('');
+  const [cnMode, setCnMode] = useState('versus'); // mode Code Names choisi
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -34,7 +35,8 @@ export default function Lobby() {
   function createRoom() {
     if (!selected) return;
     setError('');
-    getSocket().emit('room:create', { gameKey: selected, name: roomName }, (res) => {
+    const options = selected === 'codenames' ? { mode: cnMode } : {};
+    getSocket().emit('room:create', { gameKey: selected, name: roomName, options }, (res) => {
       if (res?.error) return setError(res.error);
       navigate(`/room/${res.roomId}`);
     });
@@ -70,6 +72,23 @@ export default function Lobby() {
             );
           })}
         </div>
+        {selected === 'codenames' && (
+          <div className="mode-choice">
+            <span className="mode-choice-label">Mode :</span>
+            <button
+              className={`mode-pill ${cnMode === 'duet' ? 'on' : ''}`}
+              onClick={() => setCnMode('duet')}
+            >
+              <Users2 size={16} /> Duo coopératif <em>2-3 joueurs</em>
+            </button>
+            <button
+              className={`mode-pill ${cnMode === 'versus' ? 'on' : ''}`}
+              onClick={() => setCnMode('versus')}
+            >
+              <Swords size={16} /> Versus 2 équipes <em>4 joueurs et +</em>
+            </button>
+          </div>
+        )}
         {selected && (
           <div className="create-row">
             <input

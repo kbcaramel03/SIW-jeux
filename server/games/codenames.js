@@ -32,12 +32,13 @@ function shuffle(arr) {
   return a;
 }
 
-export function createCodenames() {
+export function createCodenames(options = {}) {
   const words = shuffle(WORDS).slice(0, 25);
+  const mode = options.mode === 'versus' ? 'versus' : options.mode === 'duet' ? 'duet' : null;
   return {
     type: 'codenames',
     phase: 'setup', // setup -> playing -> over
-    mode: null, // 'versus' | 'duet'
+    mode, // 'versus' | 'duet' (choisi à la création du salon)
     board: words.map((word) => ({ word, revealed: false, kind: null })),
     teams: {
       red: { spymaster: null, operatives: [] },
@@ -130,17 +131,25 @@ export function startGame(state) {
   const versusReady = canPlay(state, 'red') && canPlay(state, 'blue');
   const duetReady = sideManned(state, 'red') && sideManned(state, 'blue');
 
-  if (versusReady) {
-    state.mode = 'versus';
+  // Le mode est choisi à la création du salon ; sinon on déduit (compatibilité).
+  let mode = state.mode;
+  if (mode === 'versus') {
+    if (!versusReady) throw new Error('En Versus, chaque équipe a besoin d\'un maître-espion ET d\'au moins un agent (4 joueurs min).');
+  } else if (mode === 'duet') {
+    if (!duetReady) throw new Error('En Duo, il faut au moins un joueur de chaque côté.');
+  } else {
+    if (versusReady) mode = 'versus';
+    else if (duetReady) mode = 'duet';
+    else throw new Error('Il faut soit 2 équipes complètes (Versus), soit au moins 1 joueur de chaque côté (Duo).');
+  }
+
+  state.mode = mode;
+  if (mode === 'versus') {
     buildVersus(state);
     state.log.push(`Partie lancée ! L'équipe ${state.turn === 'red' ? 'rouge' : 'bleue'} commence.`);
-  } else if (duetReady) {
-    // Mode Duo coopératif : au moins un joueur de chaque côté.
-    state.mode = 'duet';
+  } else {
     buildDuet(state);
     state.log.push('Mode Duo : trouvez les 15 agents en 9 tours, sans toucher d\'assassin !');
-  } else {
-    throw new Error('Il faut soit 2 équipes complètes (Versus, 4+), soit au moins 1 joueur de chaque côté (Duo).');
   }
   state.phase = 'playing';
   state.clue = null;

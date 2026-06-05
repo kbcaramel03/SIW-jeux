@@ -123,7 +123,7 @@ export function createRealtime(httpServer) {
       socket.emit('presence:list', presenceList());
     });
 
-    socket.on('room:create', ({ gameKey, name }, ack) => {
+    socket.on('room:create', ({ gameKey, name, options }, ack) => {
       const game = GAMES[gameKey];
       if (!game || !game.ready) return ack?.({ error: 'Ce jeu n\'est pas encore disponible.' });
       const id = nanoid(6);
@@ -131,6 +131,7 @@ export function createRealtime(httpServer) {
         id,
         name: String(name || '').trim().slice(0, 40) || `Salon de ${socket.data.user.displayName}`,
         gameKey,
+        options: options || {},
         hostId: socket.data.user.id,
         players: [],
         chat: [],
@@ -192,7 +193,7 @@ export function createRealtime(httpServer) {
       const room = rooms.get(socket.data.roomId);
       if (!room) return ack?.({ error: 'Pas dans un salon.' });
       if (room.hostId !== socket.data.user.id) return ack?.({ error: 'Seul l\'hôte peut lancer une partie.' });
-      room.game = GAMES[room.gameKey].create();
+      room.game = GAMES[room.gameKey].create(room.options);
       room.chat.push({ id: nanoid(8), userId: 'system', displayName: 'Système', text: '🎲 Nouvelle partie ! Choisissez vos équipes.', ts: Date.now() });
       ack?.({ ok: true });
       await emitRoomState(room.id);
