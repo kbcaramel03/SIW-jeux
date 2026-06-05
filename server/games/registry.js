@@ -37,8 +37,10 @@ function applyCodenamesAction(state, userId, payload) {
       return codenames.startGame(state);
     case 'clue':
       return codenames.giveClue(state, userId, payload.word, payload.count);
-    case 'guess':
-      return codenames.guessCard(state, userId, payload.index);
+    case 'select':
+      return codenames.selectCard(state, userId, payload.index);
+    case 'confirm':
+      return codenames.confirmCard(state, userId);
     case 'pass':
       return codenames.passTurn(state, userId);
     default:

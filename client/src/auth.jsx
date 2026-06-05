@@ -25,8 +25,8 @@ export function AuthProvider({ children }) {
     return user;
   }
 
-  async function register(username, displayName, password) {
-    return apiPost('/auth/register', { username, displayName, password });
+  async function register(username, displayName, password, gender) {
+    return apiPost('/auth/register', { username, displayName, password, gender });
   }
 
   function logout() {

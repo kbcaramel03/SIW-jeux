@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { LogIn } from 'lucide-react';
 import { useAuth } from '../auth.jsx';
 
 export default function Login() {
@@ -27,20 +28,20 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="card auth-card">
-        <h1 className="auth-title">🎮 Soirée Jeux</h1>
-        <p className="auth-subtitle">Connecte-toi pour rejoindre la partie</p>
+        <h1 className="auth-logo">Soirée Jeux</h1>
+        <p className="auth-subtitle">Connecte-toi blg, la team t'attend</p>
         <form onSubmit={submit}>
-          <label>Identifiant</label>
-          <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ton pseudo" autoFocus />
-          <label>Mot de passe</label>
+          <label>Ton identifiant</label>
+          <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="genre ton pseudo" autoFocus />
+          <label>Ton mot de passe</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••" />
           {error && <p className="error">{error}</p>}
           <button className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? '…' : 'Se connecter'}
+            <LogIn size={18} /> {busy ? 'On y va…' : 'Go, je me connecte'}
           </button>
         </form>
         <p className="auth-switch">
-          Pas encore de compte ? <Link to="/register">Inscris-toi</Link>
+          Pas encore dans la team ? <Link to="/register">Inscris-toi ici</Link>
         </p>
       </div>
     </div>

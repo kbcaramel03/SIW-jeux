@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Crown, Check, X, RotateCcw, Trash2, ShieldPlus, ShieldMinus } from 'lucide-react';
 import { apiGet, apiPost, apiDelete } from '../api.js';
+import { Avatar } from '../components/OnlineRail.jsx';
 
-const STATUS_LABEL = { pending: '⏳ En attente', approved: '✅ Validée', rejected: '🚫 Refusée' };
+const STATUS_LABEL = { pending: 'En attente', approved: 'Validé', rejected: 'Refusé' };
 
 export default function Admin() {
   const [users, setUsers] = useState([]);
@@ -16,41 +18,35 @@ export default function Admin() {
     }
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   async function act(fn) {
-    try {
-      await fn();
-      await load();
-    } catch (e) {
-      setError(e.message);
-    }
+    try { await fn(); await load(); } catch (e) { setError(e.message); }
   }
 
   const pending = users.filter((u) => u.status === 'pending');
   const others = users.filter((u) => u.status !== 'pending');
 
   return (
-    <div className="admin">
-      <h1>👑 Panel Admin</h1>
+    <div className="admin fade-up">
+      <h1><Crown size={26} color="#f59e0b" /> Panel Admin</h1>
       {error && <p className="error">{error}</p>}
 
       <section className="card">
-        <h2>Inscriptions en attente ({pending.length})</h2>
+        <h2>En attente de validation ({pending.length})</h2>
         {pending.length === 0 ? (
-          <p className="muted">Rien à valider pour l'instant 🎉</p>
+          <p className="muted">Rien à valider, t'es à jour girl</p>
         ) : (
           <ul className="admin-list">
             {pending.map((u) => (
               <li key={u.id}>
-                <div>
-                  <strong>{u.displayName}</strong> <span className="muted">@{u.username}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                  <Avatar name={u.displayName} gender={u.gender} />
+                  <span><strong>{u.displayName}</strong> <span className="muted">@{u.username}</span></span>
                 </div>
                 <div className="admin-actions">
-                  <button className="btn btn-primary btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/approve`))}>Valider</button>
-                  <button className="btn btn-danger btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/reject`))}>Refuser</button>
+                  <button className="btn btn-primary btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/approve`))}><Check size={15} /> Valider</button>
+                  <button className="btn btn-danger btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/reject`))}><X size={15} /> Refuser</button>
                 </div>
               </li>
             ))}
@@ -63,21 +59,24 @@ export default function Admin() {
         <ul className="admin-list">
           {others.map((u) => (
             <li key={u.id}>
-              <div>
-                <strong>{u.displayName}</strong> <span className="muted">@{u.username}</span>
-                {' '}<span className="tag">{u.role === 'admin' ? '👑 admin' : 'membre'}</span>
-                {' '}<span className="tag">{STATUS_LABEL[u.status]}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <Avatar name={u.displayName} gender={u.gender} />
+                <span>
+                  <strong>{u.displayName}</strong> <span className="muted">@{u.username}</span>{' '}
+                  <span className="tag">{u.role === 'admin' ? 'admin' : 'membre'}</span>{' '}
+                  <span className="tag">{STATUS_LABEL[u.status]}</span>
+                </span>
               </div>
               <div className="admin-actions">
                 {u.role === 'admin' ? (
-                  <button className="btn btn-ghost btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/role`, { role: 'member' }))}>Retirer admin</button>
+                  <button className="btn btn-ghost btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/role`, { role: 'member' }))}><ShieldMinus size={14} /> Retirer admin</button>
                 ) : (
-                  <button className="btn btn-ghost btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/role`, { role: 'admin' }))}>Passer admin</button>
+                  <button className="btn btn-ghost btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/role`, { role: 'admin' }))}><ShieldPlus size={14} /> Passer admin</button>
                 )}
                 {u.status === 'rejected' && (
-                  <button className="btn btn-secondary btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/approve`))}>Réactiver</button>
+                  <button className="btn btn-secondary btn-mini" onClick={() => act(() => apiPost(`/admin/users/${u.id}/approve`))}><RotateCcw size={14} /> Réactiver</button>
                 )}
-                <button className="btn btn-danger btn-mini" onClick={() => act(() => apiDelete(`/admin/users/${u.id}`))}>Supprimer</button>
+                <button className="btn btn-danger btn-mini" onClick={() => act(() => apiDelete(`/admin/users/${u.id}`))}><Trash2 size={14} /></button>
               </div>
             </li>
           ))}

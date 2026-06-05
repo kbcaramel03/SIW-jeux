@@ -22,9 +22,11 @@ router.post('/register', async (req, res) => {
   const username = normalize(req.body.username);
   const displayName = String(req.body.displayName || '').trim() || req.body.username;
   const password = String(req.body.password || '');
+  const gender = ['F', 'M', 'A'].includes(req.body.gender) ? req.body.gender : null;
 
-  if (username.length < 3) return res.status(400).json({ error: "L'identifiant doit faire au moins 3 caractères." });
-  if (password.length < 4) return res.status(400).json({ error: 'Le mot de passe doit faire au moins 4 caractères.' });
+  if (username.length < 3) return res.status(400).json({ error: "Ton identifiant doit faire au moins 3 caractères." });
+  if (password.length < 4) return res.status(400).json({ error: 'Ton mot de passe doit faire au moins 4 caractères.' });
+  if (!gender) return res.status(400).json({ error: 'Choisis si tu es une fille, un mec, ou autre.' });
 
   await db.read();
   if (db.data.users.some((u) => u.username === username)) {
@@ -35,6 +37,7 @@ router.post('/register', async (req, res) => {
     id: nanoid(10),
     username,
     displayName,
+    gender, // 'F' | 'M' | 'A'
     passwordHash: await bcrypt.hash(password, 10),
     role: 'member',
     status: 'pending', // en attente de validation par l'admin

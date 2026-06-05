@@ -7,6 +7,7 @@ import { GAMES, gameList } from './games/registry.js';
 import { DEV_ORIGINS, IS_PROD } from './config.js';
 
 const rooms = new Map(); // roomId -> room
+const online = new Map(); // userId -> { displayName, gender, sockets:number }
 
 function roomSummary(room) {
   return {
@@ -34,12 +35,30 @@ export function createRealtime(httpServer) {
   io.use(async (socket, next) => {
     const user = await userFromToken(socket.handshake.auth?.token);
     if (!user) return next(new Error('unauthorized'));
-    socket.data.user = { id: user.id, displayName: user.displayName, role: user.role };
+    socket.data.user = { id: user.id, displayName: user.displayName, role: user.role, gender: user.gender };
     next();
   });
 
   function broadcastLobby() {
     io.to('lobby').emit('lobby:rooms', lobbyList());
+  }
+
+  function presenceList() {
+    return [...online.entries()].map(([id, u]) => ({ id, displayName: u.displayName, gender: u.gender }));
+  }
+  function broadcastPresence() {
+    io.emit('presence:list', presenceList());
+  }
+  function addPresence(u) {
+    const cur = online.get(u.id) || { displayName: u.displayName, gender: u.gender, sockets: 0 };
+    cur.sockets += 1;
+    online.set(u.id, cur);
+  }
+  function removePresence(u) {
+    const cur = online.get(u.id);
+    if (!cur) return;
+    cur.sockets -= 1;
+    if (cur.sockets <= 0) online.delete(u.id);
   }
 
   // Envoie l'état du salon, personnalisé pour chaque joueuse (vue du jeu différente).
@@ -91,8 +110,18 @@ export function createRealtime(httpServer) {
 
   io.on('connection', (socket) => {
     socket.join('lobby');
+    addPresence(socket.data.user);
     socket.emit('lobby:rooms', lobbyList());
     socket.emit('lobby:games', gameList());
+    socket.emit('presence:list', presenceList());
+    broadcastPresence();
+
+    // Renvoie l'état complet à la demande (corrige l'affichage au retour sur le lobby).
+    socket.on('lobby:refresh', () => {
+      socket.emit('lobby:games', gameList());
+      socket.emit('lobby:rooms', lobbyList());
+      socket.emit('presence:list', presenceList());
+    });
 
     socket.on('room:create', ({ gameKey, name }, ack) => {
       const game = GAMES[gameKey];
@@ -126,7 +155,11 @@ export function createRealtime(httpServer) {
       socket.join(roomId);
       socket.data.roomId = roomId;
       if (!already) {
-        room.players.push({ id: socket.data.user.id, displayName: socket.data.user.displayName });
+        room.players.push({
+          id: socket.data.user.id,
+          displayName: socket.data.user.displayName,
+          gender: socket.data.user.gender,
+        });
       }
       ack?.({ ok: true });
       await emitRoomState(roomId);
@@ -182,6 +215,8 @@ export function createRealtime(httpServer) {
 
     socket.on('disconnect', async () => {
       await leaveRoom(socket);
+      removePresence(socket.data.user);
+      broadcastPresence();
     });
   });
 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ChevronLeft, Users, MessageCircle, Crown } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import Chat from '../components/Chat.jsx';
+import { Avatar } from '../components/OnlineRail.jsx';
 import Codenames from '../games/Codenames.jsx';
 
 export default function Room() {
@@ -28,10 +30,6 @@ export default function Room() {
     };
   }, [id]);
 
-  function leave() {
-    navigate('/');
-  }
-
   function sendAction(payload) {
     return new Promise((resolve) => {
       getSocket().emit('game:action', payload, (res) => {
@@ -54,24 +52,19 @@ export default function Room() {
   const isHost = room.hostId === room.me.id;
 
   return (
-    <div className="room">
+    <div className="room fade-up">
       <div className="room-header">
-        <button className="btn btn-ghost" onClick={leave}>← Lobby</button>
+        <button className="btn btn-ghost btn-mini" onClick={() => navigate('/')}><ChevronLeft size={16} /> Lobby</button>
         <h2>{room.name}</h2>
         <span className="badge">{room.gameLabel}</span>
       </div>
 
-      {error && <p className="error room-error">{error}</p>}
+      {error && <p className="error">{error}</p>}
 
       <div className="room-body">
         <div className="game-area">
           {room.gameKey === 'codenames' ? (
-            <Codenames
-              room={room}
-              isHost={isHost}
-              onAction={sendAction}
-              onNewGame={newGame}
-            />
+            <Codenames room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           ) : (
             <p>Jeu non disponible.</p>
           )}
@@ -79,19 +72,19 @@ export default function Room() {
 
         <aside className="room-side">
           <div className="players-box card">
-            <h3>👥 Joueuses ({room.players.length})</h3>
+            <h3 className="section-title"><Users size={18} /> Joueurs ({room.players.length})</h3>
             <ul className="player-list">
               {room.players.map((p) => (
                 <li key={p.id}>
-                  {p.id === room.hostId && '👑 '}
-                  {p.displayName}
-                  {p.id === room.me.id && ' (toi)'}
+                  <Avatar name={p.displayName} gender={p.gender} />
+                  <span>{p.displayName}{p.id === room.me.id ? ' (toi)' : ''}</span>
+                  {p.id === room.hostId && <Crown size={15} color="#f59e0b" />}
                 </li>
               ))}
             </ul>
           </div>
           <div className="chat-box card">
-            <h3>💬 Chat</h3>
+            <h3 className="section-title"><MessageCircle size={18} /> Chat</h3>
             <Chat messages={room.chat} meId={room.me.id} />
           </div>
         </aside>

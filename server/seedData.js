@@ -3,11 +3,11 @@ import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 
 export const SEED = [
-  { username: 'khadija', displayName: 'Khadija', role: 'admin', password: 'admin1234' },
-  { username: 'zineb', displayName: 'Zineb', role: 'member', password: 'jeux1234' },
-  { username: 'aya', displayName: 'Aya', role: 'member', password: 'jeux1234' },
-  { username: 'alia', displayName: 'Alia', role: 'member', password: 'jeux1234' },
-  { username: 'yasmine', displayName: 'Yasmine', role: 'member', password: 'jeux1234' },
+  { username: 'khadija', displayName: 'Khadija', role: 'admin', gender: 'F', password: 'admin1234' },
+  { username: 'zineb', displayName: 'Zineb', role: 'member', gender: 'F', password: 'jeux1234' },
+  { username: 'aya', displayName: 'Aya', role: 'member', gender: 'F', password: 'jeux1234' },
+  { username: 'alia', displayName: 'Alia', role: 'member', gender: 'F', password: 'jeux1234' },
+  { username: 'yasmine', displayName: 'Yasmine', role: 'member', gender: 'F', password: 'jeux1234' },
 ];
 
 // Crée les comptes uniquement si AUCUN compte n'existe encore.
@@ -22,6 +22,7 @@ export async function ensureSeed(db, { log = () => {} } = {}) {
       id: nanoid(10),
       username: s.username,
       displayName: s.displayName,
+      gender: s.gender,
       passwordHash: await bcrypt.hash(s.password, 10),
       role: s.role,
       status: 'approved',
