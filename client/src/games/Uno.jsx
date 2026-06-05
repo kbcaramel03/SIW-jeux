@@ -40,11 +40,15 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
             </div>
           ))}
         </div>
-        {g.canStart ? (
-          <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>
-        ) : (
-          <p className="muted">En attente d'au moins 2 joueurs…</p>
-        )}
+        <div className="cn-controls">
+          {!g.amSeated && (
+            <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'join' })}>Rejoindre la partie</Button>
+          )}
+          {g.canStart && (
+            <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>
+          )}
+        </div>
+        {g.amSeated && !g.canStart && <p className="muted" style={{ textAlign: 'center' }}>En attente d'au moins 2 joueurs…</p>}
       </div>
     );
   }
@@ -109,7 +113,8 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
       <div className={`uno-turn-banner ${g.isMyTurn ? 'mine' : ''}`}>
         {g.phase === 'over'
           ? (g.winner === me ? 'Tu as gagné !' : `${nameById[g.winner] || 'Quelqu\'un'} a gagné`)
-          : g.isMyTurn ? 'À toi de jouer !' : `Au tour de ${nameById[g.turn] || '?'}`}
+          : !g.amSeated ? 'Manche en cours — tu regardes (rejoins à la prochaine)'
+            : g.isMyTurn ? 'À toi de jouer !' : `Au tour de ${nameById[g.turn] || '?'}`}
       </div>
 
       {/* Ma main */}

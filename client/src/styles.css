@@ -138,8 +138,14 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .game-tile:hover:not(.disabled) { transform: translateY(-4px) rotate(-1deg); }
 .game-tile.selected { border-color: var(--pink); background: linear-gradient(160deg, #fff, #fff0f7); }
 .game-tile.disabled { opacity: 0.5; cursor: not-allowed; }
-.tile-icon { width: 40px; height: 40px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, var(--pink-soft), #ece3ff); color: var(--violet); }
+.tile-icon { width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+  background: #f1e8fb; color: var(--violet); }
+.tile-uno { position: relative; width: 30px; height: 32px; display: block; }
+.tile-uno i { position: absolute; width: 15px; height: 22px; border-radius: 4px; top: 5px; left: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.22); }
+.tile-uno i:nth-child(1) { transform: rotate(-18deg) translateX(-6px); }
+.tile-uno i:nth-child(3) { transform: rotate(18deg) translateX(6px); }
+.tile-uno.sm { width: 24px; height: 26px; }
+.tile-uno.sm i { width: 12px; height: 18px; top: 4px; left: 6px; }
 .game-label { font-family: var(--font-head); font-weight: 600; }
 .game-meta { font-size: 0.74rem; color: var(--ink-soft); font-weight: 600; }
 .soon-tag { position: absolute; top: 8px; right: 8px; font-size: 0.62rem; background: var(--ink-soft); color: #fff; padding: 2px 7px; border-radius: 8px; font-weight: 700; }
@@ -261,6 +267,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .cn-topbar-duet .cn-turn { text-align: left; }
 
 /* ====== Bataille navale ====== */
+.bs { overflow: hidden; } /* confine le tremblement pour ne jamais faire défiler la page */
 .screen-shake { animation: screenShake 0.45s ease; }
 @keyframes screenShake {
   0%, 100% { transform: translate(0, 0); }

@@ -38,15 +38,17 @@ export default function Battleship({ room, isHost, onAction, onNewGame }) {
   }, [game.phase]);
 
   return (
-    <div className={`bs ${shaking ? 'screen-shake' : ''}`}>
-      {game.phase === 'placing' && <Placing game={game} onAction={onAction} />}
-      {game.phase !== 'placing' && <Playing game={game} me={me} onAction={onAction} />}
-      {game.phase === 'over' && (
-        <div className="cn-over">
-          <h3>{game.iWon ? 'Victoire ! Flotte ennemie coulée' : 'Défaite… ta flotte a sombré'}</h3>
-          {isHost && <Button variant="contained" startIcon={<Sparkles size={18} />} onClick={onNewGame}>Rejouer</Button>}
-        </div>
-      )}
+    <div className="bs">
+      <div className={shaking ? 'screen-shake' : ''}>
+        {game.phase === 'placing' && <Placing game={game} onAction={onAction} />}
+        {game.phase !== 'placing' && <Playing game={game} me={me} onAction={onAction} />}
+        {game.phase === 'over' && (
+          <div className="cn-over">
+            <h3>{game.iWon ? 'Victoire ! Flotte ennemie coulée' : 'Défaite… ta flotte a sombré'}</h3>
+            {isHost && <Button variant="contained" startIcon={<Sparkles size={18} />} onClick={onNewGame}>Rejouer</Button>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -148,7 +150,7 @@ function Grid({ board, kind, canFire, onFire, small }) {
                 data-cell={`${kind}-${x}-${y}`}
                 className={cls.join(' ')}
                 disabled={!clickable}
-                onClick={clickable ? () => onFire(x, y) : undefined}
+                onClick={clickable ? (e) => { e.currentTarget.blur(); onFire(x, y); } : undefined}
               >
                 {cell.seg?.head && <Ship className="ship-ic" />}
               </button>

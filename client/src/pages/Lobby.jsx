@@ -1,13 +1,31 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Paper, Button, TextField, Typography, Stack, ToggleButtonGroup, ToggleButton, Alert, Chip } from '@mui/material';
-import { Search, Ship, Layers, Dices, Drama, Eye, Paintbrush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords } from 'lucide-react';
+import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords } from 'lucide-react';
 import { getSocket } from '../socket.js';
 
-const GAME_ICONS = {
-  codenames: Search, bataille: Ship, uno: Layers, flip7: Dices,
-  bullshit: Drama, conspiracy: Eye, scribbl: Paintbrush, loupgarou: Moon,
+// Icône + couleurs propres à chaque jeu (plus représentatif et convivial).
+const GAME_STYLE = {
+  codenames: { Icon: Grid3x3, bg: '#efe6fb', fg: '#8a76a6' },
+  bataille: { Icon: Ship, bg: '#dcebf7', fg: '#2b7fd4' },
+  uno: { uno: true, bg: '#fdeaea', fg: '#e4433a' },
+  flip7: { Icon: Dices, bg: '#e3f4ea', fg: '#2e8c47' },
+  bullshit: { Icon: Drama, bg: '#f8e7f0', fg: '#cf7b97' },
+  conspiracy: { Icon: Eye, bg: '#efeadb', fg: '#9a8a55' },
+  scribbl: { Icon: Brush, bg: '#e4eefb', fg: '#5b8def' },
+  loupgarou: { Icon: Moon, bg: '#e8e5f4', fg: '#6b5ca8' },
 };
+const DEFAULT_STYLE = { Icon: Gamepad2, bg: '#eee', fg: '#888' };
+
+function UnoMini({ small }) {
+  return (
+    <span className={`tile-uno ${small ? 'sm' : ''}`}>
+      <i style={{ background: '#e4433a' }} />
+      <i style={{ background: '#edb015' }} />
+      <i style={{ background: '#2b7fd4' }} />
+    </span>
+  );
+}
 
 export default function Lobby() {
   const navigate = useNavigate();
@@ -56,7 +74,7 @@ export default function Lobby() {
         <Typography variant="h5" className="section-title" sx={{ mb: 2 }}><Gamepad2 size={22} /> On joue à quoi girls ?</Typography>
         <div className="games-grid">
           {games.map((g) => {
-            const Ic = GAME_ICONS[g.key] || Gamepad2;
+            const st = GAME_STYLE[g.key] || DEFAULT_STYLE;
             return (
               <button
                 key={g.key}
@@ -65,7 +83,9 @@ export default function Lobby() {
                 onClick={() => setSelected(g.key)}
               >
                 {!g.ready && <span className="soon-tag">bientôt</span>}
-                <span className="tile-icon"><Ic size={24} /></span>
+                <span className="tile-icon" style={{ background: st.bg, color: st.fg }}>
+                  {st.uno ? <UnoMini /> : <st.Icon size={26} />}
+                </span>
                 <span className="game-label">{g.label}</span>
                 <span className="game-meta">{g.minPlayers === g.maxPlayers ? `${g.minPlayers} joueurs` : `${g.minPlayers}–${g.maxPlayers} joueurs`}</span>
               </button>
@@ -100,11 +120,11 @@ export default function Lobby() {
         ) : (
           <Stack spacing={1.2}>
             {rooms.map((r) => {
-              const Ic = GAME_ICONS[r.gameKey] || Gamepad2;
+              const st = GAME_STYLE[r.gameKey] || DEFAULT_STYLE;
               return (
                 <Paper key={r.id} variant="outlined" className="room-card" sx={{ p: 1.5 }}>
                   <div className="room-main">
-                    <span className="ic"><Ic size={22} /></span>
+                    <span className="ic" style={{ color: st.fg }}>{st.uno ? <UnoMini small /> : <st.Icon size={22} />}</span>
                     <div>
                       <strong>{r.name}</strong>
                       <div className="room-sub">{r.gameLabel} · {r.players}/{r.maxPlayers}{r.inProgress ? ' · en cours' : ''}</div>
