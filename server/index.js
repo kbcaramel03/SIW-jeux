@@ -9,6 +9,7 @@ import { existsSync } from 'fs';
 import { PORT, DEV_ORIGINS, IS_PROD } from './config.js';
 import db from './db.js';
 import { ensureSeed } from './seedData.js';
+import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import { router as authRouter } from './auth.js';
 import { router as adminRouter } from './admin.js';
 import { createRealtime } from './realtime.js';
@@ -26,18 +27,23 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
 
-// Synthèse vocale « maître du jeu » : proxy vers une voix française naturelle
-// (Google Translate TTS, gratuit et sans clé). Renvoie un MP3.
+// Synthèse vocale « maître du jeu » : voix neural masculine française (Microsoft
+// Edge TTS, gratuite et sans clé), débit lent + grave pour un ton de vieux sage.
 app.get('/api/tts', async (req, res) => {
-  const text = String(req.query.text || '').slice(0, 200);
+  const text = String(req.query.text || '').slice(0, 400);
+  const voice = String(req.query.voice || 'fr-FR-HenriNeural');
   if (!text) return res.status(400).end();
   try {
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=fr&client=tw-ob&q=${encodeURIComponent(text)}`;
-    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://translate.google.com/' } });
-    if (!r.ok) return res.status(502).end();
+    const tts = new MsEdgeTTS();
+    await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    const { audioStream } = tts.toStream(text, { rate: '-12%', pitch: '-12%' });
     res.set('Content-Type', 'audio/mpeg');
     res.set('Cache-Control', 'public, max-age=86400');
-    res.send(Buffer.from(await r.arrayBuffer()));
+    let sent = false;
+    audioStream.on('data', (d) => { sent = true; res.write(d); });
+    audioStream.on('end', () => res.end());
+    audioStream.on('close', () => res.end());
+    audioStream.on('error', () => { if (!sent) res.status(502).end(); else res.end(); });
   } catch {
     res.status(502).end();
   }

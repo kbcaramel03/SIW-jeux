@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, IconButton } from '@mui/material';
 import { Play, Sparkles, Minus, Plus, Volume2, VolumeX, Skull } from 'lucide-react';
-import { GiWerewolf, GiFarmer, GiCrystalBall, GiCauldron, GiBowArrow, GiWizardFace } from 'react-icons/gi';
+import { GiWerewolf, GiFarmer, GiCrystalBall, GiCauldron, GiWinchesterRifle, GiWizardFace, GiMoon } from 'react-icons/gi';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { speak, stopSpeak, voiceSupported, listVoices, setVoiceByName, getChosenVoice } from '../voice.js';
 import { winConfetti } from '../effects.js';
@@ -12,7 +12,7 @@ const ROLE = {
   villageois: { label: 'Villageois', Icon: GiFarmer, cls: 'villageois', desc: 'Aucun pouvoir, juste ta ruse. Démasque les loups au vote du jour.' },
   voyante: { label: 'Voyante', Icon: GiCrystalBall, cls: 'voyante', desc: 'Chaque nuit, découvre le rôle d\'une personne de ton choix.' },
   sorciere: { label: 'Sorcière', Icon: GiCauldron, cls: 'sorciere', desc: 'Une potion de vie (sauver la victime), une potion de mort (éliminer quelqu\'un).' },
-  chasseur: { label: 'Chasseur', Icon: GiBowArrow, cls: 'chasseur', desc: 'En mourant, tu emportes une personne avec toi.' },
+  chasseur: { label: 'Chasseur', Icon: GiWinchesterRifle, cls: 'chasseur', desc: 'En mourant, d\'un coup de fusil, tu emportes une personne avec toi.' },
 };
 const SPECIALS = ['voyante', 'sorciere', 'chasseur'];
 
@@ -28,7 +28,12 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const [voiceName, setVoiceName] = useState(getChosenVoice() || '');
   const [, setTick] = useState(0);
   const [now, setNow] = useState(Date.now());
+  const [seerKnown, setSeerKnown] = useState({}); // ce que la voyante a vu (persistant pour elle)
   const lastSay = useRef(-1);
+
+  // La voyante mémorise les rôles révélés ; on réinitialise à une nouvelle partie.
+  useEffect(() => { if (g.seerResult) setSeerKnown((k) => ({ ...k, [g.seerResult.targetId]: g.seerResult.role })); }, [g.seerResult?.targetId, g.seerResult?.role]);
+  useEffect(() => { if (g.phase === 'setup') setSeerKnown({}); }, [g.phase]);
 
   // Les voix se chargent de façon asynchrone : on rafraîchit le sélecteur.
   useEffect(() => { const t = setTimeout(() => setTick(1), 700); return () => clearTimeout(t); }, []);
@@ -171,13 +176,21 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
           const x = 50 + Math.cos(ang) * 40;
           const y = 50 + Math.sin(ang) * 41;
           const dead = !p.alive;
-          const role = p.role ? ROLE[p.role] : null;
+          // Rôle connu de MOI : révélé par le serveur (mort, moi, complices loups, fin) ou vu par la voyante.
+          const knownKey = p.role || seerKnown[p.id] || null;
+          const known = knownKey ? ROLE[knownKey] : null;
           return (
             <button key={p.id} className={`lg-player ${dead ? 'dead' : ''} ${selecting && p.alive ? 'pick' : ''}`}
               style={{ left: `${x}%`, top: `${y}%` }} disabled={!selecting || dead} onClick={() => clickPlayer(p)}>
-              <div className="lg-player-av"><Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={38} />{dead && <span className="lg-dead-x"><Skull size={15} /></span>}</div>
+              <div className="lg-player-av"><Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={36} />{dead && <span className="lg-dead-x"><Skull size={15} /></span>}</div>
               <span className="lg-player-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
-              {role && <span className={`lg-role-tag ${role.cls}`}><role.Icon /> {role.label}</span>}
+              <div className={`lg-card3d ${known ? 'flipped' : ''}`}>
+                <div className="lg-card3d-inner">
+                  <div className="lg-card3d-back"><GiMoon /></div>
+                  <div className={`lg-card3d-face ${known ? known.cls : ''}`}>{known && <known.Icon />}</div>
+                </div>
+              </div>
+              {known && <span className="lg-card3d-label">{known.label}</span>}
             </button>
           );
         })}

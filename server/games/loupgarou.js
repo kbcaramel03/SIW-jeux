@@ -175,8 +175,11 @@ function openDay(state) {
   state.votes = {};
   state.dayDeadline = Date.now() + 120000; // 2 minutes pour débattre
   const n = state.lastDeaths.length;
-  const morts = n ? `${n} personne${n > 1 ? 's sont mortes' : ' est morte'} cette nuit.` : 'Personne n\'est mort cette nuit.';
-  narrate(state, `Le village se réveille. ${morts} Vous avez 2 minutes pour décider qui abattre aujourd'hui.`);
+  // Nombres en toutes lettres (la voix lit mieux « une » que « 1 »).
+  const FR = ['zéro', 'une', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix'];
+  const w = FR[n] || String(n);
+  const morts = n ? `${w} personne${n > 1 ? 's sont mortes' : ' est morte'} cette nuit.` : 'Personne n\'est mort cette nuit.';
+  narrate(state, `Le village se réveille. ${morts} Vous avez deux minutes pour décider qui abattre aujourd'hui.`);
 }
 
 export function callVote(state, userId) {

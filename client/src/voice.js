@@ -60,7 +60,7 @@ export function speak(text) {
   if (!text) return;
   stopSpeak();
   try {
-    audio = new Audio(`/api/tts?text=${encodeURIComponent(text)}`);
+    audio = new Audio(`/api/tts?v=henri1&text=${encodeURIComponent(text)}`); // v= casse le cache si la voix change
     audio.play().catch(() => speakLocal(text));
     audio.onerror = () => speakLocal(text);
   } catch {

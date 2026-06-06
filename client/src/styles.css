@@ -744,6 +744,18 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .lg-player-name { font-weight: 700; font-size: 0.72rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .lg-role-tag { display: inline-flex; align-items: center; gap: 2px; font-size: 0.6rem; font-weight: 800; line-height: 1; }
 .lg-role-tag svg { width: 1.4em; height: 1.4em; }
+/* Carte de rôle face cachée qui se retourne (mort / voyante / fin de partie) */
+.lg-card3d { width: 30px; height: 42px; perspective: 320px; margin-top: 2px; }
+.lg-card3d-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.65s; }
+.lg-card3d.flipped .lg-card3d-inner { transform: rotateY(180deg); }
+.lg-card3d-back, .lg-card3d-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(40,20,40,0.25); }
+.lg-card3d-back { background: radial-gradient(circle at 35% 25%, #5a3f7a, #2a1f44); color: #d9c8ff; border: 1.5px solid rgba(255,255,255,0.5); font-size: 1rem; }
+.lg-card3d-face { transform: rotateY(180deg); background: #fff; border: 1.5px solid #fff; font-size: 1.3rem; color: var(--ink); }
+.lg-card3d-back svg, .lg-card3d-face svg { width: 1em; height: 1em; }
+.lg-card3d-face.loup { color: #6b2b2b; } .lg-card3d-face.villageois { color: #2e8c47; }
+.lg-card3d-face.voyante { color: #5d3a9c; } .lg-card3d-face.sorciere { color: #1f7a6a; } .lg-card3d-face.chasseur { color: #c4561f; }
+.lg-card3d-label { font-size: 0.56rem; font-weight: 800; color: var(--ink-soft); line-height: 1; }
 .lg-role-tag.loup { color: #6b2b2b; } .lg-role-tag.villageois { color: #2e8c47; }
 .lg-role-tag.voyante { color: #5d3a9c; } .lg-role-tag.sorciere { color: #1f7a6a; } .lg-role-tag.chasseur { color: #c4561f; }
 .lg-mj { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 48%; max-width: 210px;
