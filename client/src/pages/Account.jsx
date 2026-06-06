@@ -1,26 +1,27 @@
-import { useRef, useState } from 'react';
-import { Paper, TextField, Button, Typography, Stack, Alert, Divider } from '@mui/material';
-import { Settings, KeyRound, Camera, Trash2, UserRound, IdCard } from 'lucide-react';
+import { useRef, useState, useCallback } from 'react';
+import Cropper from 'react-easy-crop';
+import { Paper, TextField, Button, Typography, Stack, Alert, Divider, Dialog, DialogContent, DialogActions, Slider } from '@mui/material';
+import { Settings, KeyRound, Camera, Trash2, UserRound, IdCard, ZoomIn } from 'lucide-react';
 import { apiPost } from '../api.js';
 import { useAuth } from '../auth.jsx';
+import { reconnectSocket } from '../socket.js';
 import { Avatar } from '../components/OnlineRail.jsx';
 
 const ROLE_LABEL = { admin: 'admin', moderator: 'droit ++', member: 'membre' };
 
-// Redimensionne une image en petite vignette carrée (base64) pour ne pas alourdir la base.
-function fileToThumb(file, size = 160) {
+// Découpe la zone choisie et la réduit en vignette carrée (base64).
+function getCroppedThumb(src, area, size = 200) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
       const c = document.createElement('canvas');
       c.width = c.height = size;
       const ctx = c.getContext('2d');
-      const m = Math.min(img.width, img.height);
-      ctx.drawImage(img, (img.width - m) / 2, (img.height - m) / 2, m, m, 0, 0, size, size);
+      ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, size, size);
       resolve(c.toDataURL('image/jpeg', 0.82));
     };
     img.onerror = reject;
-    img.src = URL.createObjectURL(file);
+    img.src = src;
   });
 }
 
@@ -34,41 +35,50 @@ export default function Account() {
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
 
+  // Recadrage
+  const [cropSrc, setCropSrc] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [areaPixels, setAreaPixels] = useState(null);
+  const onCropComplete = useCallback((_, px) => setAreaPixels(px), []);
+
   const ok = (m) => { setMsg(m); setError(''); };
   const ko = (e) => { setError(e.message || String(e)); setMsg(''); };
+  // Reconnecte le socket pour rafraîchir la présence (photo/nom visibles « En ligne »).
+  const refreshPresence = () => reconnectSocket();
 
-  async function pickPhoto(e) {
+  function pickPhoto(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCrop({ x: 0, y: 0 }); setZoom(1);
+    setCropSrc(URL.createObjectURL(file));
+    if (fileRef.current) fileRef.current.value = '';
+  }
+
+  async function confirmCrop() {
     try {
-      const avatar = await fileToThumb(file);
+      const avatar = await getCroppedThumb(cropSrc, areaPixels);
       const { user: u } = await apiPost('/auth/profile', { avatar });
-      setUser(u); ok('Photo mise à jour !');
+      setUser(u); setCropSrc(null); refreshPresence(); ok('Photo mise à jour !');
     } catch (err) { ko(err); }
-    finally { if (fileRef.current) fileRef.current.value = ''; }
   }
 
   async function removePhoto() {
-    try { const { user: u } = await apiPost('/auth/profile', { avatar: null }); setUser(u); ok('Photo retirée.'); }
+    try { const { user: u } = await apiPost('/auth/profile', { avatar: null }); setUser(u); refreshPresence(); ok('Photo retirée.'); }
     catch (err) { ko(err); }
   }
-
   async function saveName() {
-    try { const { user: u } = await apiPost('/auth/profile', { displayName }); setUser(u); ok('Nom mis à jour !'); }
+    try { const { user: u } = await apiPost('/auth/profile', { displayName }); setUser(u); refreshPresence(); ok('Nom mis à jour !'); }
     catch (err) { ko(err); }
   }
-
   async function saveUsername() {
-    try { const { user: u } = await apiPost('/auth/change-username', { username }); setUser(u); ok('Identifiant mis à jour !'); }
+    try { const { user: u } = await apiPost('/auth/change-username', { username }); setUser(u); refreshPresence(); ok('Identifiant mis à jour !'); }
     catch (err) { ko(err); }
   }
-
   async function changePassword(e) {
     e.preventDefault();
-    try {
-      await apiPost('/auth/change-password', { currentPassword, newPassword });
-      setCurrent(''); setNew(''); ok('Mot de passe changé, nickel !');
-    } catch (err) { ko(err); }
+    try { await apiPost('/auth/change-password', { currentPassword, newPassword }); setCurrent(''); setNew(''); ok('Mot de passe changé, nickel !'); }
+    catch (err) { ko(err); }
   }
 
   return (
@@ -76,7 +86,6 @@ export default function Account() {
       <Paper elevation={1} className="auth-card" sx={{ p: 3.5 }}>
         <Typography variant="h5" className="section-title" sx={{ justifyContent: 'center' }}><Settings size={24} /> Mon compte</Typography>
 
-        {/* Photo de profil */}
         <Stack alignItems="center" spacing={1.2} sx={{ my: 2 }}>
           <Avatar name={user.displayName} gender={user.gender} avatar={user.avatar} size={84} />
           <span className="muted">{ROLE_LABEL[user.role] || 'membre'}</span>
@@ -92,14 +101,12 @@ export default function Account() {
 
         <Divider sx={{ my: 1.5 }} />
 
-        {/* Nom affiché */}
         <Typography variant="subtitle1" className="section-title" sx={{ mb: 1 }}><UserRound size={18} /> Nom affiché</Typography>
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
           <TextField size="small" fullWidth value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
           <Button variant="contained" onClick={saveName} disabled={!displayName.trim() || displayName === user.displayName}>OK</Button>
         </Stack>
 
-        {/* Identifiant */}
         <Typography variant="subtitle1" className="section-title" sx={{ mb: 1 }}><IdCard size={18} /> Identifiant de connexion</Typography>
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
           <TextField size="small" fullWidth value={username} onChange={(e) => setUsername(e.target.value)} />
@@ -108,7 +115,6 @@ export default function Account() {
 
         <Divider sx={{ my: 1.5 }} />
 
-        {/* Mot de passe */}
         <Typography variant="subtitle1" className="section-title" sx={{ mb: 1 }}><KeyRound size={18} /> Changer mon mot de passe</Typography>
         <form onSubmit={changePassword}>
           <Stack spacing={2}>
@@ -118,6 +124,26 @@ export default function Account() {
           </Stack>
         </form>
       </Paper>
+
+      {/* Recadrage de la photo */}
+      <Dialog open={!!cropSrc} onClose={() => setCropSrc(null)} maxWidth="xs" fullWidth>
+        <DialogContent sx={{ p: 0 }}>
+          <div style={{ position: 'relative', width: '100%', height: 320, background: '#2a2230' }}>
+            {cropSrc && (
+              <Cropper image={cropSrc} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false}
+                onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
+            )}
+          </div>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ px: 2.5, pt: 2 }}>
+            <ZoomIn size={18} />
+            <Slider min={1} max={3} step={0.05} value={zoom} onChange={(_, v) => setZoom(v)} />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button onClick={() => setCropSrc(null)}>Annuler</Button>
+          <Button variant="contained" onClick={confirmCrop} disabled={!areaPixels}>Valider</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }
