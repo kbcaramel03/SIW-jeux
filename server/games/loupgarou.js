@@ -1,35 +1,42 @@
 // Moteur de Loup-Garou, logique pure (rôles cachés, nuit/jour, maître du jeu vocal côté client).
-// Rôles : loup, villageois, voyante, sorciere, chasseur. Les cartes spéciales sont
-// choisies en pré-jeu (config). Nuit : voyante -> loups -> sorcière. Jour : débat puis vote.
-// Le village gagne si tous les loups sont morts ; les loups gagnent s'ils sont >= aux autres.
+// Rôles : loup, villageois, voyante, sorciere, chasseur, cupidon, garde, ange, enfant (sauvage).
+// Nuit (ordre) : cupidon -> enfant sauvage -> garde -> voyante -> loups -> sorcière. Jour : débat + vote.
+// Village gagne si plus de loups. Loups gagnent s'ils sont >= aux autres.
+// Cas spéciaux : amoureux (Cupidon) meurent ensemble et gagnent s'ils sont les 2 derniers ;
+// Ange gagne seul s'il est éliminé au 1er tour ; Enfant Sauvage devient loup si son modèle meurt.
 
 function shuffle(a) {
   a = [...a];
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 }
-const SPECIALS = ['voyante', 'sorciere', 'chasseur'];
+const SPECIALS = ['voyante', 'sorciere', 'chasseur', 'cupidon', 'garde', 'ange', 'enfant'];
+const NIGHT_ORDER = ['cupid', 'wildchild', 'guard', 'seer', 'wolves', 'witch'];
 
 export function createLoupGarou() {
   return {
     type: 'loupgarou',
     phase: 'setup', // setup -> night -> day -> vote -> hunter -> over
-    nightStep: null, // seer | wolves | witch
-    config: { wolves: 2, voyante: true, sorciere: true, chasseur: true },
+    nightStep: null,
+    config: { wolves: 2, voyante: true, sorciere: true, chasseur: true, cupidon: false, garde: false, ange: false, enfant: false },
     seats: [],
     roles: {},
     alive: {},
     nightNo: 0,
+    lovers: [],
+    wildModel: null,
+    guardLast: null,
+    guardProtected: null,
     wolfVotes: {},
     pendingVictim: null,
     witch: { healUsed: false, killUsed: false, healChosen: false, killTarget: null },
-    seerSeen: {},      // voyanteId -> { targetId, role } (résultat de la nuit)
+    seerSeen: {},
     votes: {},
     hunterPending: null,
-    dayDeadline: null, // fin du débat du jour (2 min)
-    resumeTo: null,    // 'day' | 'night' : où reprendre après le tir du Chasseur
-    lastDeaths: [],    // morts révélés au réveil
-    sayId: 0,          // déclencheur de narration côté client
+    resumeTo: null,
+    dayDeadline: null,
+    lastDeaths: [],
+    sayId: 0,
     say: '',
     winner: null,
     log: [],
@@ -47,10 +54,9 @@ export function configLoupGarou(state, userId, config) {
   for (const s of SPECIALS) if (config[s] != null) state.config[s] = !!config[s];
 }
 
-function aliveIds(state) { return state.seats.filter((id) => state.alive[id]); }
-function aliveWolves(state) { return aliveIds(state).filter((id) => state.roles[id] === 'loup'); }
-function aliveRole(state, role) { return aliveIds(state).find((id) => state.roles[id] === role) || null; }
-
+const aliveIds = (s) => s.seats.filter((id) => s.alive[id]);
+const aliveWolves = (s) => aliveIds(s).filter((id) => s.roles[id] === 'loup');
+const aliveRole = (s, role) => aliveIds(s).find((id) => s.roles[id] === role) || null;
 function narrate(state, text) { state.say = text; state.sayId += 1; }
 
 export function startLoupGarou(state, userId) {
@@ -60,8 +66,7 @@ export function startLoupGarou(state, userId) {
   if (n < 4) throw new Error('Il faut au moins 4 joueurs.');
   const specials = SPECIALS.filter((s) => state.config[s]);
   const wolves = Math.max(1, Math.min(state.config.wolves, n - specials.length - 1));
-  const need = wolves + specials.length;
-  if (n < need + 1) throw new Error('Pas assez de joueurs pour ces rôles.');
+  if (n < wolves + specials.length + 1) throw new Error('Pas assez de joueurs pour ces rôles.');
 
   const pool = [...Array(wolves).fill('loup'), ...specials];
   while (pool.length < n) pool.push('villageois');
@@ -70,35 +75,34 @@ export function startLoupGarou(state, userId) {
   state.roles = {}; state.alive = {};
   order.forEach((id, i) => { state.roles[id] = shuffled[i]; state.alive[id] = true; });
   state.witch = { healUsed: false, killUsed: false, healChosen: false, killTarget: null };
-  state.nightNo = 0;
+  state.lovers = []; state.wildModel = null; state.guardLast = null;
+  state.nightNo = 0; state.winner = null;
   state.log = ['La partie commence !'];
   beginNight(state);
 }
 
-function firstStep(state) {
-  if (aliveRole(state, 'voyante')) return 'seer';
-  if (aliveWolves(state).length) return 'wolves';
-  return null;
+function stepApplicable(state, step) {
+  if (step === 'cupid') return state.nightNo === 1 && !!aliveRole(state, 'cupidon') && state.lovers.length === 0;
+  if (step === 'wildchild') return state.nightNo === 1 && !!aliveRole(state, 'enfant') && !state.wildModel;
+  if (step === 'guard') return !!aliveRole(state, 'garde');
+  if (step === 'seer') return !!aliveRole(state, 'voyante');
+  if (step === 'wolves') return aliveWolves(state).length > 0;
+  if (step === 'witch') return !!aliveRole(state, 'sorciere');
+  return false;
 }
-function nextStep(state, step) {
-  const order = ['seer', 'wolves', 'witch'];
-  let i = order.indexOf(step) + 1;
-  for (; i < order.length; i++) {
-    if (order[i] === 'wolves' && aliveWolves(state).length) return 'wolves';
-    if (order[i] === 'seer' && aliveRole(state, 'voyante')) return 'seer';
-    if (order[i] === 'witch' && aliveRole(state, 'sorciere')) return 'witch';
-  }
+function firstStep(state) { return NIGHT_ORDER.find((s) => stepApplicable(state, s)) || null; }
+function nextStep(state, from) {
+  const i = NIGHT_ORDER.indexOf(from);
+  for (let k = i + 1; k < NIGHT_ORDER.length; k++) if (stepApplicable(state, NIGHT_ORDER[k])) return NIGHT_ORDER[k];
   return null;
 }
 
 function beginNight(state) {
   state.nightNo += 1;
   state.phase = 'night';
-  state.wolfVotes = {};
-  state.pendingVictim = null;
+  state.wolfVotes = {}; state.pendingVictim = null;
   state.witch.healChosen = false; state.witch.killTarget = null;
-  state.seerSeen = {};
-  state.lastDeaths = [];
+  state.seerSeen = {}; state.guardProtected = null; state.lastDeaths = [];
   state.nightStep = firstStep(state);
   narrate(state, state.nightNo === 1 ? 'La nuit tombe. Le village s\'endort…' : 'La nuit revient. Le village s\'endort…');
   if (!state.nightStep) resolveNight(state);
@@ -106,20 +110,44 @@ function beginNight(state) {
 }
 
 function announceStep(state) {
-  if (state.nightStep === 'seer') narrate(state, 'La Voyante se réveille et désigne une personne à sonder.');
-  else if (state.nightStep === 'wolves') narrate(state, aliveWolves(state).length > 1
-    ? 'Les Loups-Garous se réveillent et choisissent leur victime.'
-    : 'Le Loup-Garou se réveille et choisit sa victime.');
-  else if (state.nightStep === 'witch') narrate(state, 'La Sorcière se réveille. Veux-tu empoisonner ou ressusciter quelqu\'un ?');
+  const t = {
+    cupid: 'Cupidon se réveille. Qui veux-tu lier par les liens de l\'amour ?',
+    wildchild: 'L\'Enfant Sauvage se réveille et choisit son modèle.',
+    guard: 'Le Garde se réveille et protège une personne des loups.',
+    seer: 'La Voyante se réveille et désigne une personne à sonder.',
+    wolves: aliveWolves(state).length > 1 ? 'Les Loups-Garous se réveillent et choisissent leur victime.' : 'Le Loup-Garou se réveille et choisit sa victime.',
+    witch: 'La Sorcière se réveille. Veux-tu empoisonner ou ressusciter quelqu\'un ?',
+  }[state.nightStep];
+  if (t) narrate(state, t);
 }
-
-function advanceNight(state, fromStep) {
-  const nx = nextStep(state, fromStep);
+function advanceNight(state, from) {
+  const nx = nextStep(state, from);
   if (!nx) { resolveNight(state); return; }
-  state.nightStep = nx;
-  announceStep(state);
+  state.nightStep = nx; announceStep(state);
 }
 
+export function cupidLink(state, userId, a, b) {
+  if (state.phase !== 'night' || state.nightStep !== 'cupid') throw new Error('Pas le moment.');
+  if (state.roles[userId] !== 'cupidon' || !state.alive[userId]) throw new Error('Tu n\'es pas Cupidon.');
+  if (!a || !b || a === b || !state.alive[a] || !state.alive[b]) throw new Error('Choisis deux personnes différentes.');
+  state.lovers = [a, b];
+  advanceNight(state, 'cupid');
+}
+export function wildPick(state, userId, targetId) {
+  if (state.phase !== 'night' || state.nightStep !== 'wildchild') throw new Error('Pas le moment.');
+  if (state.roles[userId] !== 'enfant' || !state.alive[userId]) throw new Error('Tu n\'es pas l\'Enfant Sauvage.');
+  if (!state.alive[targetId] || targetId === userId) throw new Error('Cible invalide.');
+  state.wildModel = targetId;
+  advanceNight(state, 'wildchild');
+}
+export function guardProtect(state, userId, targetId) {
+  if (state.phase !== 'night' || state.nightStep !== 'guard') throw new Error('Pas le moment.');
+  if (state.roles[userId] !== 'garde' || !state.alive[userId]) throw new Error('Tu n\'es pas le Garde.');
+  if (!state.alive[targetId]) throw new Error('Cible invalide.');
+  if (targetId === state.guardLast) throw new Error('Pas deux nuits de suite la même personne.');
+  state.guardProtected = targetId; state.guardLast = targetId;
+  advanceNight(state, 'guard');
+}
 export function seerSee(state, userId, targetId) {
   if (state.phase !== 'night' || state.nightStep !== 'seer') throw new Error('Pas le moment.');
   if (state.roles[userId] !== 'voyante' || !state.alive[userId]) throw new Error('Tu n\'es pas la Voyante.');
@@ -127,7 +155,6 @@ export function seerSee(state, userId, targetId) {
   state.seerSeen[userId] = { targetId, role: state.roles[targetId] };
   advanceNight(state, 'seer');
 }
-
 export function wolfPick(state, userId, targetId) {
   if (state.phase !== 'night' || state.nightStep !== 'wolves') throw new Error('Pas le moment.');
   if (state.roles[userId] !== 'loup' || !state.alive[userId]) throw new Error('Tu n\'es pas un Loup.');
@@ -143,7 +170,6 @@ export function wolfPick(state, userId, targetId) {
     advanceNight(state, 'wolves');
   }
 }
-
 export function witchAct(state, userId, { heal, killTarget }) {
   if (state.phase !== 'night' || state.nightStep !== 'witch') throw new Error('Pas le moment.');
   if (state.roles[userId] !== 'sorciere' || !state.alive[userId]) throw new Error('Tu n\'es pas la Sorcière.');
@@ -156,15 +182,36 @@ function killPlayer(state, id, deaths) {
   if (!state.alive[id]) return;
   state.alive[id] = false;
   deaths.push(id);
-  if (state.roles[id] === 'chasseur') state.hunterPending = id; // tirera ensuite
+  if (state.roles[id] === 'chasseur') state.hunterPending = id;
+  // Enfant Sauvage : si son modèle meurt, il rejoint les loups.
+  if (state.wildModel === id) {
+    const child = state.seats.find((w) => state.roles[w] === 'enfant' && state.alive[w]);
+    if (child) state.roles[child] = 'loup';
+  }
+  // Amoureux : le/la partenaire meurt de chagrin.
+  if (state.lovers.includes(id)) {
+    const other = state.lovers.find((x) => x !== id);
+    if (other && state.alive[other]) killPlayer(state, other, deaths);
+  }
+}
+
+function checkAnge(state) {
+  // L'Ange gagne s'il est éliminé pendant le premier tour (1re nuit ou 1er vote).
+  if (state.nightNo === 1 && state.lastDeaths.some((id) => state.roles[id] === 'ange')) {
+    state.phase = 'over'; state.winner = 'ange';
+    narrate(state, 'L\'Ange a été éliminé dès le premier tour : il l\'emporte, seul !');
+    return true;
+  }
+  return false;
 }
 
 function resolveNight(state) {
   const deaths = [];
-  if (state.pendingVictim && !state.witch.healChosen) killPlayer(state, state.pendingVictim, deaths);
+  if (state.pendingVictim && state.pendingVictim !== state.guardProtected && !state.witch.healChosen) killPlayer(state, state.pendingVictim, deaths);
   if (state.witch.killTarget) killPlayer(state, state.witch.killTarget, deaths);
   state.lastDeaths = deaths;
   state.nightStep = null;
+  if (checkAnge(state)) return;
   if (checkWin(state)) return;
   if (state.hunterPending) { state.phase = 'hunter'; state.resumeTo = 'day'; narrate(state, 'Dans un dernier souffle, le Chasseur saisit son fusil…'); return; }
   openDay(state);
@@ -173,9 +220,8 @@ function resolveNight(state) {
 function openDay(state) {
   state.phase = 'day';
   state.votes = {};
-  state.dayDeadline = Date.now() + 120000; // 2 minutes pour débattre
+  state.dayDeadline = Date.now() + 120000;
   const n = state.lastDeaths.length;
-  // Nombres en toutes lettres (la voix lit mieux « une » que « 1 »).
   const FR = ['zéro', 'une', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix'];
   const w = FR[n] || String(n);
   const morts = n ? `${w} personne${n > 1 ? 's sont mortes' : ' est morte'} cette nuit.` : 'Personne n\'est mort cette nuit.';
@@ -185,8 +231,7 @@ function openDay(state) {
 export function callVote(state, userId) {
   if (state.phase !== 'day') throw new Error('Pas le moment.');
   if (!state.seats.includes(userId)) throw new Error('Interdit.');
-  state.phase = 'vote';
-  state.votes = {};
+  state.phase = 'vote'; state.votes = {};
   narrate(state, 'Le village doit désigner un coupable. Que le vote commence !');
 }
 
@@ -202,9 +247,10 @@ export function dayVote(state, userId, targetId) {
     const max = Math.max(...Object.values(tally));
     const top = Object.keys(tally).filter((id) => tally[id] === max);
     const deaths = [];
-    if (top.length === 1) { killPlayer(state, top[0], deaths); }
+    if (top.length === 1) killPlayer(state, top[0], deaths);
     state.lastDeaths = deaths;
     narrate(state, deaths.length ? 'Le village a parlé. Le bûcher s\'embrase…' : 'Égalité… personne n\'est exécuté aujourd\'hui.');
+    if (checkAnge(state)) return;
     if (checkWin(state)) return;
     if (state.hunterPending) { state.phase = 'hunter'; state.resumeTo = 'night'; narrate(state, 'Le Chasseur, touché, lève son arme une dernière fois…'); return; }
     beginNight(state);
@@ -217,15 +263,22 @@ export function hunterShoot(state, userId, targetId) {
   state.hunterPending = null;
   const deaths = [];
   if (state.alive[targetId]) killPlayer(state, targetId, deaths);
+  state.lastDeaths = state.lastDeaths.concat(deaths);
   if (checkWin(state)) return;
-  if (state.hunterPending) { state.phase = 'hunter'; return; } // un chasseur a tué un chasseur
-  if (state.resumeTo === 'night') beginNight(state);
-  else openDay(state);
+  if (state.hunterPending) { state.phase = 'hunter'; return; }
+  if (state.resumeTo === 'night') beginNight(state); else openDay(state);
 }
 
 function checkWin(state) {
+  const alive = aliveIds(state);
+  // Les amoureux derniers en vie l'emportent.
+  if (alive.length === 2 && state.lovers.length === 2 && state.lovers.every((l) => state.alive[l])) {
+    state.phase = 'over'; state.winner = 'amoureux';
+    narrate(state, 'Les amoureux sont les derniers survivants : leur amour triomphe !');
+    return true;
+  }
   const wolves = aliveWolves(state).length;
-  const others = aliveIds(state).length - wolves;
+  const others = alive.length - wolves;
   if (wolves === 0) { state.phase = 'over'; state.winner = 'village'; narrate(state, 'L\'aube se lève : tous les Loups ont été éliminés. Le village triomphe !'); return true; }
   if (wolves >= others) { state.phase = 'over'; state.winner = 'loups'; narrate(state, 'Les Loups-Garous l\'emportent… le village a perdu.'); return true; }
   return false;
@@ -235,10 +288,10 @@ export function viewFor(state, userId) {
   const meRole = state.roles[userId] || null;
   const amWolf = meRole === 'loup';
   const over = state.phase === 'over';
+  const amLover = state.lovers.includes(userId);
   const players = state.seats.map((id) => ({
     id,
     alive: !!state.alive[id],
-    // Rôle révélé si mort ou fin de partie ; les loups se voient entre eux.
     role: (over || !state.alive[id] || (amWolf && state.roles[id] === 'loup')) ? state.roles[id] : null,
   }));
   const isWitchStep = state.phase === 'night' && state.nightStep === 'witch' && meRole === 'sorciere' && state.alive[userId];
@@ -254,8 +307,14 @@ export function viewFor(state, userId) {
     myRole: meRole,
     alive: !!state.alive[userId],
     fellowWolves: amWolf ? aliveWolves(state) : null,
+    lovers: amLover || over ? state.lovers.slice() : null,
+    amLover,
+    wildModel: (meRole === 'enfant' || over) ? state.wildModel : null,
     nightNo: state.nightNo,
-    // Actions possibles
+    canCupid: state.phase === 'night' && state.nightStep === 'cupid' && meRole === 'cupidon' && state.alive[userId] && state.lovers.length === 0,
+    canWild: state.phase === 'night' && state.nightStep === 'wildchild' && meRole === 'enfant' && state.alive[userId] && !state.wildModel,
+    canGuard: state.phase === 'night' && state.nightStep === 'guard' && meRole === 'garde' && state.alive[userId] && !state.guardProtected,
+    guardLast: meRole === 'garde' ? state.guardLast : null,
     canSee: state.phase === 'night' && state.nightStep === 'seer' && meRole === 'voyante' && state.alive[userId] && !state.seerSeen[userId],
     seerResult: state.seerSeen[userId] || null,
     canWolf: state.phase === 'night' && state.nightStep === 'wolves' && amWolf && state.alive[userId] && !state.wolfVotes[userId],

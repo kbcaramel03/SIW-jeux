@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, IconButton } from '@mui/material';
 import { Play, Sparkles, Minus, Plus, Volume2, VolumeX, Skull } from 'lucide-react';
-import { GiWerewolf, GiFarmer, GiCrystalBall, GiCauldron, GiWinchesterRifle, GiWizardFace, GiMoon } from 'react-icons/gi';
+import { GiWerewolf, GiFarmer, GiCrystalBall, GiCauldron, GiWinchesterRifle, GiWizardFace, GiMoon, GiCupidonArrow, GiShield, GiAngelWings, GiBabyFace } from 'react-icons/gi';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { speak, stopSpeak, voiceSupported, listVoices, setVoiceByName, getChosenVoice } from '../voice.js';
 import { winConfetti } from '../effects.js';
@@ -13,8 +13,12 @@ const ROLE = {
   voyante: { label: 'Voyante', Icon: GiCrystalBall, cls: 'voyante', desc: 'Chaque nuit, découvre le rôle d\'une personne de ton choix.' },
   sorciere: { label: 'Sorcière', Icon: GiCauldron, cls: 'sorciere', desc: 'Une potion de vie (sauver la victime), une potion de mort (éliminer quelqu\'un).' },
   chasseur: { label: 'Chasseur', Icon: GiWinchesterRifle, cls: 'chasseur', desc: 'En mourant, d\'un coup de fusil, tu emportes une personne avec toi.' },
+  cupidon: { label: 'Cupidon', Icon: GiCupidonArrow, cls: 'cupidon', desc: 'La 1re nuit, tu lies deux amoureux. S\'ils restent les 2 derniers, ils gagnent ; si l\'un meurt, l\'autre aussi.' },
+  garde: { label: 'Garde', Icon: GiShield, cls: 'garde', desc: 'Chaque nuit, tu protèges une personne des loups (jamais deux fois de suite la même).' },
+  ange: { label: 'Ange', Icon: GiAngelWings, cls: 'ange', desc: 'Tu gagnes seul si tu es éliminé dès le premier tour. Sinon, simple villageois.' },
+  enfant: { label: 'Enfant Sauvage', Icon: GiBabyFace, cls: 'enfant', desc: 'La 1re nuit, choisis un modèle. S\'il meurt, tu deviens un Loup-Garou.' },
 };
-const SPECIALS = ['voyante', 'sorciere', 'chasseur'];
+const SPECIALS = ['voyante', 'sorciere', 'chasseur', 'cupidon', 'garde', 'ange', 'enfant'];
 
 export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const g = room.game;
@@ -25,6 +29,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const [voiceOn, setVoiceOn] = useState(true);
   const [poisonMode, setPoisonMode] = useState(false);
   const [witchKill, setWitchKill] = useState(null);
+  const [cupidPicks, setCupidPicks] = useState([]);
   const [voiceName, setVoiceName] = useState(getChosenVoice() || '');
   const [, setTick] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -56,7 +61,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   useEffect(() => {
     if (g.phase === 'over' && ((g.winner === 'loups' && g.myRole === 'loup') || (g.winner === 'village' && g.myRole !== 'loup'))) winConfetti();
   }, [g.phase]);
-  useEffect(() => { setPoisonMode(false); setWitchKill(null); }, [g.nightStep, g.phase]);
+  useEffect(() => { setPoisonMode(false); setWitchKill(null); setCupidPicks([]); }, [g.nightStep, g.phase]);
 
   // ----- Pré-jeu : composition des rôles -----
   if (g.phase === 'setup') {
@@ -121,15 +126,23 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   function clickPlayer(p) {
     if (!p.alive) return;
     if (poisonMode) { setWitchKill(p.id); setPoisonMode(false); return; }
+    if (g.canCupid) { setCupidPicks((s) => (s.includes(p.id) ? s.filter((x) => x !== p.id) : s.length >= 2 ? s : [...s, p.id])); return; }
+    if (g.canWild && p.id !== me) return onAction({ kind: 'wild', targetId: p.id });
+    if (g.canGuard && p.id !== g.guardLast) return onAction({ kind: 'guard', targetId: p.id });
     if (g.canSee && p.id !== me) return onAction({ kind: 'see', targetId: p.id });
     if (g.canWolf && p.id !== me && !(g.fellowWolves || []).includes(p.id)) return onAction({ kind: 'wolf', targetId: p.id });
     if (g.canVote) return onAction({ kind: 'vote', targetId: p.id });
     if (g.canShoot) return onAction({ kind: 'shoot', targetId: p.id });
   }
-  const selecting = g.canSee || g.canWolf || g.canVote || g.canShoot || poisonMode;
+  const selecting = g.canSee || g.canWolf || g.canVote || g.canShoot || poisonMode || g.canCupid || g.canWild || g.canGuard;
 
   function banner() {
-    if (g.phase === 'over') return g.winner === 'loups' ? '🐺 Les Loups-Garous gagnent' : '🌾 Le village gagne';
+    if (g.phase === 'over') {
+      if (g.winner === 'loups') return '🐺 Les Loups-Garous gagnent';
+      if (g.winner === 'amoureux') return '💘 Les amoureux gagnent';
+      if (g.winner === 'ange') return '👼 L\'Ange gagne, seul';
+      return '🌾 Le village gagne';
+    }
     if (g.phase === 'hunter') return g.canShoot ? 'Chasseur : emporte quelqu\'un !' : 'Le Chasseur tire…';
     if (g.phase === 'vote') return g.canVote ? 'Vote : qui pend-on ?' : `Vote en cours…`;
     if (g.phase === 'day') return 'Le village débat…';
@@ -156,6 +169,19 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
       {/* Résultat voyante */}
       {g.seerResult && <div className="lg-info">🔮 {nameById[g.seerResult.targetId]} est <b>{ROLE[g.seerResult.role].label}</b></div>}
 
+      {/* Amoureux / modèle de l'enfant sauvage */}
+      {g.amLover && g.lovers && <div className="lg-info">💘 Tu es amoureux·se de <b>{nameById[g.lovers.find((l) => l !== me)] || '?'}</b></div>}
+      {g.myRole === 'enfant' && g.wildModel && <div className="lg-info">👶 Ton modèle : <b>{nameById[g.wildModel]}</b></div>}
+
+      {/* Cupidon : lier deux amoureux */}
+      {g.canCupid && (
+        <div className="cn-controls">
+          <Button variant="contained" disabled={cupidPicks.length !== 2} onClick={() => onAction({ kind: 'cupid', a: cupidPicks[0], b: cupidPicks[1] })}>
+            Lier les amoureux ({cupidPicks.length}/2)
+          </Button>
+        </div>
+      )}
+
       {/* Sorcière */}
       {g.witch && (
         <div className="lg-witch">
@@ -180,7 +206,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
           const knownKey = p.role || seerKnown[p.id] || null;
           const known = knownKey ? ROLE[knownKey] : null;
           return (
-            <button key={p.id} className={`lg-player ${dead ? 'dead' : ''} ${selecting && p.alive ? 'pick' : ''}`}
+            <button key={p.id} className={`lg-player ${dead ? 'dead' : ''} ${selecting && p.alive ? 'pick' : ''} ${cupidPicks.includes(p.id) ? 'chosen' : ''} ${g.lovers && g.lovers.includes(p.id) ? 'lover' : ''}`}
               style={{ left: `${x}%`, top: `${y}%` }} disabled={!selecting || dead} onClick={() => clickPlayer(p)}>
               <div className="lg-player-av"><Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={36} />{dead && <span className="lg-dead-x"><Skull size={15} /></span>}</div>
               <span className="lg-player-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
@@ -210,7 +236,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
       {g.phase === 'day' && isHost && <div className="cn-controls"><Button variant="contained" onClick={() => onAction({ kind: 'callVote' })}>Passer au vote</Button></div>}
       {g.phase === 'day' && !isHost && <p className="muted" style={{ textAlign: 'center' }}>Débattez… l'hôte lancera le vote.</p>}
       {(g.canSee || g.canWolf || g.canVote || g.canShoot) && <p className="muted" style={{ textAlign: 'center' }}>Choisis une personne ci-dessus.</p>}
-      {isNight && !g.canSee && !g.canWolf && !g.witch && g.alive && <p className="muted" style={{ textAlign: 'center' }}>Tu dors… 😴 (les rôles de la nuit agissent)</p>}
+      {isNight && !g.canSee && !g.canWolf && !g.witch && !g.canCupid && !g.canWild && !g.canGuard && g.alive && <p className="muted" style={{ textAlign: 'center' }}>Tu dors… 😴 (les rôles de la nuit agissent)</p>}
       {!g.alive && g.phase !== 'over' && <p className="muted" style={{ textAlign: 'center' }}>Tu es éliminé — tu observes la partie.</p>}
 
       {g.phase === 'over' && isHost && <div className="cn-over"><Button variant="contained" startIcon={<Sparkles size={18} />} onClick={onNewGame}>Rejouer</Button></div>}

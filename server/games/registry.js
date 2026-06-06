@@ -161,6 +161,9 @@ function applyLoupGarouAction(state, userId, payload) {
     case 'join': return loupgarou.joinLoupGarou(state, userId);
     case 'config': return loupgarou.configLoupGarou(state, userId, payload.config || {});
     case 'start': return loupgarou.startLoupGarou(state, userId);
+    case 'cupid': return loupgarou.cupidLink(state, userId, payload.a, payload.b);
+    case 'wild': return loupgarou.wildPick(state, userId, payload.targetId);
+    case 'guard': return loupgarou.guardProtect(state, userId, payload.targetId);
     case 'see': return loupgarou.seerSee(state, userId, payload.targetId);
     case 'wolf': return loupgarou.wolfPick(state, userId, payload.targetId);
     case 'witch': return loupgarou.witchAct(state, userId, { heal: payload.heal, killTarget: payload.killTarget });

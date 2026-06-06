@@ -706,6 +706,10 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .lg-rolecard.voyante { background: linear-gradient(160deg, #9b6bd6, #5d3a9c); }
 .lg-rolecard.sorciere { background: linear-gradient(160deg, #35ad99, #1f7a6a); }
 .lg-rolecard.chasseur { background: linear-gradient(160deg, #ef8049, #c4561f); }
+.lg-rolecard.cupidon { background: linear-gradient(160deg, #ef6f95, #c63f6c); }
+.lg-rolecard.garde { background: linear-gradient(160deg, #4f9be0, #2b6fc0); }
+.lg-rolecard.ange { background: linear-gradient(160deg, #e6c769, #b8902f); }
+.lg-rolecard.enfant { background: linear-gradient(160deg, #b08a5a, #7c5a32); }
 
 /* Mini-cartes de sélection en pré-jeu */
 .lg-cfg-cards { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
@@ -718,6 +722,8 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .lg-pick-card .lg-pick-art svg { width: 1em; height: 1em; }
 .lg-pick-card.loup .lg-pick-art { color: #6b2b2b; } .lg-pick-card.voyante .lg-pick-art { color: #5d3a9c; }
 .lg-pick-card.sorciere .lg-pick-art { color: #1f7a6a; } .lg-pick-card.chasseur .lg-pick-art { color: #c4561f; }
+.lg-pick-card.cupidon .lg-pick-art { color: #c63f6c; } .lg-pick-card.garde .lg-pick-art { color: #2b6fc0; }
+.lg-pick-card.ange .lg-pick-art { color: #b8902f; } .lg-pick-card.enfant .lg-pick-art { color: #7c5a32; }
 .lg-pick-name { font-weight: 700; font-size: 0.82rem; }
 .lg-pick-state { font-size: 0.64rem; color: var(--ink-soft); }
 .lg-credit { text-align: center; font-size: 0.66rem; color: var(--ink-soft); margin-top: 12px; }
@@ -755,6 +761,9 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .lg-card3d-back svg, .lg-card3d-face svg { width: 1em; height: 1em; }
 .lg-card3d-face.loup { color: #6b2b2b; } .lg-card3d-face.villageois { color: #2e8c47; }
 .lg-card3d-face.voyante { color: #5d3a9c; } .lg-card3d-face.sorciere { color: #1f7a6a; } .lg-card3d-face.chasseur { color: #c4561f; }
+.lg-card3d-face.cupidon { color: #c63f6c; } .lg-card3d-face.garde { color: #2b6fc0; } .lg-card3d-face.ange { color: #b8902f; } .lg-card3d-face.enfant { color: #7c5a32; }
+.lg-player.chosen { border-color: #c63f6c !important; box-shadow: 0 0 0 2px #f4b8cc; }
+.lg-player.lover { box-shadow: 0 0 0 2px #f4b8cc; }
 .lg-card3d-label { font-size: 0.56rem; font-weight: 800; color: var(--ink-soft); line-height: 1; }
 .lg-role-tag.loup { color: #6b2b2b; } .lg-role-tag.villageois { color: #2e8c47; }
 .lg-role-tag.voyante { color: #5d3a9c; } .lg-role-tag.sorciere { color: #1f7a6a; } .lg-role-tag.chasseur { color: #c4561f; }
