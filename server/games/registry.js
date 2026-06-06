@@ -5,6 +5,7 @@ import * as battleship from './battleship.js';
 import * as uno from './uno.js';
 import * as flip7 from './flip7.js';
 import * as bullshit from './bullshit.js';
+import * as conspiracy from './conspiracy.js';
 
 export const GAMES = {
   codenames: {
@@ -42,7 +43,12 @@ export const GAMES = {
     view: bullshit.viewFor,
     action: applyBullshitAction,
   },
-  conspiracy: { key: 'conspiracy', label: 'Conspiracy', emoji: '🕯️', minPlayers: 4, maxPlayers: 10, ready: false },
+  conspiracy: {
+    key: 'conspiracy', label: 'Conspiracy', emoji: '🕯️', minPlayers: 4, maxPlayers: 8, ready: true,
+    create: conspiracy.createConspiracy,
+    view: conspiracy.viewFor,
+    action: applyConspiracyAction,
+  },
   scribbl: { key: 'scribbl', label: 'Scribbl', emoji: '🎨', minPlayers: 2, maxPlayers: 10, ready: false },
   loupgarou: { key: 'loupgarou', label: 'Loup Garou', emoji: '🐺', minPlayers: 5, maxPlayers: 18, ready: false },
 };
@@ -120,6 +126,25 @@ function applyBullshitAction(state, userId, payload) {
       return bullshit.passBullshit(state, userId);
     case 'challenge':
       return bullshit.challengeBullshit(state, userId);
+    default:
+      throw new Error('Action inconnue.');
+  }
+}
+
+function applyConspiracyAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join':
+      return conspiracy.joinConspiracy(state, userId);
+    case 'start':
+      return conspiracy.startConspiracy(state, userId);
+    case 'propose':
+      return conspiracy.proposeTeam(state, userId, payload.team);
+    case 'vote':
+      return conspiracy.voteTeam(state, userId, payload.approve);
+    case 'card':
+      return conspiracy.playMissionCard(state, userId, payload.value);
+    case 'next':
+      return conspiracy.nextMission(state, userId);
     default:
       throw new Error('Action inconnue.');
   }
