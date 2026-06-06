@@ -1,4 +1,4 @@
-// Contexte d'authentification : garde la joueuse connectée et expose login/logout.
+// Contexte d'authentification : garde le joueur connecté et expose login/logout.
 import { createContext, useContext, useEffect, useState } from 'react';
 import { apiGet, apiPost, setToken } from './api.js';
 import { reconnectSocket, closeSocket } from './socket.js';

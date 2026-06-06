@@ -508,7 +508,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   background: #d23047; color: #fff; font-family: var(--font-head); font-weight: 800;
   font-size: 0.46rem; letter-spacing: 0.04em; text-align: center; padding: 1px 0; }
 
-/* Taille XS (cartes action posées en haut à droite d'une joueuse) */
+/* Taille XS (cartes action posées en haut à droite d'une joueur) */
 .f7c.size-xs { width: 30px; height: 42px; }
 .f7c.size-xs .f7c-face { border-width: 1.5px; border-radius: 7px; }
 .f7c.size-xs .f7c-act-icon { width: 14px; height: 14px; }

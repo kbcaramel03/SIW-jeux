@@ -7,9 +7,9 @@ import Flip7Card, { Flip7Back } from './Flip7Card.jsx';
 import { winConfetti } from '../effects.js';
 
 const ACTION_INFO = {
-  freeze: { label: 'Stop', icon: Hand, hint: 'Choisis qui est stoppé (toi ou une autre joueuse encore en jeu) : elle sort de la manche mais garde ses points.' },
-  flip3: { label: 'Pioche 3', icon: Layers, hint: 'Choisis qui pioche 3 cartes d\'affilée (toi ou une autre joueuse encore en jeu).' },
-  give_second: { label: 'Donner une Second Chance', icon: Heart, hint: 'Tu en as déjà une : offre celle-ci à une autre joueuse.' },
+  freeze: { label: 'Stop', icon: Hand, hint: 'Choisis qui est stoppé (toi ou un autre joueur encore en jeu) : il sort de la manche mais garde ses points.' },
+  flip3: { label: 'Pioche 3', icon: Layers, hint: 'Choisis qui pioche 3 cartes d\'affilée (toi ou un autre joueur encore en jeu).' },
+  give_second: { label: 'Donner une Second Chance', icon: Heart, hint: 'Tu en as déjà une : offre celle-ci à un autre joueur.' },
 };
 
 export default function Flip7({ room, isHost, onAction, onNewGame }) {
@@ -130,7 +130,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
           const status = l?.busted ? 'busted' : l?.frozen ? 'frozen' : l?.flip7 ? 'flip7' : l?.stayed ? 'stayed' : '';
           return (
             <div key={p.id} className={`f7-player ${isTurn ? 'turn' : ''} ${status}`}>
-              {/* Effet Flip 7 : éclat doré sur la section de la joueuse */}
+              {/* Effet Flip 7 : éclat doré sur la section de la joueur */}
               {status === 'flip7' && (
                 <motion.div className="f7-flip7-burst"
                   initial={{ scale: 0.3, opacity: 0, rotate: -8 }}
@@ -142,7 +142,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
                 </motion.div>
               )}
 
-              {/* Cartes action posées sur cette joueuse (en haut à droite).
+              {/* Cartes action posées sur cette joueur (en haut à droite).
                   Elles arrivent en grand (taille main) puis rapetissent en glissant vers le coin. */}
               {(l?.second || l?.actions?.length > 0) && (
                 <div className="f7-player-actions">

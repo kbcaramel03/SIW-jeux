@@ -26,7 +26,7 @@ function lobbyList() {
   return [...rooms.values()].map(roomSummary);
 }
 
-// Recale la liste des joueuses sur les sockets réellement présentes dans le salon.
+// Recale la liste des joueurs sur les sockets réellement présentes dans le salon.
 // Indispensable car les handlers join/leave sont asynchrones et peuvent s'entrelacer
 // (React StrictMode qui double-monte en dev, ou simples reconnexions socket en prod) :
 // on ne se fie donc jamais à un compteur mutable, on relit l'état réel des sockets.
@@ -79,7 +79,7 @@ export function createRealtime(httpServer) {
     if (cur.sockets <= 0) online.delete(u.id);
   }
 
-  // Envoie l'état du salon, personnalisé pour chaque joueuse (vue du jeu différente).
+  // Envoie l'état du salon, personnalisé pour chaque joueur (vue du jeu différente).
   // Supprime un salon vide après un court délai de grâce : un remontage StrictMode
   // ou une reconnexion peut rejoindre dans la foulée. On annule si quelqu'un revient.
   function scheduleDelete(roomId) {
@@ -125,7 +125,7 @@ export function createRealtime(httpServer) {
     if (!room) return;
 
     // On recale la liste sur les sockets restantes (gère aussi le cas « même
-    // joueuse encore présente via un autre onglet » et le transfert d'hôte).
+    // joueur encore présente via un autre onglet » et le transfert d'hôte).
     const others = await io.in(roomId).fetchSockets();
     reconcilePlayers(room, others);
     if (room.players.length === 0) {

@@ -78,7 +78,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
         {opponents.map((p, i) => {
           const n = opponents.length;
           const t = n === 1 ? 0.5 : i / (n - 1);
-          // Arc sur la moitié haute de la table (150° → 30°), les joueuses sont « en face ».
+          // Arc sur la moitié haute de la table (150° → 30°), les joueurs sont « en face ».
           const ang = ((150 - 120 * t) * Math.PI) / 180;
           const x = 50 + Math.cos(ang) * 44;
           const y = 40 - Math.sin(ang) * 30;

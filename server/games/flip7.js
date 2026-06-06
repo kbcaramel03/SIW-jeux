@@ -183,7 +183,7 @@ export function resolveAction(state, userId, targetId) {
     l.actions.push({ kind: 'action', action: 'freeze' });
     removeActive(state, targetId);
     state.round.pending.shift();
-    state.log.push('Stop : une joueuse est stoppée, ses points sont mis en banque.');
+    state.log.push('Stop : un joueur est stoppé, ses points sont mis en banque.');
   } else if (pa.type === 'flip3') {
     if (!state.round.active.includes(targetId)) throw new Error('Cible invalide.');
     state.round.pending.shift();
