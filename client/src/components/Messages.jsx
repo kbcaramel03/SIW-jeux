@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Drawer, Box, Typography, IconButton, Button, TextField, Badge, Checkbox } from '@mui/material';
-import { X, ArrowLeft, Plus, Send, Users, MessageCircle } from 'lucide-react';
+import {
+  Drawer, Box, Typography, IconButton, Button, TextField, Badge, Checkbox, Divider,
+  List, ListItemButton, ListItemAvatar, ListItemText, Menu, MenuItem, ListItemIcon,
+  Dialog, DialogTitle, DialogContent,
+} from '@mui/material';
+import { X, ArrowLeft, Plus, Send, Users, MessageCircle, MoreVertical, Pencil, Trash2, CheckCheck, Check } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import { Avatar, usePresence } from './OnlineRail.jsx';
 
 const hhmm = (ts) => new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-// Badge de messages non lus (pour la bulle de l'en-tête).
 export function useUnread() {
   const [unread, setUnread] = useState(0);
   useEffect(() => {
@@ -18,15 +21,8 @@ export function useUnread() {
   return unread;
 }
 
-function convTitle(c, meId) {
-  if (c.type === 'group') return c.name || 'Groupe';
-  const other = c.members.find((m) => m.id !== meId) || c.members[0];
-  return other?.displayName || '?';
-}
-function convAvatar(c, meId) {
-  if (c.type === 'group') return null;
-  return c.members.find((m) => m.id !== meId) || c.members[0];
-}
+const convTitle = (c, meId) => (c.type === 'group' ? (c.name || 'Groupe') : (c.members.find((m) => m.id !== meId) || c.members[0])?.displayName || '?');
+const convAvatar = (c, meId) => (c.type === 'group' ? null : c.members.find((m) => m.id !== meId) || c.members[0]);
 
 export default function MessagesDrawer({ open, onClose, meId }) {
   const [list, setList] = useState([]);
@@ -35,8 +31,12 @@ export default function MessagesDrawer({ open, onClose, meId }) {
   const [conv, setConv] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
+  const [editingId, setEditingId] = useState(null);
   const [pick, setPick] = useState([]);
   const [groupName, setGroupName] = useState('');
+  const [msgMenu, setMsgMenu] = useState({ anchorEl: null, msg: null });
+  const [convMenuEl, setConvMenuEl] = useState(null);
+  const [membersOpen, setMembersOpen] = useState(false);
   const convIdRef = useRef(null);
   const endRef = useRef(null);
   const presence = usePresence();
@@ -44,80 +44,106 @@ export default function MessagesDrawer({ open, onClose, meId }) {
 
   useEffect(() => {
     const s = getSocket();
-    const onList = (l) => setList(l);
+    const onList = (l) => {
+      setList(l);
+      const it = l.find((c) => c.id === convIdRef.current);
+      if (it) setConv((prev) => (prev ? { ...prev, reads: it.reads } : prev));
+    };
     const onMsg = ({ convId, message }) => { if (convId === convIdRef.current) setMessages((m) => [...m, message]); };
+    const onUpdate = ({ convId, message }) => { if (convId === convIdRef.current) setMessages((m) => m.map((x) => (x.id === message.id ? message : x))); };
+    const onRemoved = ({ convId }) => { if (convId === convIdRef.current) { convIdRef.current = null; setConv(null); setView('list'); } };
     s.on('chat:list', onList);
     s.on('chat:message', onMsg);
+    s.on('chat:message:update', onUpdate);
+    s.on('chat:removed', onRemoved);
     s.emit('chat:list', (l) => setList(l));
-    return () => { s.off('chat:list', onList); s.off('chat:message', onMsg); };
+    return () => { s.off('chat:list', onList); s.off('chat:message', onMsg); s.off('chat:message:update', onUpdate); s.off('chat:removed', onRemoved); };
   }, []);
 
-  useEffect(() => { if (!open) { setView('list'); setConv(null); convIdRef.current = null; } }, [open]);
+  useEffect(() => { if (!open) { setView('list'); setConv(null); convIdRef.current = null; setEditingId(null); } }, [open]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, view]);
 
   function openConv(item) {
     getSocket().emit('chat:history', { convId: item.id }, (res) => {
       if (res?.error) return;
-      setConv(res.conv); convIdRef.current = res.conv.id; setMessages(res.messages); setView('conv');
+      setConv(res.conv); convIdRef.current = res.conv.id; setMessages(res.messages); setView('conv'); setEditingId(null); setText('');
     });
   }
-  function openNew() {
-    getSocket().emit('people:all', (l) => setPeople(l || []));
-    setPick([]); setGroupName(''); setView('new');
-  }
+  function openNew() { getSocket().emit('people:all', (l) => setPeople(l || [])); setPick([]); setGroupName(''); setView('new'); }
   function create() {
     if (pick.length < 1) return;
-    getSocket().emit('chat:create', { memberIds: pick, name: pick.length > 1 ? groupName : undefined }, (res) => {
-      if (res?.convId) openConv({ id: res.convId });
-    });
+    getSocket().emit('chat:create', { memberIds: pick, name: pick.length > 1 ? groupName : undefined }, (res) => { if (res?.convId) openConv({ id: res.convId }); });
   }
   function send() {
     const t = text.trim();
     if (!t || !conv) return;
-    getSocket().emit('chat:send', { convId: conv.id, text: t });
+    if (editingId) { getSocket().emit('chat:edit', { messageId: editingId, text: t }); setEditingId(null); }
+    else getSocket().emit('chat:send', { convId: conv.id, text: t });
     setText('');
   }
   function togglePick(id) { setPick((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id])); }
+  function startEdit() { setEditingId(msgMenu.msg.id); setText(msgMenu.msg.text); setMsgMenu({ anchorEl: null, msg: null }); }
+  function doDelete() { getSocket().emit('chat:delete', { messageId: msgMenu.msg.id }); setMsgMenu({ anchorEl: null, msg: null }); }
+  function deleteConv() {
+    setConvMenuEl(null);
+    if (window.confirm('Supprimer cette conversation pour tout le monde ?')) getSocket().emit('chat:deleteConv', { convId: conv.id });
+  }
 
   const nameById = conv ? Object.fromEntries(conv.members.map((m) => [m.id, m.displayName])) : {};
+  // Accusé de lecture sur mon dernier message
+  function readStatus() {
+    if (!conv) return null;
+    const mine = [...messages].reverse().find((m) => m.userId === meId && !m.deleted);
+    if (!mine) return null;
+    const others = conv.members.filter((m) => m.id !== meId);
+    const readers = others.filter((o) => (conv.reads?.[o.id] || 0) >= mine.ts);
+    if (conv.type === 'dm') return readers.length ? { icon: true, txt: 'Lu' } : { icon: false, txt: 'Envoyé' };
+    return readers.length ? { icon: true, txt: 'Vu par ' + readers.map((r) => r.displayName).join(', ') } : { icon: false, txt: 'Envoyé' };
+  }
+  const status = view === 'conv' ? readStatus() : null;
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: 340, maxWidth: '92vw' } }}>
+    <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: 360, maxWidth: '94vw' } }}>
       <div className="msg">
-        {/* En-tête */}
         <div className="msg-head">
           {view !== 'list'
             ? <IconButton size="small" onClick={() => setView('list')}><ArrowLeft size={20} /></IconButton>
             : <span className="msg-head-icon"><MessageCircle size={20} /></span>}
-          <Typography variant="h6" sx={{ flex: 1, fontSize: '1.05rem' }}>
+          <Typography variant="h6" sx={{ flex: 1, fontSize: '1.05rem' }} noWrap>
             {view === 'conv' ? convTitle(conv, meId) : view === 'new' ? 'Nouvelle discussion' : 'Messages'}
           </Typography>
+          {view === 'conv' && <IconButton size="small" onClick={(e) => setConvMenuEl(e.currentTarget)}><MoreVertical size={18} /></IconButton>}
           <IconButton size="small" onClick={onClose}><X size={18} /></IconButton>
         </div>
 
         {/* Liste des conversations */}
         {view === 'list' && (
           <div className="msg-body">
-            <Button fullWidth variant="contained" startIcon={<Plus size={18} />} onClick={openNew} sx={{ mb: 1.5 }}>Nouvelle discussion / groupe</Button>
-            {list.length === 0 ? (
-              <p className="muted" style={{ textAlign: 'center', marginTop: 18 }}>Aucune conversation. Lance-en une !</p>
-            ) : list.map((c) => {
-              const a = convAvatar(c, meId);
-              return (
-                <button key={c.id} className="msg-conv" onClick={() => openConv(c)}>
-                  <Badge color="error" badgeContent={c.unread} overlap="circular">
-                    {c.type === 'group'
-                      ? <span className="msg-group-ic"><Users size={18} /></span>
-                      : <Avatar name={a?.displayName} gender={a?.gender} avatar={a?.avatar} size={40} />}
-                  </Badge>
-                  <div className="msg-conv-mid">
-                    <span className="msg-conv-name">{convTitle(c, meId)}</span>
-                    <span className="msg-conv-last">{c.last ? c.last.text : 'Nouvelle conversation'}</span>
-                  </div>
-                  {c.last && <span className="msg-conv-time">{hhmm(c.last.ts)}</span>}
-                </button>
-              );
-            })}
+            <Button fullWidth variant="contained" startIcon={<Plus size={18} />} onClick={openNew} sx={{ mb: 1 }}>Nouvelle discussion / groupe</Button>
+            {list.length === 0 ? <p className="muted" style={{ textAlign: 'center', marginTop: 18 }}>Aucune conversation. Lance-en une !</p> : (
+              <List disablePadding>
+                {list.map((c) => {
+                  const a = convAvatar(c, meId);
+                  return (
+                    <ListItemButton key={c.id} onClick={() => openConv(c)} sx={{ borderRadius: 2 }}>
+                      <ListItemAvatar>
+                        <Badge color="error" badgeContent={c.unread} overlap="circular">
+                          {c.type === 'group' ? <span className="msg-group-ic"><Users size={18} /></span>
+                            : <Avatar name={a?.displayName} gender={a?.gender} avatar={a?.avatar} size={42} />}
+                        </Badge>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={convTitle(c, meId)}
+                        secondary={c.last ? (c.last.deleted ? 'message supprimé' : c.last.text) : 'Nouvelle conversation'}
+                        primaryTypographyProps={{ fontWeight: 700, noWrap: true }}
+                        secondaryTypographyProps={{ noWrap: true, fontStyle: c.last?.deleted ? 'italic' : 'normal' }}
+                      />
+                      {c.last && <span className="msg-conv-time">{hhmm(c.last.ts)}</span>}
+                    </ListItemButton>
+                  );
+                })}
+              </List>
+            )}
           </div>
         )}
 
@@ -126,19 +152,21 @@ export default function MessagesDrawer({ open, onClose, meId }) {
           <div className="msg-body">
             <p className="muted" style={{ marginTop: 0 }}>Choisis une personne (ou plusieurs pour un groupe).</p>
             {people.length === 0 && <p className="muted">Aucun autre membre.</p>}
-            {people.map((p) => (
-              <label key={p.id} className="msg-pick">
-                <Checkbox size="small" checked={pick.includes(p.id)} onChange={() => togglePick(p.id)} />
-                <span className="msg-pick-av">
-                  <Avatar name={p.displayName} gender={p.gender} avatar={p.avatar} size={32} />
-                  {onlineSet.has(p.id) && <span className="msg-online-dot" />}
-                </span>
-                <span className="msg-pick-name">{p.displayName}</span>
-              </label>
-            ))}
-            {pick.length > 1 && (
-              <TextField fullWidth size="small" sx={{ mt: 1 }} placeholder="Nom du groupe" value={groupName} onChange={(e) => setGroupName(e.target.value)} />
-            )}
+            <List disablePadding>
+              {people.map((p) => (
+                <ListItemButton key={p.id} onClick={() => togglePick(p.id)} sx={{ borderRadius: 2 }}>
+                  <Checkbox edge="start" size="small" checked={pick.includes(p.id)} tabIndex={-1} disableRipple />
+                  <ListItemAvatar sx={{ minWidth: 46 }}>
+                    <span className="msg-pick-av">
+                      <Avatar name={p.displayName} gender={p.gender} avatar={p.avatar} size={34} />
+                      {onlineSet.has(p.id) && <span className="msg-online-dot" />}
+                    </span>
+                  </ListItemAvatar>
+                  <ListItemText primary={p.displayName} primaryTypographyProps={{ fontWeight: 600 }} />
+                </ListItemButton>
+              ))}
+            </List>
+            {pick.length > 1 && <TextField fullWidth size="small" sx={{ mt: 1 }} placeholder="Nom du groupe" value={groupName} onChange={(e) => setGroupName(e.target.value)} />}
             <Button fullWidth variant="contained" sx={{ mt: 1.5 }} disabled={pick.length < 1} onClick={create}>
               {pick.length > 1 ? 'Créer le groupe' : 'Démarrer la discussion'}
             </Button>
@@ -150,17 +178,30 @@ export default function MessagesDrawer({ open, onClose, meId }) {
           <>
             <div className="msg-thread">
               {messages.length === 0 && <p className="muted" style={{ textAlign: 'center' }}>Aucun message. Dis bonjour 👋</p>}
-              {messages.map((m) => (
-                <div key={m.id} className={`msg-bubble-row ${m.userId === meId ? 'me' : ''}`}>
-                  <div className="msg-bubble">
-                    {conv.type === 'group' && m.userId !== meId && <span className="msg-bubble-name">{nameById[m.userId] || '?'}</span>}
-                    <span className="msg-bubble-text">{m.text}</span>
-                    <span className="msg-bubble-time">{hhmm(m.ts)}</span>
+              {messages.map((m) => {
+                const mine = m.userId === meId;
+                return (
+                  <div key={m.id} className={`msg-bubble-row ${mine ? 'me' : ''}`}>
+                    {mine && !m.deleted && (
+                      <IconButton size="small" className="msg-kebab" onClick={(e) => setMsgMenu({ anchorEl: e.currentTarget, msg: m })}><MoreVertical size={15} /></IconButton>
+                    )}
+                    <div className={`msg-bubble ${m.deleted ? 'deleted' : ''}`}>
+                      {conv.type === 'group' && !mine && !m.deleted && <span className="msg-bubble-name">{nameById[m.userId] || '?'}</span>}
+                      <span className="msg-bubble-text">{m.deleted ? 'message supprimé' : m.text}</span>
+                      <span className="msg-bubble-time">{hhmm(m.ts)}{m.editedTs && !m.deleted ? ' · modifié' : ''}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+              {status && (
+                <div className="msg-readstatus">{status.icon ? <CheckCheck size={13} /> : <Check size={13} />} {status.txt}</div>
+              )}
               <div ref={endRef} />
             </div>
+
+            {editingId && (
+              <div className="msg-editbar"><Pencil size={13} /> Modification…<button onClick={() => { setEditingId(null); setText(''); }}>annuler</button></div>
+            )}
             <div className="msg-input">
               <TextField fullWidth size="small" placeholder="Écris un message…" value={text}
                 onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } }} />
@@ -169,6 +210,33 @@ export default function MessagesDrawer({ open, onClose, meId }) {
           </>
         )}
       </div>
+
+      {/* Menu d'un message (mien) */}
+      <Menu anchorEl={msgMenu.anchorEl} open={!!msgMenu.anchorEl} onClose={() => setMsgMenu({ anchorEl: null, msg: null })}>
+        <MenuItem onClick={startEdit}><ListItemIcon><Pencil size={16} /></ListItemIcon>Modifier</MenuItem>
+        <MenuItem onClick={doDelete}><ListItemIcon><Trash2 size={16} /></ListItemIcon>Supprimer</MenuItem>
+      </Menu>
+
+      {/* Menu de la conversation */}
+      <Menu anchorEl={convMenuEl} open={!!convMenuEl} onClose={() => setConvMenuEl(null)}>
+        {conv?.type === 'group' && <MenuItem onClick={() => { setMembersOpen(true); setConvMenuEl(null); }}><ListItemIcon><Users size={16} /></ListItemIcon>Voir les membres</MenuItem>}
+        <MenuItem onClick={deleteConv}><ListItemIcon><Trash2 size={16} /></ListItemIcon>Supprimer la conversation</MenuItem>
+      </Menu>
+
+      {/* Membres du groupe */}
+      <Dialog open={membersOpen} onClose={() => setMembersOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Membres ({conv?.members.length || 0})</DialogTitle>
+        <DialogContent>
+          <List>
+            {conv?.members.map((m) => (
+              <ListItemButton key={m.id} disableRipple>
+                <ListItemAvatar><Avatar name={m.displayName} gender={m.gender} avatar={m.avatar} size={36} /></ListItemAvatar>
+                <ListItemText primary={`${m.displayName}${m.id === meId ? ' (toi)' : ''}`} secondary={onlineSet.has(m.id) ? 'en ligne' : null} />
+              </ListItemButton>
+            ))}
+          </List>
+        </DialogContent>
+      </Dialog>
     </Drawer>
   );
 }

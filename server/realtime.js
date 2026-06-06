@@ -24,7 +24,8 @@ function convListFor(userId) {
       return {
         id: c.id, type: c.type, name: c.name || null,
         members: c.members.map(userMini),
-        last: last ? { text: last.text, ts: last.ts, userId: last.userId } : null,
+        reads: c.reads || {},
+        last: last ? { text: last.deleted ? '' : last.text, ts: last.ts, userId: last.userId, deleted: !!last.deleted } : null,
         unread,
       };
     })
@@ -204,9 +205,10 @@ export function createRealtime(httpServer) {
       conv.reads = conv.reads || {}; conv.reads[uid] = Date.now();
       await db.write();
       const messages = db.data.messages.filter((m) => m.convId === convId).slice(-100);
-      ack?.({ messages, conv: { id: conv.id, type: conv.type, name: conv.name, members: conv.members.map(userMini) } });
+      ack?.({ messages, conv: { id: conv.id, type: conv.type, name: conv.name, members: conv.members.map(userMini), reads: conv.reads } });
+      // On diffuse à tous les membres pour mettre à jour les accusés de lecture.
+      for (const m of conv.members) io.to(`u:${m}`).emit('chat:list', convListFor(m));
       io.to(`u:${uid}`).emit('chat:inbox', { total: totalUnread(uid) });
-      io.to(`u:${uid}`).emit('chat:list', convListFor(uid));
     });
 
     socket.on('chat:send', async ({ convId, text }) => {
@@ -230,8 +232,48 @@ export function createRealtime(httpServer) {
       if (!conv || !conv.members.includes(uid)) return;
       conv.reads = conv.reads || {}; conv.reads[uid] = Date.now();
       await db.write();
+      for (const m of conv.members) io.to(`u:${m}`).emit('chat:list', convListFor(m));
       io.to(`u:${uid}`).emit('chat:inbox', { total: totalUnread(uid) });
-      io.to(`u:${uid}`).emit('chat:list', convListFor(uid));
+    });
+
+    socket.on('chat:edit', async ({ messageId, text }) => {
+      const msg = db.data.messages.find((m) => m.id === messageId);
+      if (!msg || msg.userId !== uid || msg.deleted) return;
+      const clean = String(text || '').trim().slice(0, 800);
+      if (!clean) return;
+      msg.text = clean; msg.editedTs = Date.now();
+      await db.write();
+      const conv = db.data.conversations.find((c) => c.id === msg.convId);
+      for (const m of conv.members) {
+        io.to(`u:${m}`).emit('chat:message:update', { convId: msg.convId, message: msg });
+        io.to(`u:${m}`).emit('chat:list', convListFor(m));
+      }
+    });
+
+    socket.on('chat:delete', async ({ messageId }) => {
+      const msg = db.data.messages.find((m) => m.id === messageId);
+      if (!msg || msg.userId !== uid) return;
+      msg.deleted = true; msg.text = '';
+      await db.write();
+      const conv = db.data.conversations.find((c) => c.id === msg.convId);
+      for (const m of conv.members) {
+        io.to(`u:${m}`).emit('chat:message:update', { convId: msg.convId, message: msg });
+        io.to(`u:${m}`).emit('chat:list', convListFor(m));
+      }
+    });
+
+    socket.on('chat:deleteConv', async ({ convId }) => {
+      const conv = db.data.conversations.find((c) => c.id === convId);
+      if (!conv || !conv.members.includes(uid)) return;
+      const members = conv.members.slice();
+      db.data.conversations = db.data.conversations.filter((c) => c.id !== convId);
+      db.data.messages = db.data.messages.filter((m) => m.convId !== convId);
+      await db.write();
+      for (const m of members) {
+        io.to(`u:${m}`).emit('chat:removed', { convId });
+        io.to(`u:${m}`).emit('chat:list', convListFor(m));
+        io.to(`u:${m}`).emit('chat:inbox', { total: totalUnread(m) });
+      }
     });
 
     // Renvoie l'état complet à la demande (corrige l'affichage au retour sur le lobby).
