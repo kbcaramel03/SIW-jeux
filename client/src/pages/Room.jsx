@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Paper, Button, Chip, Typography, Alert } from '@mui/material';
-import { ChevronLeft, Users, MessageCircle, Crown } from 'lucide-react';
+import { Paper, Button, Chip, Typography, Alert, Fab, Drawer, IconButton } from '@mui/material';
+import { ChevronLeft, Users, MessageCircle, Crown, X } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import Chat from '../components/Chat.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
@@ -17,6 +17,7 @@ export default function Room() {
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [error, setError] = useState('');
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     const socket = getSocket();
@@ -57,7 +58,29 @@ export default function Room() {
 
   const isHost = room.hostId === room.me.id;
 
+  const sidePanel = (
+    <>
+      <Paper elevation={1} className="players-box" sx={{ p: 2 }}>
+        <h3 className="section-title"><Users size={18} /> Joueurs ({room.players.length})</h3>
+        <ul className="player-list">
+          {room.players.map((p) => (
+            <li key={p.id}>
+              <Avatar name={p.displayName} gender={p.gender} avatar={p.avatar} />
+              <span>{p.displayName}{p.id === room.me.id ? ' (toi)' : ''}</span>
+              {p.id === room.hostId && <Crown size={15} color="#c2a36b" />}
+            </li>
+          ))}
+        </ul>
+      </Paper>
+      <Paper elevation={1} className="chat-box" sx={{ p: 2 }}>
+        <h3 className="section-title"><MessageCircle size={18} /> Chat</h3>
+        <Chat messages={room.chat} meId={room.me.id} />
+      </Paper>
+    </>
+  );
+
   return (
+    <>
     <div className="room fade-up">
       <div className="room-header">
         <Button variant="outlined" size="small" onClick={() => navigate('/')} startIcon={<ChevronLeft size={16} />}>Lobby</Button>
@@ -89,25 +112,20 @@ export default function Room() {
           )}
         </div>
 
-        <aside className="room-side">
-          <Paper elevation={1} className="players-box" sx={{ p: 2 }}>
-            <h3 className="section-title"><Users size={18} /> Joueurs ({room.players.length})</h3>
-            <ul className="player-list">
-              {room.players.map((p) => (
-                <li key={p.id}>
-                  <Avatar name={p.displayName} gender={p.gender} avatar={p.avatar} />
-                  <span>{p.displayName}{p.id === room.me.id ? ' (toi)' : ''}</span>
-                  {p.id === room.hostId && <Crown size={15} color="#c2a36b" />}
-                </li>
-              ))}
-            </ul>
-          </Paper>
-          <Paper elevation={1} className="chat-box" sx={{ p: 2 }}>
-            <h3 className="section-title"><MessageCircle size={18} /> Chat</h3>
-            <Chat messages={room.chat} meId={room.me.id} />
-          </Paper>
-        </aside>
+        <aside className="room-side">{sidePanel}</aside>
       </div>
     </div>
+
+      {/* Mobile : chat du salon en bulle flottante */}
+      <Fab color="primary" className="room-fab" sx={{ position: 'fixed', right: 16, bottom: 16, zIndex: 40 }} onClick={() => setChatOpen(true)} aria-label="Chat du salon">
+        <MessageCircle size={24} />
+      </Fab>
+      <Drawer anchor="right" open={chatOpen} onClose={() => setChatOpen(false)} PaperProps={{ sx: { width: 320, maxWidth: '92vw', p: 1.5 } }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <IconButton size="small" onClick={() => setChatOpen(false)}><X size={18} /></IconButton>
+        </div>
+        {sidePanel}
+      </Drawer>
+    </>
   );
 }

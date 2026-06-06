@@ -557,11 +557,14 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .f7-log { background: rgba(255,255,255,0.6); border-radius: var(--radius-sm); padding: 9px 14px; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.6; }
 
 /* ====== Responsive ====== */
+/* La bulle de chat du salon n'apparaît que sur petit écran */
+@media (min-width: 861px) { .room-fab { display: none !important; } }
+
 @media (max-width: 860px) {
   .rail { display: none; }
   .room-body { grid-template-columns: 1fr; }
   .cn-teams { grid-template-columns: 1fr; }
-  .room-side { flex-direction: column-reverse; }
+  .room-side { display: none; } /* remplacé par la bulle flottante */
   /* Bataille navale : on garde les DEUX flottes visibles côte à côte sur mobile */
   .bs-arena { grid-template-columns: 1.4fr 1fr; gap: 9px; }
   .bs-side { padding: 9px; }
@@ -675,3 +678,35 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .csp-vote { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; }
 .csp-vote.up { background: #2e9c5c; } .csp-vote.down { background: #d23047; }
 .csp-onteam { position: absolute; bottom: 6px; right: 6px; color: var(--violet); }
+
+/* ===== Messages (DM & groupes) ===== */
+.msg { display: flex; flex-direction: column; height: 100%; }
+.msg-head { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid #eee2ec; }
+.msg-head-icon { width: 32px; display: flex; justify-content: center; color: var(--pink); }
+.msg-body { flex: 1; overflow-y: auto; padding: 14px; }
+.msg-conv { display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px; border: none; background: none;
+  border-radius: 12px; cursor: pointer; text-align: left; font: inherit; }
+.msg-conv:hover { background: #f7f0f6; }
+.msg-group-ic { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--violet), var(--purple));
+  color: #fff; display: flex; align-items: center; justify-content: center; flex: none; }
+.msg-conv-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.msg-conv-name { font-weight: 700; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-conv-last { font-size: 0.8rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-conv-time { font-size: 0.7rem; color: var(--ink-soft); flex: none; }
+.msg-pick { display: flex; align-items: center; gap: 8px; padding: 4px 2px; cursor: pointer; }
+.msg-pick-av { position: relative; }
+.msg-pick-name { font-weight: 600; font-size: 0.9rem; }
+.msg-online-dot { position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; border-radius: 50%;
+  background: #46c97e; border: 2px solid #fff; }
+.msg-thread { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 7px; }
+.msg-bubble-row { display: flex; }
+.msg-bubble-row.me { justify-content: flex-end; }
+.msg-bubble { max-width: 78%; padding: 7px 11px; border-radius: 14px; background: #f1e8ef; display: flex; flex-direction: column; }
+.msg-bubble-row.me .msg-bubble { background: linear-gradient(135deg, var(--pink), var(--violet)); color: #fff; }
+.msg-bubble-name { font-size: 0.68rem; font-weight: 800; color: var(--violet); margin-bottom: 1px; }
+.msg-bubble-text { font-size: 0.9rem; line-height: 1.35; word-break: break-word; }
+.msg-bubble-time { font-size: 0.62rem; opacity: 0.7; align-self: flex-end; margin-top: 1px; }
+.msg-input { display: flex; align-items: center; gap: 6px; padding: 10px; border-top: 1px solid #eee2ec; }
+
+/* Bulle flottante du chat de salon (mobile) */
+.room-fab { position: fixed; right: 16px; bottom: 16px; z-index: 40; }

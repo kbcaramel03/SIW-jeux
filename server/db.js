@@ -63,6 +63,8 @@ const db = new Low(buildAdapter(), defaultData);
 await db.read();
 db.data ||= defaultData;
 db.data.users ||= [];
+db.data.conversations ||= []; // chats privés & groupes
+db.data.messages ||= [];
 await db.write();
 
 export default db;

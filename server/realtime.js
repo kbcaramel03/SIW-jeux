@@ -2,9 +2,35 @@
 // Les salons vivent en mémoire (transitoires) ; seuls les comptes sont persistés.
 import { Server } from 'socket.io';
 import { nanoid } from 'nanoid';
+import db from './db.js';
 import { userFromToken } from './auth.js';
 import { GAMES, gameList } from './games/registry.js';
 import { DEV_ORIGINS, IS_PROD } from './config.js';
+
+// --- Helpers chats privés & groupes (persistés en base) ---
+function userMini(id) {
+  const u = db.data.users.find((x) => x.id === id);
+  return u ? { id: u.id, displayName: u.displayName, gender: u.gender, avatar: u.avatar || null }
+    : { id, displayName: '?', gender: 'A', avatar: null };
+}
+function convListFor(userId) {
+  return db.data.conversations
+    .filter((c) => c.members.includes(userId))
+    .map((c) => {
+      const msgs = db.data.messages.filter((m) => m.convId === c.id);
+      const last = msgs[msgs.length - 1] || null;
+      const lastRead = (c.reads && c.reads[userId]) || 0;
+      const unread = msgs.filter((m) => m.ts > lastRead && m.userId !== userId).length;
+      return {
+        id: c.id, type: c.type, name: c.name || null,
+        members: c.members.map(userMini),
+        last: last ? { text: last.text, ts: last.ts, userId: last.userId } : null,
+        unread,
+      };
+    })
+    .sort((a, b) => (b.last?.ts || 0) - (a.last?.ts || 0));
+}
+const totalUnread = (userId) => convListFor(userId).reduce((s, c) => s + c.unread, 0);
 
 const rooms = new Map(); // roomId -> room
 const online = new Map(); // userId -> { displayName, gender, sockets:number }
@@ -137,12 +163,76 @@ export function createRealtime(httpServer) {
   }
 
   io.on('connection', (socket) => {
+    const uid = socket.data.user.id;
     socket.join('lobby');
+    socket.join(`u:${uid}`); // salon perso pour les notifications de chat
     addPresence(socket.data.user);
     socket.emit('lobby:rooms', lobbyList());
     socket.emit('lobby:games', gameList());
     socket.emit('presence:list', presenceList());
+    socket.emit('chat:list', convListFor(uid));
+    socket.emit('chat:inbox', { total: totalUnread(uid) });
     broadcastPresence();
+
+    // ---- Chats privés & groupes ----
+    socket.on('people:all', (ack) => {
+      const list = db.data.users.filter((u) => u.status === 'approved' && u.id !== uid).map((u) => userMini(u.id));
+      ack?.(list);
+    });
+    socket.on('chat:list', (ack) => ack?.(convListFor(uid)));
+
+    socket.on('chat:create', async ({ memberIds, name }, ack) => {
+      const members = [...new Set([uid, ...(memberIds || [])])].filter((id) => db.data.users.some((u) => u.id === id));
+      if (members.length < 2) return ack?.({ error: 'Choisis au moins une personne.' });
+      const isGroup = members.length > 2 || !!(name && name.trim());
+      if (!isGroup) {
+        const ex = db.data.conversations.find((c) => c.type === 'dm' && c.members.length === 2
+          && c.members.includes(members[0]) && c.members.includes(members[1]));
+        if (ex) return ack?.({ convId: ex.id });
+      }
+      const conv = { id: nanoid(8), type: isGroup ? 'group' : 'dm', name: isGroup ? (name?.trim() || 'Groupe') : null,
+        members, createdBy: uid, createdAt: Date.now(), reads: {} };
+      db.data.conversations.push(conv);
+      await db.write();
+      for (const m of members) io.to(`u:${m}`).emit('chat:list', convListFor(m));
+      ack?.({ convId: conv.id });
+    });
+
+    socket.on('chat:history', async ({ convId }, ack) => {
+      const conv = db.data.conversations.find((c) => c.id === convId);
+      if (!conv || !conv.members.includes(uid)) return ack?.({ error: 'Conversation introuvable.' });
+      conv.reads = conv.reads || {}; conv.reads[uid] = Date.now();
+      await db.write();
+      const messages = db.data.messages.filter((m) => m.convId === convId).slice(-100);
+      ack?.({ messages, conv: { id: conv.id, type: conv.type, name: conv.name, members: conv.members.map(userMini) } });
+      io.to(`u:${uid}`).emit('chat:inbox', { total: totalUnread(uid) });
+      io.to(`u:${uid}`).emit('chat:list', convListFor(uid));
+    });
+
+    socket.on('chat:send', async ({ convId, text }) => {
+      const conv = db.data.conversations.find((c) => c.id === convId);
+      if (!conv || !conv.members.includes(uid)) return;
+      const clean = String(text || '').trim().slice(0, 800);
+      if (!clean) return;
+      const msg = { id: nanoid(10), convId, userId: uid, text: clean, ts: Date.now() };
+      db.data.messages.push(msg);
+      conv.reads = conv.reads || {}; conv.reads[uid] = msg.ts;
+      await db.write();
+      for (const m of conv.members) {
+        io.to(`u:${m}`).emit('chat:message', { convId, message: msg });
+        io.to(`u:${m}`).emit('chat:list', convListFor(m));
+        io.to(`u:${m}`).emit('chat:inbox', { total: totalUnread(m) });
+      }
+    });
+
+    socket.on('chat:read', async ({ convId }) => {
+      const conv = db.data.conversations.find((c) => c.id === convId);
+      if (!conv || !conv.members.includes(uid)) return;
+      conv.reads = conv.reads || {}; conv.reads[uid] = Date.now();
+      await db.write();
+      io.to(`u:${uid}`).emit('chat:inbox', { total: totalUnread(uid) });
+      io.to(`u:${uid}`).emit('chat:list', convListFor(uid));
+    });
 
     // Renvoie l'état complet à la demande (corrige l'affichage au retour sur le lobby).
     socket.on('lobby:refresh', () => {
