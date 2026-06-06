@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Paper, Button, TextField, Typography, Stack, ToggleButtonGroup, ToggleButton, Alert, Chip } from '@mui/material';
+import { Paper, Button, TextField, Typography, Stack, ToggleButtonGroup, ToggleButton, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords } from 'lucide-react';
 import { getSocket } from '../socket.js';
 
@@ -93,23 +93,6 @@ export default function Lobby() {
           })}
         </div>
 
-        {selected === 'codenames' && (
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, flexWrap: 'wrap', gap: 1 }}>
-            <Typography color="text.secondary" sx={{ fontWeight: 600 }}>Mode :</Typography>
-            <ToggleButtonGroup value={cnMode} exclusive color="primary" onChange={(_, v) => v && setCnMode(v)} size="small">
-              <ToggleButton value="duet"><Users2 size={16} />&nbsp;Duo coopératif</ToggleButton>
-              <ToggleButton value="versus"><Swords size={16} />&nbsp;Versus 2 équipes</ToggleButton>
-            </ToggleButtonGroup>
-            <Typography variant="caption" color="text.secondary">{cnMode === 'duet' ? '2-3 joueurs' : '4 joueurs et +'}</Typography>
-          </Stack>
-        )}
-
-        {selected && (
-          <Stack direction="row" spacing={1.5} sx={{ mt: 2, flexWrap: 'wrap', gap: 1.5 }}>
-            <TextField size="small" sx={{ flex: 1, minWidth: 180 }} value={roomName} onChange={(e) => setRoomName(e.target.value)} placeholder="Nom du salon (optionnel)" />
-            <Button variant="contained" onClick={createRoom} startIcon={<Plus size={18} />}>Créer le salon</Button>
-          </Stack>
-        )}
       </Paper>
 
       <Paper elevation={1} className="lobby-section" sx={{ p: 2.5 }}>
@@ -137,6 +120,34 @@ export default function Lobby() {
           </Stack>
         )}
       </Paper>
+
+      {/* Création de salon en pop-up : tap sur un jeu → on nomme et on crée, sans scroll */}
+      <Dialog open={!!selected} onClose={() => setSelected(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {(() => { const st = GAME_STYLE[selected] || DEFAULT_STYLE; return (
+            <span className="ic" style={{ color: st.fg }}>{st.uno ? <UnoMini small /> : <st.Icon size={20} />}</span>
+          ); })()}
+          Créer un salon — {games.find((g) => g.key === selected)?.label}
+        </DialogTitle>
+        <DialogContent>
+          {error && <Alert severity="error" sx={{ mb: 1.5 }}>{error}</Alert>}
+          <TextField autoFocus fullWidth size="small" sx={{ mt: 1 }} value={roomName}
+            onChange={(e) => setRoomName(e.target.value)} placeholder="Nom du salon (optionnel)" />
+          {selected === 'codenames' && (
+            <Stack spacing={1} sx={{ mt: 2 }}>
+              <Typography color="text.secondary" sx={{ fontWeight: 600, fontSize: 14 }}>Mode :</Typography>
+              <ToggleButtonGroup value={cnMode} exclusive color="primary" onChange={(_, v) => v && setCnMode(v)} size="small" fullWidth>
+                <ToggleButton value="duet"><Users2 size={16} />&nbsp;Duo coop</ToggleButton>
+                <ToggleButton value="versus"><Swords size={16} />&nbsp;Versus</ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setSelected(null)}>Annuler</Button>
+          <Button variant="contained" startIcon={<Plus size={18} />} onClick={createRoom}>Créer le salon</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

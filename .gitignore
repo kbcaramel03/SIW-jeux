@@ -7,3 +7,6 @@ server/data/db.json
 
 # Captures de test locales
 test-screens/
+
+# Captures de tel à la racine
+/image*.png
