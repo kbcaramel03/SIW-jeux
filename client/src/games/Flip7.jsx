@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@mui/material';
 import { Play, Hand, PauseCircle, Sparkles, Layers, Heart } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
@@ -130,13 +130,38 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
           const status = l?.busted ? 'busted' : l?.frozen ? 'frozen' : l?.flip7 ? 'flip7' : l?.stayed ? 'stayed' : '';
           return (
             <div key={p.id} className={`f7-player ${isTurn ? 'turn' : ''} ${status}`}>
-              {/* Cartes action posées sur cette joueuse (en haut à droite) */}
+              {/* Effet Flip 7 : éclat doré sur la section de la joueuse */}
+              {status === 'flip7' && (
+                <motion.div className="f7-flip7-burst"
+                  initial={{ scale: 0.3, opacity: 0, rotate: -8 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 280, damping: 13 }}>
+                  <span className="f7-flip7-spark s1">✨</span>
+                  <span className="f7-flip7-text">FLIP 7 !</span>
+                  <span className="f7-flip7-spark s2">✨</span>
+                </motion.div>
+              )}
+
+              {/* Cartes action posées sur cette joueuse (en haut à droite).
+                  Elles arrivent en grand (taille main) puis rapetissent en glissant vers le coin. */}
               {(l?.second || l?.actions?.length > 0) && (
                 <div className="f7-player-actions">
                   {l?.actions?.map((a, i) => (
-                    <Flip7Card key={`a${i}`} card={a} size="xs" flip={false} />
+                    <motion.div key={`a${i}`} className="f7-action-fly"
+                      initial={{ scale: 1.5, x: -66, y: 94, opacity: 0 }}
+                      animate={{ scale: 1, x: 0, y: 0, opacity: 1 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 22 }}>
+                      <Flip7Card card={a} size="xs" flip={false} />
+                    </motion.div>
                   ))}
-                  {l?.second && <Flip7Card card={{ kind: 'action', action: 'second' }} size="xs" flip={false} />}
+                  {l?.second && (
+                    <motion.div className="f7-action-fly"
+                      initial={{ scale: 1.5, x: -66, y: 94, opacity: 0 }}
+                      animate={{ scale: 1, x: 0, y: 0, opacity: 1 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 22 }}>
+                      <Flip7Card card={{ kind: 'action', action: 'second' }} size="xs" flip={false} />
+                    </motion.div>
+                  )}
                 </div>
               )}
 
@@ -148,7 +173,6 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
                 </div>
                 {status === 'busted' && <span className="f7-badge bust">PERDU</span>}
                 {status === 'stayed' && <span className="f7-badge stay">resté</span>}
-                {status === 'flip7' && <span className="f7-badge f7t">FLIP 7</span>}
               </div>
 
               <div className="f7-line">
@@ -192,13 +216,6 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
 
       {g.phase === 'over' && isHost && (
         <div className="cn-over"><Button variant="contained" startIcon={<Sparkles size={18} />} onClick={onNewGame}>Rejouer</Button></div>
-      )}
-
-      {/* Journal */}
-      {g.log?.length > 0 && (
-        <div className="f7-log">
-          {g.log.slice(-4).map((line, i) => <div key={i}>{line}</div>)}
-        </div>
       )}
     </div>
   );
