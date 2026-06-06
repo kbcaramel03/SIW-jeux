@@ -37,7 +37,10 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
 
 export function voiceSupported() { return typeof window !== 'undefined' && !!window.speechSynthesis; }
 
-export function speak(text) {
+let audio = null;
+
+// Voix navigateur (repli si l'audio cloud échoue).
+function speakLocal(text) {
   try {
     const s = window.speechSynthesis;
     if (!s || !text) return;
@@ -45,11 +48,27 @@ export function speak(text) {
     const u = new SpeechSynthesisUtterance(text);
     if (frVoice) u.voice = frVoice;
     u.lang = 'fr-FR';
-    u.pitch = 0.95; // proche du naturel (un pitch trop bas sonne robotique)
-    u.rate = 0.9;   // légèrement lent pour le côté solennel, sans déformer la voix
+    u.pitch = 0.95;
+    u.rate = 0.9;
     u.volume = 1;
     s.speak(u);
   } catch { /* ignore */ }
 }
 
-export function stopSpeak() { try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } }
+// Voix naturelle (AWS Polly français via notre proxy /api/tts), repli local si erreur.
+export function speak(text) {
+  if (!text) return;
+  stopSpeak();
+  try {
+    audio = new Audio(`/api/tts?text=${encodeURIComponent(text)}`);
+    audio.play().catch(() => speakLocal(text));
+    audio.onerror = () => speakLocal(text);
+  } catch {
+    speakLocal(text);
+  }
+}
+
+export function stopSpeak() {
+  try { if (audio) { audio.pause(); audio = null; } } catch { /* ignore */ }
+  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+}

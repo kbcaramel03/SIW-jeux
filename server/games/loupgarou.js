@@ -26,6 +26,7 @@ export function createLoupGarou() {
     seerSeen: {},      // voyanteId -> { targetId, role } (résultat de la nuit)
     votes: {},
     hunterPending: null,
+    dayDeadline: null, // fin du débat du jour (2 min)
     resumeTo: null,    // 'day' | 'night' : où reprendre après le tir du Chasseur
     lastDeaths: [],    // morts révélés au réveil
     sayId: 0,          // déclencheur de narration côté client
@@ -99,17 +100,17 @@ function beginNight(state) {
   state.seerSeen = {};
   state.lastDeaths = [];
   state.nightStep = firstStep(state);
-  narrate(state, state.nightNo === 1
-    ? 'La nuit tombe sur le village… Fermez les yeux. Le destin se met en marche.'
-    : 'La nuit revient, épaisse et silencieuse… Le village s\'endort.');
+  narrate(state, state.nightNo === 1 ? 'La nuit tombe. Le village s\'endort…' : 'La nuit revient. Le village s\'endort…');
   if (!state.nightStep) resolveNight(state);
   else announceStep(state);
 }
 
 function announceStep(state) {
-  if (state.nightStep === 'seer') narrate(state, 'La Voyante s\'éveille et scrute une âme…');
-  else if (state.nightStep === 'wolves') narrate(state, 'Les Loups-Garous se réveillent et choisissent leur proie…');
-  else if (state.nightStep === 'witch') narrate(state, 'La Sorcière s\'éveille. Usera-t-elle de ses potions ?');
+  if (state.nightStep === 'seer') narrate(state, 'La Voyante se réveille et désigne une personne à sonder.');
+  else if (state.nightStep === 'wolves') narrate(state, aliveWolves(state).length > 1
+    ? 'Les Loups-Garous se réveillent et choisissent leur victime.'
+    : 'Le Loup-Garou se réveille et choisit sa victime.');
+  else if (state.nightStep === 'witch') narrate(state, 'La Sorcière se réveille. Veux-tu empoisonner ou ressusciter quelqu\'un ?');
 }
 
 function advanceNight(state, fromStep) {
@@ -172,10 +173,10 @@ function resolveNight(state) {
 function openDay(state) {
   state.phase = 'day';
   state.votes = {};
-  const names = state.lastDeaths.length;
-  narrate(state, names
-    ? `Le village se réveille… ${names} villageois ${names > 1 ? 'ont' : 'a'} péri cette nuit.`
-    : 'Le village se réveille… Miracle, personne n\'est mort cette nuit.');
+  state.dayDeadline = Date.now() + 120000; // 2 minutes pour débattre
+  const n = state.lastDeaths.length;
+  const morts = n ? `${n} personne${n > 1 ? 's sont mortes' : ' est morte'} cette nuit.` : 'Personne n\'est mort cette nuit.';
+  narrate(state, `Le village se réveille. ${morts} Vous avez 2 minutes pour décider qui abattre aujourd'hui.`);
 }
 
 export function callVote(state, userId) {
@@ -261,6 +262,7 @@ export function viewFor(state, userId) {
     myVote: state.votes[userId] || null,
     canShoot: state.phase === 'hunter' && state.hunterPending === userId,
     lastDeaths: state.lastDeaths.slice(),
+    dayDeadline: state.phase === 'day' ? (state.dayDeadline || null) : null,
     say: state.say,
     sayId: state.sayId,
     winner: state.winner,

@@ -27,10 +27,18 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const [witchKill, setWitchKill] = useState(null);
   const [voiceName, setVoiceName] = useState(getChosenVoice() || '');
   const [, setTick] = useState(0);
+  const [now, setNow] = useState(Date.now());
   const lastSay = useRef(-1);
 
   // Les voix se chargent de façon asynchrone : on rafraîchit le sélecteur.
   useEffect(() => { const t = setTimeout(() => setTick(1), 700); return () => clearTimeout(t); }, []);
+  // Compte à rebours du débat (2 min).
+  useEffect(() => {
+    if (g.phase !== 'day' || !g.dayDeadline) return undefined;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [g.phase, g.dayDeadline]);
+  const dayLeft = g.phase === 'day' && g.dayDeadline ? Math.max(0, Math.round((g.dayDeadline - now) / 1000)) : null;
 
   useEffect(() => { if (g.phase === 'setup' && !g.amSeated) onAction({ kind: 'join' }); }, [g.phase, g.amSeated]);
 
@@ -135,7 +143,10 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
         {g.fellowWolves && g.fellowWolves.length > 1 && <span className="lg-fellows">Complices : {g.fellowWolves.filter((w) => w !== me).map((w) => nameById[w]).join(', ')}</span>}
       </div>
 
-      <div className={`lg-banner ${isNight ? 'night' : ''}`}>{banner()}</div>
+      <div className={`lg-banner ${isNight ? 'night' : ''}`}>
+        {banner()}
+        {dayLeft != null && <span className="lg-timer"> · ⏳ {Math.floor(dayLeft / 60)}:{String(dayLeft % 60).padStart(2, '0')}</span>}
+      </div>
 
       {/* Résultat voyante */}
       {g.seerResult && <div className="lg-info">🔮 {nameById[g.seerResult.targetId]} est <b>{ROLE[g.seerResult.role].label}</b></div>}
@@ -166,7 +177,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
               style={{ left: `${x}%`, top: `${y}%` }} disabled={!selecting || dead} onClick={() => clickPlayer(p)}>
               <div className="lg-player-av"><Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={38} />{dead && <span className="lg-dead-x"><Skull size={15} /></span>}</div>
               <span className="lg-player-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
-              {role && <span className={`lg-role-tag ${role.cls}`}><role.Icon /></span>}
+              {role && <span className={`lg-role-tag ${role.cls}`}><role.Icon /> {role.label}</span>}
             </button>
           );
         })}

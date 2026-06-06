@@ -742,14 +742,15 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .lg-player-av { position: relative; }
 .lg-dead-x { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #b42337; background: rgba(255,255,255,0.5); border-radius: 50%; }
 .lg-player-name { font-weight: 700; font-size: 0.72rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.lg-role-tag { font-size: 1.1rem; display: inline-flex; }
-.lg-role-tag svg { width: 1em; height: 1em; }
+.lg-role-tag { display: inline-flex; align-items: center; gap: 2px; font-size: 0.6rem; font-weight: 800; line-height: 1; }
+.lg-role-tag svg { width: 1.4em; height: 1.4em; }
 .lg-role-tag.loup { color: #6b2b2b; } .lg-role-tag.villageois { color: #2e8c47; }
 .lg-role-tag.voyante { color: #5d3a9c; } .lg-role-tag.sorciere { color: #1f7a6a; } .lg-role-tag.chasseur { color: #c4561f; }
 .lg-mj { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 48%; max-width: 210px;
   display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; pointer-events: none; }
 .lg-mj .lg-mj-voice { pointer-events: auto; }
-.lg-mj-emo { font-size: 3rem; display: flex; color: #ffd86b; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.4)); }
+.lg-mj-emo { font-size: 3rem; display: flex; color: #7a4a25; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.3)); }
+.lg-table.night .lg-mj-emo { color: #b07a45; }
 .lg-mj-emo svg { width: 1em; height: 1em; }
 .lg-mj-say { font-family: var(--font-head); font-weight: 600; font-size: 0.82rem; line-height: 1.25; }
 .lg-table.night .lg-mj-say { color: #efe7ff; }
