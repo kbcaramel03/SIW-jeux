@@ -12,6 +12,7 @@ import Flip7 from '../games/Flip7.jsx';
 import Bullshit from '../games/Bullshit.jsx';
 import Conspiracy from '../games/Conspiracy.jsx';
 import LoupGarou from '../games/LoupGarou.jsx';
+import Scribbl from '../games/Scribbl.jsx';
 
 export default function Room() {
   const { id } = useParams();
@@ -113,6 +114,9 @@ export default function Room() {
           )}
           {room.gameKey === 'loupgarou' && (
             <LoupGarou room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'scribbl' && (
+            <Scribbl room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
         </div>
 

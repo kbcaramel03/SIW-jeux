@@ -373,6 +373,15 @@ export function createRealtime(httpServer) {
       broadcastLobby();
     });
 
+    // Scribbl : relais léger des traits de dessin (hors état du jeu).
+    // Seule la dessinatrice du tour peut émettre ; on diffuse aux autres du salon.
+    socket.on('scribbl:draw', (data) => {
+      const room = rooms.get(socket.data.roomId);
+      if (!room || room.gameKey !== 'scribbl' || !room.game) return;
+      if (room.game.drawer !== socket.data.user.id || room.game.phase !== 'draw') return;
+      socket.to(socket.data.roomId).emit('scribbl:draw', data);
+    });
+
     // Action de jeu générique, déléguée au moteur du jeu concerné.
     socket.on('game:action', async (payload, ack) => {
       const room = rooms.get(socket.data.roomId);

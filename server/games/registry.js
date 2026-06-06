@@ -7,6 +7,7 @@ import * as flip7 from './flip7.js';
 import * as bullshit from './bullshit.js';
 import * as conspiracy from './conspiracy.js';
 import * as loupgarou from './loupgarou.js';
+import * as scribbl from './scribbl.js';
 
 export const GAMES = {
   codenames: {
@@ -50,7 +51,12 @@ export const GAMES = {
     view: conspiracy.viewFor,
     action: applyConspiracyAction,
   },
-  scribbl: { key: 'scribbl', label: 'Scribbl', emoji: '🎨', minPlayers: 2, maxPlayers: 10, ready: false },
+  scribbl: {
+    key: 'scribbl', label: 'Scribbl', emoji: '🎨', minPlayers: 2, maxPlayers: 10, ready: true,
+    create: scribbl.createScribbl,
+    view: scribbl.viewFor,
+    action: applyScribblAction,
+  },
   loupgarou: {
     key: 'loupgarou', label: 'Loup Garou', emoji: '🐺', minPlayers: 4, maxPlayers: 18, ready: true,
     create: loupgarou.createLoupGarou,
@@ -155,6 +161,18 @@ function applyConspiracyAction(state, userId, payload) {
       return conspiracy.nextMission(state, userId);
     default:
       throw new Error('Action inconnue.');
+  }
+}
+
+function applyScribblAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return scribbl.joinScribbl(state, userId);
+    case 'start': return scribbl.startScribbl(state, userId);
+    case 'choose': return scribbl.chooseWord(state, userId, payload.word);
+    case 'guess': return scribbl.guessScribbl(state, userId, payload.text);
+    case 'timeup': return scribbl.timeupScribbl(state, userId);
+    case 'next': return scribbl.nextScribbl(state, userId);
+    default: throw new Error('Action inconnue.');
   }
 }
 
