@@ -715,6 +715,18 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .msg-editbar { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--ink-soft); padding: 6px 12px; background: #fbf3f8; }
 .msg-editbar button { border: none; background: none; color: var(--pink); font-weight: 700; cursor: pointer; }
 .msg-conv-time { font-size: 0.7rem; color: var(--ink-soft); flex: none; align-self: flex-start; margin-top: 4px; }
+.msg-img { max-width: 200px; max-height: 220px; border-radius: 10px; margin-bottom: 4px; cursor: pointer; display: block; }
+.msg-emoji { display: flex; flex-wrap: wrap; gap: 2px; padding: 8px 10px; max-height: 140px; overflow-y: auto; border-top: 1px solid #eee2ec; }
+.msg-emoji button { border: none; background: none; font-size: 1.3rem; cursor: pointer; padding: 3px; border-radius: 8px; }
+.msg-emoji button:hover { background: #f3e9f1; }
+/* Indicateur « en train d'écrire » */
+.msg-typing { display: inline-flex; align-items: center; gap: 8px; background: #efe9f3; color: var(--ink-soft);
+  padding: 8px 12px; border-radius: 16px; border-bottom-left-radius: 5px; font-size: 0.8rem; }
+.msg-typing .dots { display: inline-flex; gap: 3px; }
+.msg-typing .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--pink); display: inline-block; animation: msgdot 1s infinite ease-in-out; }
+.msg-typing .dots i:nth-child(2) { animation-delay: 0.15s; }
+.msg-typing .dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes msgdot { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
 
 /* Bulle flottante du chat de salon (mobile) */
 .room-fab { position: fixed; right: 16px; bottom: 16px; z-index: 40; }

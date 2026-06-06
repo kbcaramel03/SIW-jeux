@@ -25,7 +25,7 @@ function convListFor(userId) {
         id: c.id, type: c.type, name: c.name || null,
         members: c.members.map(userMini),
         reads: c.reads || {},
-        last: last ? { text: last.deleted ? '' : last.text, ts: last.ts, userId: last.userId, deleted: !!last.deleted } : null,
+        last: last ? { text: last.deleted ? '' : (last.text || (last.image ? '📷 Photo' : '')), ts: last.ts, userId: last.userId, deleted: !!last.deleted } : null,
         unread,
       };
     })
@@ -211,12 +211,21 @@ export function createRealtime(httpServer) {
       io.to(`u:${uid}`).emit('chat:inbox', { total: totalUnread(uid) });
     });
 
-    socket.on('chat:send', async ({ convId, text }) => {
+    socket.on('chat:typing', ({ convId }) => {
+      const conv = db.data.conversations.find((c) => c.id === convId);
+      if (!conv || !conv.members.includes(uid)) return;
+      const name = userMini(uid).displayName;
+      for (const m of conv.members) if (m !== uid) io.to(`u:${m}`).emit('chat:typing', { convId, userId: uid, name });
+    });
+
+    socket.on('chat:send', async ({ convId, text, image }) => {
       const conv = db.data.conversations.find((c) => c.id === convId);
       if (!conv || !conv.members.includes(uid)) return;
       const clean = String(text || '').trim().slice(0, 800);
-      if (!clean) return;
+      const img = (typeof image === 'string' && image.startsWith('data:image/') && image.length <= 800000) ? image : null;
+      if (!clean && !img) return;
       const msg = { id: nanoid(10), convId, userId: uid, text: clean, ts: Date.now() };
+      if (img) msg.image = img;
       db.data.messages.push(msg);
       conv.reads = conv.reads || {}; conv.reads[uid] = msg.ts;
       await db.write();

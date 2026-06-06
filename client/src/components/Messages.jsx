@@ -4,11 +4,28 @@ import {
   List, ListItemButton, ListItemAvatar, ListItemText, Menu, MenuItem, ListItemIcon,
   Dialog, DialogTitle, DialogContent,
 } from '@mui/material';
-import { X, ArrowLeft, Plus, Send, Users, MessageCircle, MoreVertical, Pencil, Trash2, CheckCheck, Check } from 'lucide-react';
+import { X, ArrowLeft, Plus, Send, Users, MessageCircle, MoreVertical, Pencil, Trash2, CheckCheck, Check, Smile, ImagePlus } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import { Avatar, usePresence } from './OnlineRail.jsx';
 
 const hhmm = (ts) => new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const EMOJIS = ['😂', '🤣', '😭', '😍', '🥰', '😘', '😎', '🤩', '🥳', '😅', '😏', '🙃', '😡', '😱', '🤔', '🙄', '😴', '🥺', '😈', '💀', '👻', '❤️', '💕', '💖', '✨', '🔥', '💯', '🎉', '🎮', '👑', '🌸', '🦋', '⭐', '🍕', '🍷', '☕', '👀', '👍', '🙏', '🫶'];
+
+// Réduit une image en data URL compacte pour l'envoi.
+function fileToDataUrl(file, max = 1100) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      if (w > max || h > max) { const r = Math.min(max / w, max / h); w = Math.round(w * r); h = Math.round(h * r); }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 export function useUnread() {
   const [unread, setUnread] = useState(0);
@@ -37,8 +54,13 @@ export default function MessagesDrawer({ open, onClose, meId }) {
   const [msgMenu, setMsgMenu] = useState({ anchorEl: null, msg: null });
   const [convMenuEl, setConvMenuEl] = useState(null);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [typingName, setTypingName] = useState(null);
   const convIdRef = useRef(null);
   const endRef = useRef(null);
+  const fileRef = useRef(null);
+  const lastTyping = useRef(0);
+  const typingClear = useRef(null);
   const presence = usePresence();
   const onlineSet = new Set(presence.map((p) => p.id));
 
@@ -52,12 +74,19 @@ export default function MessagesDrawer({ open, onClose, meId }) {
     const onMsg = ({ convId, message }) => { if (convId === convIdRef.current) setMessages((m) => [...m, message]); };
     const onUpdate = ({ convId, message }) => { if (convId === convIdRef.current) setMessages((m) => m.map((x) => (x.id === message.id ? message : x))); };
     const onRemoved = ({ convId }) => { if (convId === convIdRef.current) { convIdRef.current = null; setConv(null); setView('list'); } };
+    const onTyping = ({ convId, name }) => {
+      if (convId !== convIdRef.current) return;
+      setTypingName(name);
+      clearTimeout(typingClear.current);
+      typingClear.current = setTimeout(() => setTypingName(null), 2500);
+    };
     s.on('chat:list', onList);
     s.on('chat:message', onMsg);
     s.on('chat:message:update', onUpdate);
     s.on('chat:removed', onRemoved);
+    s.on('chat:typing', onTyping);
     s.emit('chat:list', (l) => setList(l));
-    return () => { s.off('chat:list', onList); s.off('chat:message', onMsg); s.off('chat:message:update', onUpdate); s.off('chat:removed', onRemoved); };
+    return () => { s.off('chat:list', onList); s.off('chat:message', onMsg); s.off('chat:message:update', onUpdate); s.off('chat:removed', onRemoved); s.off('chat:typing', onTyping); };
   }, []);
 
   useEffect(() => { if (!open) { setView('list'); setConv(null); convIdRef.current = null; setEditingId(null); } }, [open]);
@@ -66,7 +95,7 @@ export default function MessagesDrawer({ open, onClose, meId }) {
   function openConv(item) {
     getSocket().emit('chat:history', { convId: item.id }, (res) => {
       if (res?.error) return;
-      setConv(res.conv); convIdRef.current = res.conv.id; setMessages(res.messages); setView('conv'); setEditingId(null); setText('');
+      setConv(res.conv); convIdRef.current = res.conv.id; setMessages(res.messages); setView('conv'); setEditingId(null); setText(''); setTypingName(null); setShowEmoji(false);
     });
   }
   function openNew() { getSocket().emit('people:all', (l) => setPeople(l || [])); setPick([]); setGroupName(''); setView('new'); }
@@ -79,7 +108,19 @@ export default function MessagesDrawer({ open, onClose, meId }) {
     if (!t || !conv) return;
     if (editingId) { getSocket().emit('chat:edit', { messageId: editingId, text: t }); setEditingId(null); }
     else getSocket().emit('chat:send', { convId: conv.id, text: t });
-    setText('');
+    setText(''); setShowEmoji(false);
+  }
+  function onType(v) {
+    setText(v);
+    if (conv && !editingId) {
+      const now = Date.now();
+      if (now - lastTyping.current > 1200) { lastTyping.current = now; getSocket().emit('chat:typing', { convId: conv.id }); }
+    }
+  }
+  async function pickImage(e) {
+    const f = e.target.files?.[0];
+    if (f && conv) { try { const img = await fileToDataUrl(f); getSocket().emit('chat:send', { convId: conv.id, image: img }); } catch { /* ignore */ } }
+    if (fileRef.current) fileRef.current.value = '';
   }
   function togglePick(id) { setPick((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id])); }
   function startEdit() { setEditingId(msgMenu.msg.id); setText(msgMenu.msg.text); setMsgMenu({ anchorEl: null, msg: null }); }
@@ -187,12 +228,16 @@ export default function MessagesDrawer({ open, onClose, meId }) {
                     )}
                     <div className={`msg-bubble ${m.deleted ? 'deleted' : ''}`}>
                       {conv.type === 'group' && !mine && !m.deleted && <span className="msg-bubble-name">{nameById[m.userId] || '?'}</span>}
-                      <span className="msg-bubble-text">{m.deleted ? 'message supprimé' : m.text}</span>
+                      {m.image && !m.deleted && <img className="msg-img" src={m.image} alt="" onClick={() => window.open(m.image, '_blank')} />}
+                      {(m.text || m.deleted) && <span className="msg-bubble-text">{m.deleted ? 'message supprimé' : m.text}</span>}
                       <span className="msg-bubble-time">{hhmm(m.ts)}{m.editedTs && !m.deleted ? ' · modifié' : ''}</span>
                     </div>
                   </div>
                 );
               })}
+              {typingName && (
+                <div className="msg-bubble-row"><div className="msg-typing"><span className="msg-typing-name">{typingName}</span><span className="dots"><i /><i /><i /></span></div></div>
+              )}
               {status && (
                 <div className="msg-readstatus">{status.icon ? <CheckCheck size={13} /> : <Check size={13} />} {status.txt}</div>
               )}
@@ -202,9 +247,15 @@ export default function MessagesDrawer({ open, onClose, meId }) {
             {editingId && (
               <div className="msg-editbar"><Pencil size={13} /> Modification…<button onClick={() => { setEditingId(null); setText(''); }}>annuler</button></div>
             )}
+            {showEmoji && (
+              <div className="emoji-panel msg-emoji">{EMOJIS.map((e, i) => <button key={i} type="button" onClick={() => setText((t) => t + e)}>{e}</button>)}</div>
+            )}
             <div className="msg-input">
+              <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickImage} />
+              <IconButton size="small" onClick={() => fileRef.current?.click()} title="Image"><ImagePlus size={20} /></IconButton>
+              <IconButton size="small" onClick={() => setShowEmoji((s) => !s)} title="Emojis"><Smile size={20} /></IconButton>
               <TextField fullWidth size="small" placeholder="Écris un message…" value={text}
-                onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } }} />
+                onChange={(e) => onType(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } }} />
               <IconButton color="primary" onClick={send} disabled={!text.trim()}><Send size={20} /></IconButton>
             </div>
           </>
