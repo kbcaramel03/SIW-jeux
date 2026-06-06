@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@mui/material';
-import { Play, Hand, PauseCircle, Sparkles, Layers, Heart } from 'lucide-react';
+import { Play, Hand, PauseCircle, Sparkles, Layers } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
 import Flip7Card, { Flip7Back } from './Flip7Card.jsx';
 import { winConfetti } from '../effects.js';
@@ -9,7 +9,6 @@ import { winConfetti } from '../effects.js';
 const ACTION_INFO = {
   freeze: { label: 'Stop', icon: Hand, hint: 'Choisis qui est stoppé (toi ou un autre joueur encore en jeu) : il sort de la manche mais garde ses points.' },
   flip3: { label: 'Pioche 3', icon: Layers, hint: 'Choisis qui pioche 3 cartes d\'affilée (toi ou un autre joueur encore en jeu).' },
-  give_second: { label: 'Donner une Second Chance', icon: Heart, hint: 'Tu en as déjà une : offre celle-ci à un autre joueur.' },
 };
 
 export default function Flip7({ room, isHost, onAction, onNewGame }) {

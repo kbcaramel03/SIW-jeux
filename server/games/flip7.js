@@ -112,15 +112,9 @@ function applyCard(state, owner, card) {
     line.mods.push(card);
   } else if (card.kind === 'action') {
     if (card.action === 'second') {
-      if (!line.second) {
-        line.second = true;
-      } else {
-        // On a déjà une Second Chance : il faut la donner à un autre joueur actif
-        // qui n'en a pas. Si personne n'est éligible, on la défausse.
-        const recipients = state.round.active.filter((id) => id !== owner && !state.round.lines[id].second);
-        if (recipients.length === 0) state.discard.push(card);
-        else state.round.pending.push({ type: 'give_second', by: owner });
-      }
+      // La Second Chance ne va qu'à soi-même ; un second exemplaire est défaussé.
+      if (!line.second) line.second = true;
+      else state.discard.push(card);
     } else if (card.action === 'freeze') {
       state.round.pending.push({ type: 'freeze', by: owner });
     } else if (card.action === 'flip3') {
@@ -132,7 +126,6 @@ function applyCard(state, owner, card) {
 // Cibles valides pour une action en attente (même logique côté serveur et vue).
 function pendingTargets(state, pa) {
   const r = state.round;
-  if (pa.type === 'give_second') return r.active.filter((id) => id !== pa.by && !r.lines[id].second);
   return r.active.slice(); // freeze / flip3 : n'importe quel joueur encore actif (soi compris)
 }
 
@@ -170,13 +163,7 @@ export function resolveAction(state, userId, targetId) {
   const pa = state.round.pending[0];
   if (!pa || pa.by !== userId) throw new Error('Pas d\'action à résoudre.');
 
-  if (pa.type === 'give_second') {
-    if (targetId === userId || !state.round.active.includes(targetId)) throw new Error('Cible invalide.');
-    if (state.round.lines[targetId].second) throw new Error('Ce joueur a déjà une Second Chance.');
-    state.round.lines[targetId].second = true;
-    state.round.pending.shift();
-    state.log.push('Second Chance offerte à un autre joueur.');
-  } else if (pa.type === 'freeze') {
+  if (pa.type === 'freeze') {
     if (!state.round.active.includes(targetId)) throw new Error('Cible invalide.');
     const l = state.round.lines[targetId];
     l.frozen = true; l.stayed = true;
