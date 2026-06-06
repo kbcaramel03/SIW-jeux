@@ -40,7 +40,7 @@ h1, h2, h3, h4 { font-family: var(--font-head); font-weight: 600; color: var(--i
 
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 .shell { flex: 1; display: flex; width: 100%; max-width: 1240px; margin: 0 auto; }
-.main { flex: 1; padding: 18px; width: 100%; min-width: 0; }
+.main { flex: 1; padding: 18px; width: 100%; min-width: 0; overflow-x: clip; }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
@@ -164,7 +164,8 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .room-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 .room-header h2 { margin: 0; flex: 1; }
 .badge { display: inline-flex; align-items: center; gap: 6px; background: var(--pink); color: #fff; padding: 5px 13px; border-radius: 20px; font-size: 0.8rem; font-family: var(--font-head); font-weight: 600; }
-.room-body { display: grid; grid-template-columns: 1fr 330px; gap: 16px; align-items: start; }
+.room-body { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.game-area { min-width: 0; }
 .room-side { display: flex; flex-direction: column; gap: 16px; }
 .player-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 7px; }
 .player-list li { display: flex; align-items: center; gap: 9px; padding: 8px 11px; background: #f8f2ff; border-radius: 12px; font-weight: 600; }
@@ -349,7 +350,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .uno-card.dim { filter: grayscale(0.4) brightness(0.93); opacity: 0.72; }
 
 /* Table ronde : tapis vert ovale, adversaires disposés en arc autour du centre */
-.uno-table { position: relative; width: 100%; max-width: 560px; aspect-ratio: 16 / 11; min-height: 320px;
+.uno-table { position: relative; width: 100%; max-width: 560px; min-width: 0; aspect-ratio: 16 / 11;
   margin: 6px auto 4px; border-radius: 50% / 42%;
   background: radial-gradient(ellipse at center, #cfe7d8 0%, #b6dcc4 60%, #a3d0b4 100%);
   box-shadow: inset 0 0 0 8px rgba(255,255,255,0.35), inset 0 0 30px rgba(40,90,60,0.18), var(--shadow); }
@@ -374,10 +375,11 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .uno-discard.color-blue { box-shadow: 0 0 0 4px rgba(43,127,212,0.5); }
 .uno-meta { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--ink-soft); }
 @media (max-width: 560px) {
-  .uno-table { min-height: 270px; }
-  .uno-opp { width: 74px; }
-  .uno-opp-name { font-size: 0.68rem; }
-  .uno-center { gap: 10px; }
+  /* Tables rondes : on les rend plus hautes (la largeur reste contrainte à l'écran) */
+  .uno-table, .bsh-table { aspect-ratio: 5 / 4; }
+  .uno-opp, .bsh-opp { width: 66px; }
+  .uno-opp-name, .bsh-opp-name { font-size: 0.66rem; }
+  .uno-center, .bsh-center { gap: 10px; }
 }
 .uno-color-dot { width: 22px; height: 22px; border-radius: 50%; box-shadow: var(--shadow-sm); }
 .uno-color-dot.c-red, .uno-color-choice.c-red { background: #e4433a; }
@@ -583,7 +585,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 
 /* ===== Bullshit (table ronde) ===== */
 .bsh { display: flex; flex-direction: column; gap: 14px; align-items: center; }
-.bsh-table { position: relative; width: 100%; max-width: 560px; aspect-ratio: 16 / 11; min-height: 320px;
+.bsh-table { position: relative; width: 100%; max-width: 560px; min-width: 0; aspect-ratio: 16 / 11;
   margin: 6px auto 4px; border-radius: 50% / 42%;
   background: radial-gradient(ellipse at center, #f3dcec 0%, #e6c2dd 60%, #d8aecf 100%);
   box-shadow: inset 0 0 0 8px rgba(255,255,255,0.4), inset 0 0 30px rgba(120,60,110,0.18), var(--shadow); }
