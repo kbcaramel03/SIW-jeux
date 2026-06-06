@@ -73,39 +73,60 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
 
   return (
     <div className="uno fade-up">
-      {/* Adversaires */}
-      <div className="uno-opponents">
-        {opponents.map((p) => (
-          <div key={p.id} className={`uno-opp ${g.turn === p.id ? 'active' : ''}`}>
-            <Avatar name={nameById[p.id]} gender={genderById[p.id]} />
-            <span className="uno-opp-name">{nameById[p.id] || '?'}</span>
-            <div className="uno-opp-cards">
-              {Array.from({ length: Math.min(p.count, 10) }).map((_, i) => <UnoCard key={i} faceDown size="mini" />)}
+      {/* Table ronde : adversaires disposés en arc autour du centre */}
+      <div className="uno-table">
+        {opponents.map((p, i) => {
+          const n = opponents.length;
+          const t = n === 1 ? 0.5 : i / (n - 1);
+          // Arc sur la moitié haute de la table (150° → 30°), les joueuses sont « en face ».
+          const ang = ((150 - 120 * t) * Math.PI) / 180;
+          const x = 50 + Math.cos(ang) * 44;
+          const y = 40 - Math.sin(ang) * 30;
+          // L'éventail s'ouvre vers le bas (le tapis), légèrement incliné vers le centre.
+          const fanRot = 180 + (x - 50) * 0.5;
+          const fan = Math.min(p.count, 7);
+          return (
+            <div key={p.id} className={`uno-opp ${g.turn === p.id ? 'active' : ''}`}
+              style={{ left: `${x}%`, top: `${y}%` }}>
+              <div className="uno-opp-info">
+                <Avatar name={nameById[p.id]} gender={genderById[p.id]} size={26} />
+                <span className="uno-opp-name">{nameById[p.id] || '?'}</span>
+                <span className="uno-count">{p.count}</span>
+              </div>
+              <div className="uno-opp-fan" style={{ transform: `rotate(${fanRot}deg)` }}>
+                {Array.from({ length: fan }).map((_, j) => {
+                  const rot = fan === 1 ? 0 : -22 + (44 / (fan - 1)) * j;
+                  return (
+                    <div key={j} className="uno-fan-card" style={{ transform: `rotate(${rot}deg)` }}>
+                      <UnoCard faceDown size="mini" />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <span className="uno-count">{p.count}</span>
-          </div>
-        ))}
-      </div>
+          );
+        })}
 
-      {/* Centre : pioche + défausse + sens + couleur courante */}
-      <div className="uno-center">
-        <div className="uno-pile">
-          <UnoCard faceDown size="md" />
-          <span className="uno-deck-count">{g.deckCount}</span>
-        </div>
-        <div className={`uno-discard color-${g.currentColor}`}>
-          <AnimatePresence mode="popLayout">
-            <motion.div key={g.topCard?.id}
-              initial={{ scale: 0.5, rotate: -25, opacity: 0 }}
-              animate={{ scale: 1, rotate: 0, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
-              <UnoCard card={g.topCard} size="lg" />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        <div className="uno-meta">
-          <span className={`uno-color-dot c-${g.currentColor}`} title="Couleur en cours" />
-          <RotateCw size={18} style={{ transform: g.direction === -1 ? 'scaleX(-1)' : 'none' }} />
+        {/* Centre : pioche + défausse + sens + couleur courante */}
+        <div className="uno-center">
+          <div className="uno-pile">
+            <UnoCard faceDown size="md" />
+            <span className="uno-deck-count">{g.deckCount}</span>
+          </div>
+          <div className={`uno-discard color-${g.currentColor}`}>
+            <AnimatePresence mode="popLayout">
+              <motion.div key={g.topCard?.id}
+                initial={{ scale: 0.5, rotate: -25, opacity: 0 }}
+                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
+                <UnoCard card={g.topCard} size="lg" />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <div className="uno-meta">
+            <span className={`uno-color-dot c-${g.currentColor}`} title="Couleur en cours" />
+            <RotateCw size={18} style={{ transform: g.direction === -1 ? 'scaleX(-1)' : 'none' }} />
+          </div>
         </div>
       </div>
 

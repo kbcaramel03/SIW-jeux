@@ -8,6 +8,7 @@ import { Avatar } from '../components/OnlineRail.jsx';
 import Codenames from '../games/Codenames.jsx';
 import Battleship from '../games/Battleship.jsx';
 import Uno from '../games/Uno.jsx';
+import Flip7 from '../games/Flip7.jsx';
 
 export default function Room() {
   const { id } = useParams();
@@ -74,6 +75,9 @@ export default function Room() {
           )}
           {room.gameKey === 'uno' && (
             <Uno room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'flip7' && (
+            <Flip7 room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
         </div>
 

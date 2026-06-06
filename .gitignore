@@ -4,3 +4,6 @@ client/dist/
 server/data/db.json
 *.log
 .env
+
+# Captures de test locales
+test-screens/

@@ -3,6 +3,7 @@
 import * as codenames from './codenames.js';
 import * as battleship from './battleship.js';
 import * as uno from './uno.js';
+import * as flip7 from './flip7.js';
 
 export const GAMES = {
   codenames: {
@@ -28,7 +29,12 @@ export const GAMES = {
     view: uno.viewFor,
     action: applyUnoAction,
   },
-  flip7: { key: 'flip7', label: 'Flip 7', emoji: '🔢', minPlayers: 2, maxPlayers: 8, ready: false },
+  flip7: {
+    key: 'flip7', label: 'Flip 7', emoji: '🔢', minPlayers: 2, maxPlayers: 8, ready: true,
+    create: flip7.createFlip7,
+    view: flip7.viewFor,
+    action: applyFlip7Action,
+  },
   bullshit: { key: 'bullshit', label: 'Bullshit', emoji: '🤥', minPlayers: 3, maxPlayers: 8, ready: false },
   conspiracy: { key: 'conspiracy', label: 'Conspiracy', emoji: '🕯️', minPlayers: 4, maxPlayers: 10, ready: false },
   scribbl: { key: 'scribbl', label: 'Scribbl', emoji: '🎨', minPlayers: 2, maxPlayers: 10, ready: false },
@@ -72,6 +78,25 @@ function applyUnoAction(state, userId, payload) {
       return uno.drawUno(state, userId);
     case 'pass':
       return uno.passUno(state, userId);
+    default:
+      throw new Error('Action inconnue.');
+  }
+}
+
+function applyFlip7Action(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join':
+      return flip7.joinFlip7(state, userId);
+    case 'start':
+      return flip7.startFlip7(state, userId);
+    case 'hit':
+      return flip7.hitFlip7(state, userId);
+    case 'stay':
+      return flip7.stayFlip7(state, userId);
+    case 'resolve':
+      return flip7.resolveAction(state, userId, payload.targetId);
+    case 'next':
+      return flip7.nextRound(state, userId);
     default:
       throw new Error('Action inconnue.');
   }

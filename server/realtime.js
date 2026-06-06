@@ -26,6 +26,24 @@ function lobbyList() {
   return [...rooms.values()].map(roomSummary);
 }
 
+// Recale la liste des joueuses sur les sockets réellement présentes dans le salon.
+// Indispensable car les handlers join/leave sont asynchrones et peuvent s'entrelacer
+// (React StrictMode qui double-monte en dev, ou simples reconnexions socket en prod) :
+// on ne se fie donc jamais à un compteur mutable, on relit l'état réel des sockets.
+function reconcilePlayers(room, sockets) {
+  const present = new Map();
+  for (const s of sockets) {
+    if (!present.has(s.data.user.id)) present.set(s.data.user.id, s.data.user);
+  }
+  room.players = room.players.filter((p) => present.has(p.id));
+  for (const [id, u] of present) {
+    if (!room.players.some((p) => p.id === id)) {
+      room.players.push({ id, displayName: u.displayName, gender: u.gender });
+    }
+  }
+  if (!present.has(room.hostId) && room.players[0]) room.hostId = room.players[0].id;
+}
+
 export function createRealtime(httpServer) {
   const io = new Server(httpServer, {
     cors: IS_PROD ? {} : { origin: DEV_ORIGINS, credentials: true },
@@ -62,10 +80,25 @@ export function createRealtime(httpServer) {
   }
 
   // Envoie l'état du salon, personnalisé pour chaque joueuse (vue du jeu différente).
+  // Supprime un salon vide après un court délai de grâce : un remontage StrictMode
+  // ou une reconnexion peut rejoindre dans la foulée. On annule si quelqu'un revient.
+  function scheduleDelete(roomId) {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    clearTimeout(room.deleteTimer);
+    room.deleteTimer = setTimeout(async () => {
+      const r = rooms.get(roomId);
+      if (!r) return;
+      const socks = await io.in(roomId).fetchSockets();
+      if (socks.length === 0) { rooms.delete(roomId); broadcastLobby(); }
+    }, 3000);
+  }
+
   async function emitRoomState(roomId) {
     const room = rooms.get(roomId);
     if (!room) return;
     const sockets = await io.in(roomId).fetchSockets();
+    reconcilePlayers(room, sockets);
     for (const s of sockets) {
       const uid = s.data.user.id;
       const gameView = room.game ? GAMES[room.gameKey].view(room.game, uid) : null;
@@ -91,17 +124,12 @@ export function createRealtime(httpServer) {
     const room = rooms.get(roomId);
     if (!room) return;
 
-    // La joueuse a-t-elle encore une autre socket dans ce salon (autre onglet) ?
+    // On recale la liste sur les sockets restantes (gère aussi le cas « même
+    // joueuse encore présente via un autre onglet » et le transfert d'hôte).
     const others = await io.in(roomId).fetchSockets();
-    const stillHere = others.some((s) => s.data.user.id === socket.data.user.id);
-    if (!stillHere) {
-      room.players = room.players.filter((p) => p.id !== socket.data.user.id);
-      if (room.hostId === socket.data.user.id && room.players[0]) {
-        room.hostId = room.players[0].id; // transfert de l'hôte
-      }
-    }
+    reconcilePlayers(room, others);
     if (room.players.length === 0) {
-      rooms.delete(roomId);
+      scheduleDelete(roomId);
     } else {
       await emitRoomState(roomId);
     }
@@ -155,6 +183,7 @@ export function createRealtime(httpServer) {
       }
       if (socket.data.roomId && socket.data.roomId !== roomId) await leaveRoom(socket);
 
+      clearTimeout(room.deleteTimer); // on annule une éventuelle suppression différée
       socket.join(roomId);
       socket.data.roomId = roomId;
       if (!already) {

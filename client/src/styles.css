@@ -321,7 +321,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 /* ====== Uno ====== */
 .uno { display: flex; flex-direction: column; gap: 14px; align-items: center; }
 .uno-card { position: relative; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); flex: none; }
-.uno-card.size-mini { width: 20px; height: 30px; border-radius: 4px; }
+.uno-card.size-mini { width: 26px; height: 38px; border-radius: 5px; }
 .uno-card.size-md { width: 58px; height: 88px; }
 .uno-card.size-lg { width: 74px; height: 110px; }
 .uno-card.c-red { background: #e4433a; } .uno-card.c-yellow { background: #edb015; }
@@ -340,22 +340,30 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .uno-wheel { position: absolute; z-index: 0; width: 56%; height: 56%; border-radius: 50%; background: conic-gradient(#e4433a 0 25%, #edb015 0 50%, #3aa856 0 75%, #2b7fd4 0); }
 .uno-card.back { background: #26262e; }
 .uno-card.back::before { content: ''; display: block; width: 80%; height: 60%; background: #e4433a; border-radius: 50%; transform: rotate(42deg) scaleX(0.5); }
-.uno-card.size-mini.back::before { display: none; }
+.uno-card.size-mini.back::before { display: block; width: 78%; height: 58%; }
 .uno-back-text { position: relative; z-index: 1; font-family: var(--font-brand); color: #fff; font-size: 0.85rem; transform: rotate(-18deg); }
-.uno-card.size-mini.back .uno-back-text { display: none; }
+.uno-card.size-mini.back .uno-back-text { display: block; font-size: 0.42rem; }
 .uno-card.clickable { cursor: pointer; }
 .uno-card.playable { box-shadow: 0 0 0 3px var(--pink), 0 8px 18px rgba(150,70,160,0.22); }
 .uno-card.dim { filter: grayscale(0.4) brightness(0.93); opacity: 0.72; }
 
-.uno-opponents { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; }
-.uno-opp { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 10px; border-radius: 14px; background: rgba(255,255,255,0.6); }
-.uno-opp.active { box-shadow: 0 0 0 2px var(--pink); background: #fff; }
-.uno-opp-name { font-weight: 700; font-size: 0.85rem; }
-.uno-opp-cards { display: flex; }
-.uno-opp-cards .uno-card { margin-left: -12px; }
-.uno-opp-cards .uno-card:first-child { margin-left: 0; }
-.uno-count { font-size: 0.74rem; color: var(--ink-soft); font-weight: 700; }
-.uno-center { display: flex; align-items: center; gap: 18px; justify-content: center; }
+/* Table ronde : tapis vert ovale, adversaires disposés en arc autour du centre */
+.uno-table { position: relative; width: 100%; max-width: 560px; aspect-ratio: 16 / 11; min-height: 320px;
+  margin: 6px auto 4px; border-radius: 50% / 42%;
+  background: radial-gradient(ellipse at center, #cfe7d8 0%, #b6dcc4 60%, #a3d0b4 100%);
+  box-shadow: inset 0 0 0 8px rgba(255,255,255,0.35), inset 0 0 30px rgba(40,90,60,0.18), var(--shadow); }
+.uno-opp { position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 92px; }
+.uno-opp-fan { position: relative; height: 40px; display: flex; justify-content: center; align-items: flex-end; }
+.uno-fan-card { transform-origin: bottom center; margin: 0 -6px; }
+.uno-opp-fan .uno-card.back { box-shadow: 0 0 0 1.5px #fff, var(--shadow-sm); }
+.uno-opp-info { display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 3px 8px; border-radius: 12px; background: rgba(255,255,255,0.72); backdrop-filter: blur(2px); }
+.uno-opp.active .uno-opp-info { box-shadow: 0 0 0 2px var(--pink); background: #fff; }
+.uno-opp-name { font-weight: 700; font-size: 0.78rem; line-height: 1.1; }
+.uno-count { font-size: 0.72rem; color: var(--ink-soft); font-weight: 700; }
+.uno-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 16px; justify-content: center; }
 .uno-pile { position: relative; }
 .uno-deck-count { position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; font-size: 0.64rem; padding: 1px 6px; border-radius: 8px; font-weight: 700; }
 .uno-discard { padding: 6px; border-radius: 16px; transition: box-shadow 0.2s; }
@@ -364,6 +372,12 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .uno-discard.color-green { box-shadow: 0 0 0 4px rgba(58,168,86,0.5); }
 .uno-discard.color-blue { box-shadow: 0 0 0 4px rgba(43,127,212,0.5); }
 .uno-meta { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--ink-soft); }
+@media (max-width: 560px) {
+  .uno-table { min-height: 270px; }
+  .uno-opp { width: 74px; }
+  .uno-opp-name { font-size: 0.68rem; }
+  .uno-center { gap: 10px; }
+}
 .uno-color-dot { width: 22px; height: 22px; border-radius: 50%; box-shadow: var(--shadow-sm); }
 .uno-color-dot.c-red, .uno-color-choice.c-red { background: #e4433a; }
 .uno-color-dot.c-yellow, .uno-color-choice.c-yellow { background: #edb015; }
@@ -379,6 +393,124 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .uno-color-choice:hover { transform: scale(1.1); }
 .uno-seats { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
 .uno-seat { display: flex; align-items: center; gap: 8px; background: #f6f0f5; padding: 6px 11px; border-radius: 12px; font-weight: 600; }
+
+/* ====== Flip 7 ====== */
+.f7 { display: flex; flex-direction: column; gap: 14px; }
+/* Classement temps réel (score cumulé de la partie) */
+.f7-standings { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  background: linear-gradient(120deg, #fff, #fbf1f7); border-radius: var(--radius-sm);
+  padding: 8px 12px; box-shadow: var(--shadow-sm); }
+.f7-standings-title { font-family: var(--font-head); font-weight: 800; font-size: 0.72rem;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); margin-right: 2px; }
+.f7-rank { display: flex; align-items: center; gap: 7px; padding: 4px 11px 4px 7px;
+  border-radius: 999px; background: rgba(255,255,255,0.75); box-shadow: var(--shadow-sm); }
+.f7-rank.me { box-shadow: 0 0 0 2px var(--pink); background: #fff; }
+.f7-rank.rank-1 { background: linear-gradient(120deg, #fff7e0, #ffeec0); }
+.f7-rank-pos { min-width: 22px; text-align: center; font-family: var(--font-head); font-weight: 800; font-size: 0.9rem; }
+.f7-rank-name { font-weight: 700; font-size: 0.84rem; color: var(--ink);
+  max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f7-rank-score { font-family: var(--font-head); font-weight: 800; font-size: 0.96rem; color: var(--pink);
+  min-width: 22px; text-align: right; }
+.f7-banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: #fff; border-radius: var(--radius-sm); padding: 11px 16px; box-shadow: var(--shadow-sm);
+  font-family: var(--font-head); font-weight: 600; color: var(--ink); }
+.f7-banner.mine { background: linear-gradient(120deg, #fff0f6, #f6ebff); box-shadow: 0 0 0 2px var(--pink), var(--shadow-sm); }
+.f7-meta { font-family: var(--font-body); font-weight: 600; font-size: 0.82rem; color: var(--ink-soft); }
+
+.f7-resolve { background: linear-gradient(120deg, #fff7fa, #f4eefb); border-radius: var(--radius-sm); padding: 12px 16px; box-shadow: var(--shadow-sm); }
+.f7-resolve-hint { margin: 0 0 9px; font-weight: 600; color: var(--ink); }
+.f7-targets { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.f7-players { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.f7-player { position: relative; background: #fff; border-radius: var(--radius-sm); padding: 12px; box-shadow: var(--shadow-sm);
+  border: 2px solid transparent; transition: border 0.15s, opacity 0.2s; }
+.f7-player.turn { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-soft), var(--shadow-sm); }
+.f7-player.busted { opacity: 0.6; border-color: #e0a0a8; }
+.f7-player.frozen { border-color: var(--sky); }
+.f7-player.stayed { border-color: var(--mint); }
+.f7-player.flip7 { border-color: var(--gold); box-shadow: 0 0 0 3px #f3e6c4, var(--shadow-sm); }
+
+.f7-player-head { display: flex; align-items: center; gap: 9px; padding-right: 60px; min-height: 42px; }
+.f7-player-id { display: flex; flex-direction: column; line-height: 1.2; flex: 1; min-width: 0; }
+.f7-player-name { font-weight: 700; color: var(--ink); font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f7-player-score { font-size: 0.78rem; color: var(--ink-soft); }
+
+.f7-badge { font-family: var(--font-head); font-weight: 700; font-size: 0.62rem; padding: 2px 7px; border-radius: 9px; color: #fff; display: inline-flex; align-items: center; gap: 3px; }
+.f7-badge.second { background: var(--violet); padding: 3px; }
+.f7-badge.bust { background: #c96b78; }
+.f7-badge.frz { background: var(--sky); padding: 3px; }
+.f7-badge.stay { background: var(--mint); }
+.f7-badge.f7t { background: var(--gold); }
+
+.f7-line { display: flex; flex-wrap: wrap; gap: 0; margin: 12px 0 8px; min-height: 64px; align-items: flex-end;
+  padding-left: 6px; perspective: 700px; }
+.f7-empty { color: var(--ink-soft); font-size: 0.82rem; font-style: italic; padding: 20px 0; }
+
+/* Pioche centrale */
+.f7-table { display: flex; flex-direction: column; align-items: center; gap: 4px; perspective: 700px; }
+.f7-table-label { font-size: 0.74rem; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* ---- Carte Flip 7 (vraie carte) ---- */
+.f7c { position: relative; flex: none; border-radius: 9px; transform-style: preserve-3d; }
+.f7c.size-sm { width: 44px; height: 62px; margin-left: -12px; }
+.f7c.size-sm:first-child { margin-left: 0; }
+.f7c.size-md { width: 62px; height: 88px; }
+.f7c-face { position: absolute; inset: 0; border-radius: 9px; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(40,20,40,0.18), 0 4px 10px rgba(40,20,40,0.16);
+  border: 2px solid #fff; display: flex; align-items: center; justify-content: center; }
+
+/* Cartes nombres : carte claire, gros chiffre coloré, index dans 2 coins */
+.f7c-number { color: var(--ink); }
+.f7c-number .f7c-big { font-family: var(--font-head); font-weight: 800; color: var(--ink); }
+.f7c-number::after { content: ''; position: absolute; inset: 3px; border-radius: 6px; border: 1.5px solid var(--ring); opacity: 0.55; }
+.f7c .f7c-big { font-family: var(--font-head); font-weight: 800; font-size: 1.7rem; line-height: 1; z-index: 1; }
+.f7c .f7c-corner { position: absolute; font-family: var(--font-head); font-weight: 800; font-size: 0.6rem; line-height: 1; z-index: 1; }
+.f7c-number .f7c-corner { color: var(--ink); }
+.f7c .f7c-corner.tl { top: 4px; left: 5px; }
+.f7c .f7c-corner.br { bottom: 4px; right: 5px; transform: rotate(180deg); }
+.f7c.size-md .f7c-big { font-size: 2.3rem; }
+
+/* Modificateurs : cartes colorées pleines */
+.f7c-mod { color: #fff; }
+.f7c-mod .f7c-big, .f7c-mod .f7c-corner { color: #fff; }
+.f7c-mod.add { background: linear-gradient(155deg, #f6a368, #e8743f); }
+.f7c-mod.mult { background: linear-gradient(155deg, #b07ad8, #7d4fc0); }
+
+/* Actions : carte colorée avec icône + libellé */
+.f7c-action { flex-direction: column; gap: 3px; color: #fff; padding: 4px; text-align: center; }
+.f7c-action .f7c-act-label { font-family: var(--font-head); font-weight: 800; font-size: 0.52rem; letter-spacing: 0.03em; }
+.f7c-action.stop { background: linear-gradient(155deg, #5fc98a, #2e9c5c); }   /* Stop = vert */
+.f7c-action.flip3 { background: linear-gradient(155deg, #f6a368, #e8743f); } /* Pioche 3 = orange */
+.f7c-action.second { background: linear-gradient(155deg, #ef6a7a, #d23047); } /* Second Chance = rouge */
+
+/* Carte « doublon » qui fait perdre (reste visible, marquée en rouge) */
+.f7c.busted .f7c-face { filter: saturate(0.85); box-shadow: 0 0 0 2px #d23047, 0 3px 8px rgba(180,30,50,0.3); }
+.f7c-bust-tag { position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
+  background: #d23047; color: #fff; font-family: var(--font-head); font-weight: 800;
+  font-size: 0.46rem; letter-spacing: 0.04em; text-align: center; padding: 1px 0; }
+
+/* Taille XS (cartes action posées en haut à droite d'une joueuse) */
+.f7c.size-xs { width: 30px; height: 42px; }
+.f7c.size-xs .f7c-face { border-width: 1.5px; border-radius: 7px; }
+.f7c.size-xs .f7c-act-icon { width: 14px; height: 14px; }
+.f7c.size-xs .f7c-act-label { font-size: 0.4rem; }
+.f7-player-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 3px; z-index: 3; }
+
+/* Dos de carte (pioche) */
+.f7c-back { background: linear-gradient(135deg, #3a2540, #6a3a66); border-color: #fff; }
+.f7c-back::before { content: ''; position: absolute; inset: 5px; border-radius: 6px;
+  border: 2px dashed rgba(255,255,255,0.35); }
+.f7c-back-logo { font-family: var(--font-brand, var(--font-head)); font-weight: 800; color: #fff;
+  font-size: 1.6rem; transform: rotate(-12deg); z-index: 1; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.f7c-deck-count { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: #fff; font-size: 0.64rem; padding: 1px 7px; border-radius: 8px; font-weight: 700; }
+
+.f7-line-foot { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--ink-soft); font-weight: 600; }
+.f7-cur { color: var(--pink); }
+.f7-round-pts { color: var(--gold); font-weight: 700; }
+
+.f7-controls { display: flex; gap: 10px; justify-content: center; }
+.f7-log { background: rgba(255,255,255,0.6); border-radius: var(--radius-sm); padding: 9px 14px; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.6; }
 
 /* ====== Responsive ====== */
 @media (max-width: 860px) {
