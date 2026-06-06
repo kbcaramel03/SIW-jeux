@@ -127,6 +127,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .avatar-F { background: linear-gradient(135deg, var(--pink), var(--purple)); }
 .avatar-M { background: linear-gradient(135deg, var(--sky), var(--violet)); }
 .avatar-A { background: linear-gradient(135deg, var(--peach), var(--rose)); }
+.avatar-img { background-size: cover; background-position: center; background-repeat: no-repeat; color: transparent; }
 
 /* ====== Lobby ====== */
 .section-title { display: flex; align-items: center; gap: 9px; }
@@ -515,12 +516,17 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .f7c.size-xs .f7c-act-label { font-size: 0.4rem; }
 .f7-player-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 3px; z-index: 3; }
 
-/* Dos de carte (pioche) */
-.f7c-back { background: linear-gradient(135deg, #3a2540, #6a3a66); border-color: #fff; }
+/* Dos de carte (pioche) : velours prune + losanges + logo « Flip 7 » */
+.f7c-back { background: radial-gradient(circle at 32% 24%, #7d4a86, #3a2540 72%); border-color: #fff; overflow: hidden; }
 .f7c-back::before { content: ''; position: absolute; inset: 5px; border-radius: 6px;
-  border: 2px dashed rgba(255,255,255,0.35); }
-.f7c-back-logo { font-family: var(--font-brand, var(--font-head)); font-weight: 800; color: #fff;
-  font-size: 1.6rem; transform: rotate(-12deg); z-index: 1; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+  border: 1.5px solid rgba(255,255,255,0.5);
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.10) 0 5px, transparent 5px 10px),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,0.10) 0 5px, transparent 5px 10px); }
+.f7c-back-logo { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;
+  line-height: 0.82; transform: rotate(-8deg); text-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+.f7c-back-logo .fl { font-family: var(--font-head); font-weight: 800; color: #fff; font-size: 0.6rem; letter-spacing: 0.14em; }
+.f7c-back-logo .sev { font-family: var(--font-brand, var(--font-head)); font-weight: 800; color: #ffd86b; font-size: 1.5rem; }
 .f7c-deck-count { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
   background: var(--ink); color: #fff; font-size: 0.64rem; padding: 1px 7px; border-radius: 8px; font-weight: 700; }
 
@@ -543,3 +549,70 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   .bs-grid, .bs-grid.sm { max-width: 100%; }
   .bs-side h4 { font-size: 0.82rem; }
 }
+
+/* ===== Carte à jouer classique (52 cartes) ===== */
+.pc { position: relative; background: #fff; border-radius: 8px; border: 1px solid #e3dbe2;
+  box-shadow: var(--shadow-sm); flex: none; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-head); }
+.pc.size-mini { width: 22px; height: 32px; border-radius: 4px; }
+.pc.size-sm { width: 38px; height: 54px; }
+.pc.size-md { width: 52px; height: 74px; }
+.pc.red { color: #d23047; } .pc.black { color: #2a2230; }
+.pc-pip { font-size: 1.6rem; line-height: 1; }
+.pc.size-sm .pc-pip { font-size: 1.15rem; }
+.pc-corner { position: absolute; font-weight: 800; line-height: 0.85; display: flex; flex-direction: column; align-items: center; }
+.pc-corner b { font-size: 0.66rem; } .pc-corner i { font-style: normal; font-size: 0.58rem; }
+.pc.size-sm .pc-corner b { font-size: 0.56rem; } .pc.size-sm .pc-corner i { font-size: 0.5rem; }
+.pc-corner.tl { top: 3px; left: 4px; } .pc-corner.br { bottom: 3px; right: 4px; transform: rotate(180deg); }
+.pc.size-mini .pc-corner, .pc.size-mini .pc-pip { display: none; }
+.pc.clickable { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+.pc.clickable:hover { transform: translateY(-4px); }
+.pc.selected { transform: translateY(-12px); box-shadow: 0 0 0 3px var(--pink), 0 8px 16px rgba(150,70,160,0.25); }
+/* Joli dos de carte : velours prune + losanges + emblème cœur */
+.pc-back { background: radial-gradient(circle at 32% 24%, #a35a9b, #5a2d63 72%); border: 2px solid #fff; overflow: hidden; }
+.pc-back-deco { position: absolute; inset: 4px; border-radius: 5px; border: 1.5px solid rgba(255,255,255,0.55);
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.12) 0 5px, transparent 5px 10px),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,0.12) 0 5px, transparent 5px 10px); }
+.pc-back::after { content: '♥'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.9); font-size: 1.3rem; text-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+.pc.size-md.pc-back::after { font-size: 1.5rem; }
+.pc.size-mini.pc-back::after { display: none; }
+.pc.size-mini .pc-back-deco { inset: 2px; border-width: 1px;
+  background: repeating-linear-gradient(45deg, rgba(255,255,255,0.16) 0 3px, transparent 3px 6px); }
+
+/* ===== Bullshit (table ronde) ===== */
+.bsh { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.bsh-table { position: relative; width: 100%; max-width: 560px; aspect-ratio: 16 / 11; min-height: 320px;
+  margin: 6px auto 4px; border-radius: 50% / 42%;
+  background: radial-gradient(ellipse at center, #f3dcec 0%, #e6c2dd 60%, #d8aecf 100%);
+  box-shadow: inset 0 0 0 8px rgba(255,255,255,0.4), inset 0 0 30px rgba(120,60,110,0.18), var(--shadow); }
+.bsh-opp { position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 92px; }
+.bsh-opp-info { display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 3px 8px; border-radius: 12px; background: rgba(255,255,255,0.78); backdrop-filter: blur(2px); }
+.bsh-opp.active .bsh-opp-info { box-shadow: 0 0 0 2px var(--pink); background: #fff; }
+.bsh-opp-name { font-weight: 700; font-size: 0.78rem; line-height: 1.1; }
+.bsh-count { font-size: 0.72rem; color: var(--ink-soft); font-weight: 700; }
+.bsh-opp-fan { position: relative; height: 38px; display: flex; justify-content: center; align-items: flex-end; }
+.bsh-fan-card { transform-origin: bottom center; margin: 0 -7px; }
+.bsh-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 18px; justify-content: center; }
+.bsh-rank { display: flex; flex-direction: column; align-items: center; padding: 8px 18px; border-radius: 14px;
+  background: linear-gradient(135deg, #fff, #fbf1f7); box-shadow: var(--shadow-sm); }
+.bsh-rank-label { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 700; }
+.bsh-rank-value { font-family: var(--font-head); font-weight: 800; font-size: 2rem; line-height: 1; color: var(--pink); }
+.bsh-pile { position: relative; width: 72px; height: 84px; display: flex; align-items: center; justify-content: center; }
+.bsh-pile-card { position: absolute; }
+.bsh-pile-empty { color: var(--ink-soft); font-size: 0.78rem; font-style: italic; }
+.bsh-pile-count { position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); z-index: 3;
+  background: var(--ink); color: #fff; font-size: 0.66rem; padding: 1px 7px; border-radius: 8px; font-weight: 700; }
+.bsh-banner { font-family: var(--font-head); font-weight: 600; padding: 8px 16px; border-radius: 14px;
+  background: #efe7ee; color: var(--ink-soft); text-align: center; }
+.bsh-banner.mine { background: #d7f0e2; color: #1f7a52; }
+.bsh-reveal { width: 100%; max-width: 460px; border-radius: 14px; padding: 10px 14px; text-align: center; box-shadow: var(--shadow-sm); }
+.bsh-reveal.bluff { background: #fde2e6; } .bsh-reveal.honest { background: #e2f0ff; }
+.bsh-reveal-msg { font-weight: 700; font-size: 0.86rem; margin-bottom: 8px; }
+.bsh-reveal-cards { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+.bsh-hand { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 84px; padding-top: 10px; }
+.bsh-controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }

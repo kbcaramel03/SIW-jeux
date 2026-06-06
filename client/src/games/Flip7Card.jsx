@@ -69,7 +69,9 @@ export default function Flip7Card({ card, size = 'sm', flip = true, bust = false
 export function Flip7Back({ size = 'md', count }) {
   return (
     <div className={`f7c size-${size}`}>
-      <div className="f7c-face f7c-back"><span className="f7c-back-logo">7</span></div>
+      <div className="f7c-face f7c-back">
+        <span className="f7c-back-logo"><span className="fl">FLIP</span><span className="sev">7</span></span>
+      </div>
       {count != null && <span className="f7c-deck-count">{count}</span>}
     </div>
   );

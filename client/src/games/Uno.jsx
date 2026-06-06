@@ -17,6 +17,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const nameById = Object.fromEntries(room.players.map((p) => [p.id, p.displayName]));
   const genderById = Object.fromEntries(room.players.map((p) => [p.id, p.gender]));
+  const avatarById = Object.fromEntries(room.players.map((p) => [p.id, p.avatar]));
   const [pendingWild, setPendingWild] = useState(null);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
-              <Avatar name={nameById[id]} gender={genderById[id]} />
+              <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
               <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
             </div>
           ))}
@@ -89,7 +90,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
             <div key={p.id} className={`uno-opp ${g.turn === p.id ? 'active' : ''}`}
               style={{ left: `${x}%`, top: `${y}%` }}>
               <div className="uno-opp-info">
-                <Avatar name={nameById[p.id]} gender={genderById[p.id]} size={26} />
+                <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={26} />
                 <span className="uno-opp-name">{nameById[p.id] || '?'}</span>
                 <span className="uno-count">{p.count}</span>
               </div>

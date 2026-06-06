@@ -17,6 +17,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const nameById = Object.fromEntries(room.players.map((p) => [p.id, p.displayName]));
   const genderById = Object.fromEntries(room.players.map((p) => [p.id, p.gender]));
+  const avatarById = Object.fromEntries(room.players.map((p) => [p.id, p.avatar]));
 
   useEffect(() => {
     if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' });
@@ -35,7 +36,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
-              <Avatar name={nameById[id]} gender={genderById[id]} />
+              <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
               <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
             </div>
           ))}
@@ -82,7 +83,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
           return (
             <div key={p.id} className={`f7-rank rank-${r <= 3 ? r : 'n'} ${p.id === me ? 'me' : ''}`}>
               <span className="f7-rank-pos">{rankMark(r)}</span>
-              <Avatar name={nameById[p.id]} gender={genderById[p.id]} size={22} />
+              <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={22} />
               <span className="f7-rank-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
               <span className="f7-rank-score">{p.score}</span>
             </div>
@@ -166,7 +167,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
               )}
 
               <div className="f7-player-head">
-                <Avatar name={nameById[p.id]} gender={genderById[p.id]} />
+                <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} />
                 <div className="f7-player-id">
                   <span className="f7-player-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
                   <span className="f7-player-score">{p.score} pts</span>

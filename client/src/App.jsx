@@ -17,8 +17,10 @@ function NavBar() {
     <AppBar position="sticky" elevation={0} sx={{ background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', color: 'text.primary' }}>
       <Toolbar sx={{ gap: 1, maxWidth: 1240, mx: 'auto', width: '100%' }}>
         <Link to="/" className="brand" style={{ flexGrow: 1 }}><Heart size={20} fill="#cf7b97" stroke="#cf7b97" /> Soirée Jeux</Link>
-        {user.role === 'admin' && (
-          <Button component={Link} to="/admin" color="inherit" startIcon={<Crown size={18} />}>Admin</Button>
+        {(user.role === 'admin' || user.role === 'moderator') && (
+          <Button component={Link} to="/admin" color="inherit" startIcon={<Crown size={18} />}>
+            {user.role === 'admin' ? 'Admin' : 'Validation'}
+          </Button>
         )}
         <Button component={Link} to="/compte" color="inherit" startIcon={<Settings size={18} />}>{user.displayName}</Button>
         <Button onClick={logout} variant="outlined" color="primary" size="small" startIcon={<LogOut size={16} />}>Déco</Button>
@@ -27,12 +29,12 @@ function NavBar() {
   );
 }
 
-function Protected({ children, adminOnly }) {
+function Protected({ children, staffOnly }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) return <div className="center-screen">Chargement…</div>;
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/" replace />;
+  if (staffOnly && !['admin', 'moderator'].includes(user.role)) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -50,7 +52,7 @@ export default function App() {
             <Route path="/" element={<Protected><Lobby /></Protected>} />
             <Route path="/room/:id" element={<Protected><Room /></Protected>} />
             <Route path="/compte" element={<Protected><Account /></Protected>} />
-            <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
+            <Route path="/admin" element={<Protected staffOnly><Admin /></Protected>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

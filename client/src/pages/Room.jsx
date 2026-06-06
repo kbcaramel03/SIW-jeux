@@ -9,6 +9,7 @@ import Codenames from '../games/Codenames.jsx';
 import Battleship from '../games/Battleship.jsx';
 import Uno from '../games/Uno.jsx';
 import Flip7 from '../games/Flip7.jsx';
+import Bullshit from '../games/Bullshit.jsx';
 
 export default function Room() {
   const { id } = useParams();
@@ -79,6 +80,9 @@ export default function Room() {
           {room.gameKey === 'flip7' && (
             <Flip7 room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
+          {room.gameKey === 'bullshit' && (
+            <Bullshit room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
         </div>
 
         <aside className="room-side">
@@ -87,7 +91,7 @@ export default function Room() {
             <ul className="player-list">
               {room.players.map((p) => (
                 <li key={p.id}>
-                  <Avatar name={p.displayName} gender={p.gender} />
+                  <Avatar name={p.displayName} gender={p.gender} avatar={p.avatar} />
                   <span>{p.displayName}{p.id === room.me.id ? ' (toi)' : ''}</span>
                   {p.id === room.hostId && <Crown size={15} color="#c2a36b" />}
                 </li>

@@ -4,6 +4,7 @@ import * as codenames from './codenames.js';
 import * as battleship from './battleship.js';
 import * as uno from './uno.js';
 import * as flip7 from './flip7.js';
+import * as bullshit from './bullshit.js';
 
 export const GAMES = {
   codenames: {
@@ -35,7 +36,12 @@ export const GAMES = {
     view: flip7.viewFor,
     action: applyFlip7Action,
   },
-  bullshit: { key: 'bullshit', label: 'Bullshit', emoji: '🤥', minPlayers: 3, maxPlayers: 8, ready: false },
+  bullshit: {
+    key: 'bullshit', label: 'Bullshit', emoji: '🤥', minPlayers: 2, maxPlayers: 8, ready: true,
+    create: bullshit.createBullshit,
+    view: bullshit.viewFor,
+    action: applyBullshitAction,
+  },
   conspiracy: { key: 'conspiracy', label: 'Conspiracy', emoji: '🕯️', minPlayers: 4, maxPlayers: 10, ready: false },
   scribbl: { key: 'scribbl', label: 'Scribbl', emoji: '🎨', minPlayers: 2, maxPlayers: 10, ready: false },
   loupgarou: { key: 'loupgarou', label: 'Loup Garou', emoji: '🐺', minPlayers: 5, maxPlayers: 18, ready: false },
@@ -97,6 +103,23 @@ function applyFlip7Action(state, userId, payload) {
       return flip7.resolveAction(state, userId, payload.targetId);
     case 'next':
       return flip7.nextRound(state, userId);
+    default:
+      throw new Error('Action inconnue.');
+  }
+}
+
+function applyBullshitAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join':
+      return bullshit.joinBullshit(state, userId);
+    case 'start':
+      return bullshit.startBullshit(state, userId);
+    case 'play':
+      return bullshit.playBullshit(state, userId, payload.cardIds);
+    case 'pass':
+      return bullshit.passBullshit(state, userId);
+    case 'challenge':
+      return bullshit.challengeBullshit(state, userId);
     default:
       throw new Error('Action inconnue.');
   }

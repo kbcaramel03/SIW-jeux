@@ -87,6 +87,40 @@ router.post('/change-password', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// --- Mettre à jour son profil (nom affiché, genre, photo) ---
+router.post('/profile', requireAuth, async (req, res) => {
+  if (req.body.displayName != null) {
+    const name = String(req.body.displayName).trim();
+    if (name.length < 2) return res.status(400).json({ error: 'Le nom doit faire au moins 2 caractères.' });
+    req.user.displayName = name.slice(0, 30);
+  }
+  if (req.body.gender != null && ['F', 'M', 'A'].includes(req.body.gender)) req.user.gender = req.body.gender;
+  if (req.body.avatar !== undefined) {
+    const a = req.body.avatar;
+    if (a === null || a === '') {
+      req.user.avatar = null;
+    } else if (typeof a === 'string' && a.startsWith('data:image/') && a.length <= 300000) {
+      req.user.avatar = a; // petite vignette en base64 (redimensionnée côté client)
+    } else {
+      return res.status(400).json({ error: 'Image invalide (formats image, ~200 Ko max).' });
+    }
+  }
+  await db.write();
+  res.json({ user: publicUser(req.user) });
+});
+
+// --- Changer son identifiant de connexion ---
+router.post('/change-username', requireAuth, async (req, res) => {
+  const username = normalize(req.body.username);
+  if (username.length < 3) return res.status(400).json({ error: "L'identifiant doit faire au moins 3 caractères." });
+  if (db.data.users.some((u) => u.username === username && u.id !== req.user.id)) {
+    return res.status(409).json({ error: 'Cet identifiant est déjà pris.' });
+  }
+  req.user.username = username;
+  await db.write();
+  res.json({ user: publicUser(req.user) });
+});
+
 // --- Middleware : vérifie le jeton et attache l'utilisateur à la requête ---
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';

@@ -38,7 +38,7 @@ function reconcilePlayers(room, sockets) {
   room.players = room.players.filter((p) => present.has(p.id));
   for (const [id, u] of present) {
     if (!room.players.some((p) => p.id === id)) {
-      room.players.push({ id, displayName: u.displayName, gender: u.gender });
+      room.players.push({ id, displayName: u.displayName, gender: u.gender, avatar: u.avatar || null });
     }
   }
   if (!present.has(room.hostId) && room.players[0]) room.hostId = room.players[0].id;
@@ -53,7 +53,7 @@ export function createRealtime(httpServer) {
   io.use(async (socket, next) => {
     const user = await userFromToken(socket.handshake.auth?.token);
     if (!user) return next(new Error('unauthorized'));
-    socket.data.user = { id: user.id, displayName: user.displayName, role: user.role, gender: user.gender };
+    socket.data.user = { id: user.id, displayName: user.displayName, role: user.role, gender: user.gender, avatar: user.avatar || null };
     next();
   });
 
@@ -62,13 +62,13 @@ export function createRealtime(httpServer) {
   }
 
   function presenceList() {
-    return [...online.entries()].map(([id, u]) => ({ id, displayName: u.displayName, gender: u.gender }));
+    return [...online.entries()].map(([id, u]) => ({ id, displayName: u.displayName, gender: u.gender, avatar: u.avatar || null }));
   }
   function broadcastPresence() {
     io.emit('presence:list', presenceList());
   }
   function addPresence(u) {
-    const cur = online.get(u.id) || { displayName: u.displayName, gender: u.gender, sockets: 0 };
+    const cur = online.get(u.id) || { displayName: u.displayName, gender: u.gender, avatar: u.avatar || null, sockets: 0 };
     cur.sockets += 1;
     online.set(u.id, cur);
   }
@@ -191,6 +191,7 @@ export function createRealtime(httpServer) {
           id: socket.data.user.id,
           displayName: socket.data.user.displayName,
           gender: socket.data.user.gender,
+          avatar: socket.data.user.avatar || null,
         });
       }
       ack?.({ ok: true });

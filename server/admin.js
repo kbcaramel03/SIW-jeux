@@ -11,12 +11,19 @@ export const router = Router();
 const FOUNDER_USERNAME = 'khadija';
 const isFounder = (u) => u.username === FOUNDER_USERNAME;
 
+// admin   = Khadija : toutes les fonctions de gestion.
+// moderator (« droit ++ ») : peut seulement valider/refuser les inscriptions.
 function requireAdmin(req, res, next) {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Réservé à l\'admin.' });
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Réservé à l\'admin (Khadija).' });
+  next();
+}
+function requireValidator(req, res, next) {
+  if (!['admin', 'moderator'].includes(req.user.role)) return res.status(403).json({ error: 'Accès réservé.' });
   next();
 }
 
-router.use(requireAuth, requireAdmin);
+// Tout le panneau exige au moins le droit ++ ; les routes sensibles ajoutent requireAdmin.
+router.use(requireAuth, requireValidator);
 
 // Renvoie l'utilisateur public enrichi (marqueur fondatrice).
 const adminView = (u) => ({ ...publicUser(u), founder: isFounder(u) });
@@ -75,25 +82,22 @@ router.post('/users/:id/reject', async (req, res) => {
   res.json({ user: adminView(user) });
 });
 
-// Promouvoir / rétrograder admin.
-router.post('/users/:id/role', async (req, res) => {
+// Donner / retirer le « droit ++ » (moderator). Réservé à l'admin (Khadija).
+// Le rôle « admin » n'est jamais attribué à quelqu'un d'autre que la fondatrice.
+router.post('/users/:id/role', requireAdmin, async (req, res) => {
   await db.read();
   const user = findUser(req, res);
   if (!user) return;
-  const role = req.body.role === 'admin' ? 'admin' : 'member';
-  if (isFounder(user) && role !== 'admin') {
-    return res.status(400).json({ error: 'Khadija est la fondatrice : son rôle admin ne peut pas être retiré.' });
+  if (isFounder(user)) {
+    return res.status(400).json({ error: 'Khadija est la fondatrice : son rôle ne peut pas être changé.' });
   }
-  if (user.id === req.user.id && role !== 'admin') {
-    return res.status(400).json({ error: 'Tu ne peux pas retirer ton propre rôle admin.' });
-  }
-  user.role = role;
+  user.role = req.body.role === 'moderator' ? 'moderator' : 'member';
   await db.write();
   res.json({ user: adminView(user) });
 });
 
-// Réinitialiser le mot de passe d'un membre (mot de passe temporaire fixé par l'admin).
-router.post('/users/:id/password', async (req, res) => {
+// Réinitialiser le mot de passe d'un membre (mot de passe temporaire). Admin seulement.
+router.post('/users/:id/password', requireAdmin, async (req, res) => {
   await db.read();
   const user = findUser(req, res);
   if (!user) return;
@@ -105,8 +109,8 @@ router.post('/users/:id/password', async (req, res) => {
   res.json({ ok: true });
 });
 
-// Modifier le profil d'un membre (nom affiché / genre).
-router.post('/users/:id/profile', async (req, res) => {
+// Modifier le profil d'un membre (nom affiché / genre). Admin seulement.
+router.post('/users/:id/profile', requireAdmin, async (req, res) => {
   await db.read();
   const user = findUser(req, res);
   if (!user) return;
@@ -123,7 +127,7 @@ router.post('/users/:id/profile', async (req, res) => {
   res.json({ user: adminView(user) });
 });
 
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/:id', requireAdmin, async (req, res) => {
   await db.read();
   const user = findUser(req, res);
   if (!user) return;

@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Radio } from 'lucide-react';
 import { getSocket } from '../socket.js';
 
-// Avatar coloré avec l'initiale, teinte selon le sexe.
-export function Avatar({ name, gender, size }) {
+// Avatar : photo si l'utilisateur en a une, sinon initiale teintée selon le sexe.
+export function Avatar({ name, gender, size, avatar }) {
+  const baseStyle = size ? { width: size, height: size, fontSize: size * 0.42 } : undefined;
+  if (avatar) {
+    return <span className="avatar avatar-img" style={{ ...baseStyle, backgroundImage: `url(${avatar})` }} />;
+  }
   const letter = (name || '?').trim().charAt(0).toUpperCase();
-  const cls = `avatar avatar-${gender || 'A'}`;
-  const style = size ? { width: size, height: size, fontSize: size * 0.42 } : undefined;
-  return <span className={cls} style={style}>{letter}</span>;
+  return <span className={`avatar avatar-${gender || 'A'}`} style={baseStyle}>{letter}</span>;
 }
 
 export default function OnlineRail() {
@@ -31,7 +33,7 @@ export default function OnlineRail() {
           <ul className="online-list">
             {people.map((p) => (
               <li key={p.id} className="online-item">
-                <Avatar name={p.displayName} gender={p.gender} />
+                <Avatar name={p.displayName} gender={p.gender} avatar={p.avatar} />
                 <span>{p.displayName}</span>
               </li>
             ))}
