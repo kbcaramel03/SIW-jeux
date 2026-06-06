@@ -1,11 +1,13 @@
 // Narration vocale « maître du jeu » via la Web Speech API (native, gratuite).
 // Voix française, pitch bas et débit lent pour un effet de vieux mage mystique.
 let frVoice = null;
+let chosenName = (typeof localStorage !== 'undefined' && localStorage.getItem('sj_voice')) || null;
 
 function pickVoice() {
   const s = typeof window !== 'undefined' ? window.speechSynthesis : null;
   if (!s) return;
   const voices = s.getVoices() || [];
+  if (chosenName) { const v = voices.find((x) => x.name === chosenName); if (v) { frVoice = v; return; } }
   const fr = voices.filter((v) => /^fr/i.test(v.lang));
   // On privilégie les voix les plus naturelles disponibles (Google, neural/enhanced).
   frVoice = fr.find((v) => /google/i.test(v.name))
@@ -14,6 +16,19 @@ function pickVoice() {
     || fr[0]
     || voices.find((v) => /google/i.test(v.name))
     || voices[0] || null;
+}
+
+// Voix françaises disponibles (pour le sélecteur).
+export function listVoices() {
+  const s = typeof window !== 'undefined' ? window.speechSynthesis : null;
+  if (!s) return [];
+  return (s.getVoices() || []).filter((v) => /^fr/i.test(v.lang));
+}
+export function getChosenVoice() { return chosenName; }
+export function setVoiceByName(name) {
+  chosenName = name || null;
+  try { localStorage.setItem('sj_voice', chosenName || ''); } catch { /* ignore */ }
+  pickVoice();
 }
 if (typeof window !== 'undefined' && window.speechSynthesis) {
   pickVoice();

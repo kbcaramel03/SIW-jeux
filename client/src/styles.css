@@ -689,17 +689,40 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   background: linear-gradient(120deg, #fff, #f6eefb); box-shadow: var(--shadow-sm); font-family: var(--font-head); font-weight: 600; color: var(--ink); }
 .lg-narration.night { background: linear-gradient(120deg, #2b2440, #3c2f5c); color: #efe7ff; }
 .lg-say { flex: 1; font-size: 0.92rem; }
-.lg-myrole { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; color: #fff; box-shadow: var(--shadow-sm); }
-.lg-myrole.dead { filter: grayscale(0.6); opacity: 0.8; }
-.lg-myrole-emo { font-size: 2.1rem; }
-.lg-myrole-label { font-family: var(--font-head); font-weight: 800; font-size: 1.05rem; }
-.lg-myrole-desc { font-size: 0.82rem; opacity: 0.92; }
-.lg-fellows { font-size: 0.8rem; margin-top: 3px; font-weight: 700; }
-.lg-myrole.loup { background: linear-gradient(135deg, #6b2b2b, #3a2030); }
-.lg-myrole.villageois { background: linear-gradient(135deg, #3aa856, #2e8c47); }
-.lg-myrole.voyante { background: linear-gradient(135deg, #8d5bc6, #5d3a9c); }
-.lg-myrole.sorciere { background: linear-gradient(135deg, #2f9c8a, #1f7a6a); }
-.lg-myrole.chasseur { background: linear-gradient(135deg, #e8743f, #c4561f); }
+/* Carte de rôle illustrée (portrait) */
+.lg-rolecard { position: relative; max-width: 270px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 16px 16px 14px; border-radius: 18px; color: #fff; box-shadow: var(--shadow);
+  border: 3px solid rgba(255,255,255,0.55); }
+.lg-rolecard.dead { filter: grayscale(0.55); opacity: 0.85; }
+.lg-rolecard-tag { position: absolute; top: 8px; right: 12px; font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.06em; opacity: 0.85; }
+.lg-rolecard-art { font-size: 4.6rem; line-height: 1; display: flex; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3)); }
+.lg-rolecard-art svg { width: 1em; height: 1em; }
+.lg-rolecard-name { font-family: var(--font-head); font-weight: 800; font-size: 1.25rem; margin-top: 6px; }
+.lg-rolecard-desc { font-size: 0.8rem; opacity: 0.94; margin-top: 4px; }
+.lg-fellows { font-size: 0.8rem; margin-top: 6px; font-weight: 700; background: rgba(0,0,0,0.18); padding: 3px 10px; border-radius: 10px; }
+.lg-rolecard.loup { background: linear-gradient(160deg, #7a3030, #3a2030); }
+.lg-rolecard.villageois { background: linear-gradient(160deg, #45b066, #2e8c47); }
+.lg-rolecard.voyante { background: linear-gradient(160deg, #9b6bd6, #5d3a9c); }
+.lg-rolecard.sorciere { background: linear-gradient(160deg, #35ad99, #1f7a6a); }
+.lg-rolecard.chasseur { background: linear-gradient(160deg, #ef8049, #c4561f); }
+
+/* Mini-cartes de sélection en pré-jeu */
+.lg-cfg-cards { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.lg-pick-card { flex: 1 1 90px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px;
+  border-radius: 14px; border: 2px solid #e7dcec; background: #fff; cursor: pointer; font: inherit; transition: transform 0.1s, border 0.15s, opacity 0.15s; }
+.lg-pick-card:disabled { cursor: default; }
+.lg-pick-card.off { opacity: 0.5; filter: grayscale(0.5); }
+.lg-pick-card.on { border-color: var(--pink); box-shadow: 0 0 0 2px var(--pink-soft); }
+.lg-pick-card .lg-pick-art { font-size: 2rem; display: flex; }
+.lg-pick-card .lg-pick-art svg { width: 1em; height: 1em; }
+.lg-pick-card.loup .lg-pick-art { color: #6b2b2b; } .lg-pick-card.voyante .lg-pick-art { color: #5d3a9c; }
+.lg-pick-card.sorciere .lg-pick-art { color: #1f7a6a; } .lg-pick-card.chasseur .lg-pick-art { color: #c4561f; }
+.lg-pick-name { font-weight: 700; font-size: 0.82rem; }
+.lg-pick-state { font-size: 0.64rem; color: var(--ink-soft); }
+.lg-credit { text-align: center; font-size: 0.66rem; color: var(--ink-soft); margin-top: 12px; }
+.lg-voice-row { margin-top: 8px; }
+.lg-voice-select { max-width: 200px; padding: 6px 8px; border-radius: 10px; border: 1px solid #e0d4e0; background: #fff; font: inherit; }
 .lg-banner { font-family: var(--font-head); font-weight: 700; text-align: center; padding: 8px 14px; border-radius: 14px; background: #efe7ee; color: var(--ink-soft); }
 .lg-banner.night { background: #3c2f5c; color: #efe7ff; }
 .lg-info { text-align: center; background: #efe6fb; color: var(--ink); border-radius: 12px; padding: 8px 12px; font-size: 0.9rem; }
@@ -719,11 +742,15 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .lg-player-av { position: relative; }
 .lg-dead-x { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #b42337; background: rgba(255,255,255,0.5); border-radius: 50%; }
 .lg-player-name { font-weight: 700; font-size: 0.72rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.lg-role-tag { font-size: 0.9rem; }
+.lg-role-tag { font-size: 1.1rem; display: inline-flex; }
+.lg-role-tag svg { width: 1em; height: 1em; }
+.lg-role-tag.loup { color: #6b2b2b; } .lg-role-tag.villageois { color: #2e8c47; }
+.lg-role-tag.voyante { color: #5d3a9c; } .lg-role-tag.sorciere { color: #1f7a6a; } .lg-role-tag.chasseur { color: #c4561f; }
 .lg-mj { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 48%; max-width: 210px;
   display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; pointer-events: none; }
 .lg-mj .lg-mj-voice { pointer-events: auto; }
-.lg-mj-emo { font-size: 2.6rem; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.35)); }
+.lg-mj-emo { font-size: 3rem; display: flex; color: #ffd86b; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.4)); }
+.lg-mj-emo svg { width: 1em; height: 1em; }
 .lg-mj-say { font-family: var(--font-head); font-weight: 600; font-size: 0.82rem; line-height: 1.25; }
 .lg-table.night .lg-mj-say { color: #efe7ff; }
 .lg-table.day .lg-mj-say { color: #5a3a1a; }

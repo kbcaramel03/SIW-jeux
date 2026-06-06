@@ -223,7 +223,7 @@ function checkWin(state) {
   const wolves = aliveWolves(state).length;
   const others = aliveIds(state).length - wolves;
   if (wolves === 0) { state.phase = 'over'; state.winner = 'village'; narrate(state, 'L\'aube se lève : tous les Loups ont été éliminés. Le village triomphe !'); return true; }
-  if (wolves >= others) { state.phase = 'over'; state.winner = 'loups'; narrate(state, 'Les Loups-Garous l\'emportent… le village est perdu.'); return true; }
+  if (wolves >= others) { state.phase = 'over'; state.winner = 'loups'; narrate(state, 'Les Loups-Garous l\'emportent… le village a perdu.'); return true; }
   return false;
 }
 

@@ -1,19 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, IconButton, Switch, FormControlLabel } from '@mui/material';
+import { Button, IconButton } from '@mui/material';
 import { Play, Sparkles, Minus, Plus, Volume2, VolumeX, Skull } from 'lucide-react';
+import { GiWerewolf, GiFarmer, GiCrystalBall, GiCauldron, GiBowArrow, GiWizardFace } from 'react-icons/gi';
 import { Avatar } from '../components/OnlineRail.jsx';
-import { speak, stopSpeak, voiceSupported } from '../voice.js';
+import { speak, stopSpeak, voiceSupported, listVoices, setVoiceByName, getChosenVoice } from '../voice.js';
 import { winConfetti } from '../effects.js';
 
-// Cartes de rôles (design maison : emblème + couleur + description).
+// Cartes de rôles illustrées (dessins : Game Icons / game-icons.net, CC BY 3.0).
 const ROLE = {
-  loup: { label: 'Loup-Garou', emo: '🐺', cls: 'loup', desc: 'Chaque nuit, dévore un villageois avec les autres loups. Gagne si les loups dominent.' },
-  villageois: { label: 'Villageois', emo: '🧑‍🌾', cls: 'villageois', desc: 'Aucun pouvoir, juste ta ruse. Démasque les loups au vote du jour.' },
-  voyante: { label: 'Voyante', emo: '🔮', cls: 'voyante', desc: 'Chaque nuit, découvre le rôle d\'une personne de ton choix.' },
-  sorciere: { label: 'Sorcière', emo: '🧪', cls: 'sorciere', desc: 'Une potion de vie (sauver la victime), une potion de mort (éliminer quelqu\'un).' },
-  chasseur: { label: 'Chasseur', emo: '🏹', cls: 'chasseur', desc: 'En mourant, tu emportes une personne avec toi.' },
+  loup: { label: 'Loup-Garou', Icon: GiWerewolf, cls: 'loup', desc: 'Chaque nuit, dévore un villageois avec les autres loups. Gagne si les loups dominent.' },
+  villageois: { label: 'Villageois', Icon: GiFarmer, cls: 'villageois', desc: 'Aucun pouvoir, juste ta ruse. Démasque les loups au vote du jour.' },
+  voyante: { label: 'Voyante', Icon: GiCrystalBall, cls: 'voyante', desc: 'Chaque nuit, découvre le rôle d\'une personne de ton choix.' },
+  sorciere: { label: 'Sorcière', Icon: GiCauldron, cls: 'sorciere', desc: 'Une potion de vie (sauver la victime), une potion de mort (éliminer quelqu\'un).' },
+  chasseur: { label: 'Chasseur', Icon: GiBowArrow, cls: 'chasseur', desc: 'En mourant, tu emportes une personne avec toi.' },
 };
-const SPECIALS = [['voyante', 'Voyante'], ['sorciere', 'Sorcière'], ['chasseur', 'Chasseur']];
+const SPECIALS = ['voyante', 'sorciere', 'chasseur'];
 
 export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const g = room.game;
@@ -24,7 +25,12 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const [voiceOn, setVoiceOn] = useState(true);
   const [poisonMode, setPoisonMode] = useState(false);
   const [witchKill, setWitchKill] = useState(null);
+  const [voiceName, setVoiceName] = useState(getChosenVoice() || '');
+  const [, setTick] = useState(0);
   const lastSay = useRef(-1);
+
+  // Les voix se chargent de façon asynchrone : on rafraîchit le sélecteur.
+  useEffect(() => { const t = setTimeout(() => setTick(1), 700); return () => clearTimeout(t); }, []);
 
   useEffect(() => { if (g.phase === 'setup' && !g.amSeated) onAction({ kind: 'join' }); }, [g.phase, g.amSeated]);
 
@@ -54,17 +60,35 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
 
         <div className="lg-config">
           <div className="lg-cfg-row">
-            <span className="lg-cfg-label">🐺 Loups-Garous</span>
+            <span className="lg-cfg-label"><GiWerewolf size={20} /> Loups-Garous</span>
             <div className="lg-stepper">
               <IconButton size="small" disabled={!isHost || cfg.wolves <= 1} onClick={() => onAction({ kind: 'config', config: { wolves: cfg.wolves - 1 } })}><Minus size={16} /></IconButton>
               <b>{cfg.wolves}</b>
               <IconButton size="small" disabled={!isHost} onClick={() => onAction({ kind: 'config', config: { wolves: cfg.wolves + 1 } })}><Plus size={16} /></IconButton>
             </div>
           </div>
-          {SPECIALS.map(([key, label]) => (
-            <FormControlLabel key={key} control={<Switch checked={!!cfg[key]} disabled={!isHost} onChange={(e) => onAction({ kind: 'config', config: { [key]: e.target.checked } })} />}
-              label={<span>{ROLE[key].emo} {label}</span>} />
-          ))}
+          <div className="lg-cfg-cards">
+            {SPECIALS.map((key) => {
+              const r = ROLE[key]; const on = !!cfg[key];
+              return (
+                <button key={key} className={`lg-pick-card ${r.cls} ${on ? 'on' : 'off'}`} disabled={!isHost}
+                  onClick={() => onAction({ kind: 'config', config: { [key]: !on } })}>
+                  <span className="lg-pick-art"><r.Icon /></span>
+                  <span className="lg-pick-name">{r.label}</span>
+                  <span className="lg-pick-state">{on ? 'dans la partie' : 'absent'}</span>
+                </button>
+              );
+            })}
+          </div>
+          {isHost && voiceSupported() && (
+            <div className="lg-cfg-row lg-voice-row">
+              <span className="lg-cfg-label"><Volume2 size={18} /> Voix du MJ</span>
+              <select className="lg-voice-select" value={voiceName} onChange={(e) => { setVoiceName(e.target.value); setVoiceByName(e.target.value); speak('Bienvenue au village. Que la nuit tombe.'); }}>
+                <option value="">Voix automatique</option>
+                {listVoices().map((v) => <option key={v.name} value={v.name}>{v.name}</option>)}
+              </select>
+            </div>
+          )}
           {!isHost && <p className="muted">Seul l'hôte règle la composition.</p>}
         </div>
 
@@ -73,6 +97,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
           {g.canStart && isHost && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la nuit</Button>}
         </div>
         {g.amSeated && g.seats.length < 4 && <p className="muted" style={{ textAlign: 'center' }}>En attente d'au moins 4 joueurs…</p>}
+        <p className="lg-credit">Illustrations : game-icons.net (CC BY 3.0)</p>
       </div>
     );
   }
@@ -101,14 +126,13 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
 
   return (
     <div className="lg fade-up">
-      {/* Ma carte de rôle */}
-      <div className={`lg-myrole ${mine.cls} ${!g.alive ? 'dead' : ''}`}>
-        <span className="lg-myrole-emo">{mine.emo}</span>
-        <div>
-          <div className="lg-myrole-label">{g.alive ? `Tu es ${mine.label}` : `Tu étais ${mine.label} — éliminé`}</div>
-          <div className="lg-myrole-desc">{mine.desc}</div>
-          {g.fellowWolves && g.fellowWolves.length > 1 && <div className="lg-fellows">Tes complices : {g.fellowWolves.filter((w) => w !== me).map((w) => nameById[w]).join(', ')}</div>}
-        </div>
+      {/* Ma carte de rôle (vraie carte illustrée) */}
+      <div className={`lg-rolecard ${mine.cls} ${!g.alive ? 'dead' : ''}`}>
+        <span className="lg-rolecard-tag">{g.alive ? 'Ton rôle' : 'Éliminé'}</span>
+        <span className="lg-rolecard-art"><mine.Icon /></span>
+        <span className="lg-rolecard-name">{mine.label}</span>
+        <span className="lg-rolecard-desc">{mine.desc}</span>
+        {g.fellowWolves && g.fellowWolves.length > 1 && <span className="lg-fellows">Complices : {g.fellowWolves.filter((w) => w !== me).map((w) => nameById[w]).join(', ')}</span>}
       </div>
 
       <div className={`lg-banner ${isNight ? 'night' : ''}`}>{banner()}</div>
@@ -142,13 +166,13 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
               style={{ left: `${x}%`, top: `${y}%` }} disabled={!selecting || dead} onClick={() => clickPlayer(p)}>
               <div className="lg-player-av"><Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={38} />{dead && <span className="lg-dead-x"><Skull size={15} /></span>}</div>
               <span className="lg-player-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
-              {role && <span className={`lg-role-tag ${role.cls}`}>{role.emo}</span>}
+              {role && <span className={`lg-role-tag ${role.cls}`}><role.Icon /></span>}
             </button>
           );
         })}
         {/* Maître du jeu au centre */}
         <div className="lg-mj">
-          <span className="lg-mj-emo">🧙</span>
+          <span className="lg-mj-emo"><GiWizardFace /></span>
           <span className="lg-mj-say">{g.say}</span>
           {voiceSupported() && (
             <IconButton size="small" className="lg-mj-voice" onClick={() => { setVoiceOn((v) => { if (v) stopSpeak(); return !v; }); }} title="Voix du maître du jeu">
