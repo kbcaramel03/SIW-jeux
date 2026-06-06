@@ -387,6 +387,16 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
     padding: 8px; border-radius: 16px; box-shadow: 0 4px 18px rgba(120,60,110,0.18); }
   .cn-controls .MuiButton-root { min-height: 44px; } /* cible tactile confortable */
 
+  /* Loup Garou : table et jetons compacts sur petit écran (sinon ça se chevauche) */
+  .lg-player { width: 58px; padding: 4px 2px; }
+  .lg-player-name { font-size: 0.6rem; }
+  .lg-card3d { width: 24px; height: 34px; }
+  .lg-card3d-label { font-size: 0.5rem; }
+  .lg-mj { width: 40%; }
+  .lg-mj-emo { font-size: 2.1rem; }
+  .lg-mj-say { font-size: 0.68rem; }
+  .lg-rolecard { max-width: 230px; }
+
   /* Logo et titres plus compacts sur mobile */
   .brand { font-size: 1.15rem; }
   .main { padding: 12px; }

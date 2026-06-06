@@ -14,6 +14,8 @@ const GAME_STYLE = {
   conspiracy: { Icon: Eye, bg: '#efeadb', fg: '#9a8a55' },
   scribbl: { Icon: Brush, bg: '#e4eefb', fg: '#5b8def' },
   loupgarou: { Icon: Moon, bg: '#e8e5f4', fg: '#6b5ca8' },
+  echecs: { Icon: Swords, bg: '#ece7e0', fg: '#5a4a3a' },
+  ludo: { Icon: Dices, bg: '#e6f2e8', fg: '#3a8c5a' },
 };
 const DEFAULT_STYLE = { Icon: Gamepad2, bg: '#eee', fg: '#888' };
 

@@ -57,6 +57,8 @@ export const GAMES = {
     view: loupgarou.viewFor,
     action: applyLoupGarouAction,
   },
+  echecs: { key: 'echecs', label: 'Échecs', emoji: '♟️', minPlayers: 2, maxPlayers: 2, ready: false },
+  ludo: { key: 'ludo', label: 'Ludo', emoji: '🎲', minPlayers: 2, maxPlayers: 4, ready: false },
 };
 
 export function gameList() {
