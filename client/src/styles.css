@@ -679,6 +679,57 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .csp-vote.up { background: #2e9c5c; } .csp-vote.down { background: #d23047; }
 .csp-onteam { position: absolute; bottom: 6px; right: 6px; color: var(--violet); }
 
+/* ===== Loup Garou ===== */
+.lg { display: flex; flex-direction: column; gap: 12px; }
+.lg-config { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; padding: 12px 14px; background: #faf4f9; border-radius: 14px; }
+.lg-cfg-row { display: flex; align-items: center; justify-content: space-between; }
+.lg-cfg-label { font-weight: 700; }
+.lg-stepper { display: flex; align-items: center; gap: 10px; font-family: var(--font-head); font-size: 1.1rem; }
+.lg-narration { display: flex; align-items: center; gap: 9px; padding: 10px 14px; border-radius: 14px;
+  background: linear-gradient(120deg, #fff, #f6eefb); box-shadow: var(--shadow-sm); font-family: var(--font-head); font-weight: 600; color: var(--ink); }
+.lg-narration.night { background: linear-gradient(120deg, #2b2440, #3c2f5c); color: #efe7ff; }
+.lg-say { flex: 1; font-size: 0.92rem; }
+.lg-myrole { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; color: #fff; box-shadow: var(--shadow-sm); }
+.lg-myrole.dead { filter: grayscale(0.6); opacity: 0.8; }
+.lg-myrole-emo { font-size: 2.1rem; }
+.lg-myrole-label { font-family: var(--font-head); font-weight: 800; font-size: 1.05rem; }
+.lg-myrole-desc { font-size: 0.82rem; opacity: 0.92; }
+.lg-fellows { font-size: 0.8rem; margin-top: 3px; font-weight: 700; }
+.lg-myrole.loup { background: linear-gradient(135deg, #6b2b2b, #3a2030); }
+.lg-myrole.villageois { background: linear-gradient(135deg, #3aa856, #2e8c47); }
+.lg-myrole.voyante { background: linear-gradient(135deg, #8d5bc6, #5d3a9c); }
+.lg-myrole.sorciere { background: linear-gradient(135deg, #2f9c8a, #1f7a6a); }
+.lg-myrole.chasseur { background: linear-gradient(135deg, #e8743f, #c4561f); }
+.lg-banner { font-family: var(--font-head); font-weight: 700; text-align: center; padding: 8px 14px; border-radius: 14px; background: #efe7ee; color: var(--ink-soft); }
+.lg-banner.night { background: #3c2f5c; color: #efe7ff; }
+.lg-info { text-align: center; background: #efe6fb; color: var(--ink); border-radius: 12px; padding: 8px 12px; font-size: 0.9rem; }
+.lg-witch { background: #e7f6f2; border-radius: 14px; padding: 12px 14px; text-align: center; }
+.lg-witch p { margin: 0 0 8px; }
+/* Table ronde avec le maître du jeu au centre */
+.lg-table { position: relative; width: 100%; max-width: 520px; min-width: 0; aspect-ratio: 1 / 1; margin: 6px auto;
+  border-radius: 50%; box-shadow: inset 0 0 0 6px rgba(255,255,255,0.25), var(--shadow); transition: background 0.5s ease; }
+.lg-table.day { background: radial-gradient(circle at center, #fdf3e6 0%, #f1d9bb 68%, #e3c39c 100%); }
+.lg-table.night { background: radial-gradient(circle at 50% 35%, #4a3c72 0%, #2a2148 68%, #181230 100%); }
+.lg-table .lg-player { position: absolute; transform: translate(-50%, -50%); width: 80px; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 12px;
+  background: rgba(255,255,255,0.94); border: 2px solid transparent; box-shadow: var(--shadow-sm); font: inherit; cursor: default; }
+.lg-player.pick { cursor: pointer; border-color: var(--pink-soft); }
+.lg-player.pick:hover { border-color: var(--pink); }
+.lg-player.dead { opacity: 0.5; }
+.lg-player-av { position: relative; }
+.lg-dead-x { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #b42337; background: rgba(255,255,255,0.5); border-radius: 50%; }
+.lg-player-name { font-weight: 700; font-size: 0.72rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.lg-role-tag { font-size: 0.9rem; }
+.lg-mj { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 48%; max-width: 210px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; pointer-events: none; }
+.lg-mj .lg-mj-voice { pointer-events: auto; }
+.lg-mj-emo { font-size: 2.6rem; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.35)); }
+.lg-mj-say { font-family: var(--font-head); font-weight: 600; font-size: 0.82rem; line-height: 1.25; }
+.lg-table.night .lg-mj-say { color: #efe7ff; }
+.lg-table.day .lg-mj-say { color: #5a3a1a; }
+.lg-role-tag.loup { background: #6b2b2b; } .lg-role-tag.villageois { background: #2e8c47; }
+.lg-role-tag.voyante { background: #5d3a9c; } .lg-role-tag.sorciere { background: #1f7a6a; } .lg-role-tag.chasseur { background: #c4561f; }
+
 /* ===== Messages (DM & groupes) ===== */
 .msg { display: flex; flex-direction: column; height: 100%; }
 .msg-head { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid #eee2ec; }

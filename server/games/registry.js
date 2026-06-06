@@ -6,6 +6,7 @@ import * as uno from './uno.js';
 import * as flip7 from './flip7.js';
 import * as bullshit from './bullshit.js';
 import * as conspiracy from './conspiracy.js';
+import * as loupgarou from './loupgarou.js';
 
 export const GAMES = {
   codenames: {
@@ -50,7 +51,12 @@ export const GAMES = {
     action: applyConspiracyAction,
   },
   scribbl: { key: 'scribbl', label: 'Scribbl', emoji: '🎨', minPlayers: 2, maxPlayers: 10, ready: false },
-  loupgarou: { key: 'loupgarou', label: 'Loup Garou', emoji: '🐺', minPlayers: 5, maxPlayers: 18, ready: false },
+  loupgarou: {
+    key: 'loupgarou', label: 'Loup Garou', emoji: '🐺', minPlayers: 4, maxPlayers: 18, ready: true,
+    create: loupgarou.createLoupGarou,
+    view: loupgarou.viewFor,
+    action: applyLoupGarouAction,
+  },
 };
 
 export function gameList() {
@@ -147,6 +153,21 @@ function applyConspiracyAction(state, userId, payload) {
       return conspiracy.nextMission(state, userId);
     default:
       throw new Error('Action inconnue.');
+  }
+}
+
+function applyLoupGarouAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return loupgarou.joinLoupGarou(state, userId);
+    case 'config': return loupgarou.configLoupGarou(state, userId, payload.config || {});
+    case 'start': return loupgarou.startLoupGarou(state, userId);
+    case 'see': return loupgarou.seerSee(state, userId, payload.targetId);
+    case 'wolf': return loupgarou.wolfPick(state, userId, payload.targetId);
+    case 'witch': return loupgarou.witchAct(state, userId, { heal: payload.heal, killTarget: payload.killTarget });
+    case 'callVote': return loupgarou.callVote(state, userId);
+    case 'vote': return loupgarou.dayVote(state, userId, payload.targetId);
+    case 'shoot': return loupgarou.hunterShoot(state, userId, payload.targetId);
+    default: throw new Error('Action inconnue.');
   }
 }
 

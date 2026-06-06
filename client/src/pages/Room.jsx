@@ -11,6 +11,7 @@ import Uno from '../games/Uno.jsx';
 import Flip7 from '../games/Flip7.jsx';
 import Bullshit from '../games/Bullshit.jsx';
 import Conspiracy from '../games/Conspiracy.jsx';
+import LoupGarou from '../games/LoupGarou.jsx';
 
 export default function Room() {
   const { id } = useParams();
@@ -109,6 +110,9 @@ export default function Room() {
           )}
           {room.gameKey === 'conspiracy' && (
             <Conspiracy room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'loupgarou' && (
+            <LoupGarou room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
         </div>
 
