@@ -190,6 +190,8 @@ function applyLoupGarouAction(state, userId, payload) {
     case 'witch': return loupgarou.witchAct(state, userId, { heal: payload.heal, killTarget: payload.killTarget });
     case 'callVote': return loupgarou.callVote(state, userId);
     case 'vote': return loupgarou.dayVote(state, userId, payload.targetId);
+    case 'voteTimeout': return loupgarou.voteTimeout(state, userId);
+    case 'resume': return loupgarou.resumeLoupGarou(state, userId);
     case 'shoot': return loupgarou.hunterShoot(state, userId, payload.targetId);
     default: throw new Error('Action inconnue.');
   }

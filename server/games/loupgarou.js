@@ -4,22 +4,32 @@
 // Village gagne si plus de loups. Loups gagnent s'ils sont >= aux autres.
 // Cas spéciaux : amoureux (Cupidon) meurent ensemble et gagnent s'ils sont les 2 derniers ;
 // Ange gagne seul s'il est éliminé au 1er tour ; Enfant Sauvage devient loup si son modèle meurt.
+//
+// Rythme / ambiance : entre les phases (matin après la nuit, verdict après le vote) on passe
+// par une phase « reveal » d'une dizaine de secondes où le maître du jeu commente (avec les
+// prénoms) — l'hôte fait avancer le minuteur. Les votes du jour sont publics (aura sur la cible).
+// Les prénoms (state.names) sont injectés par la couche temps réel avant chaque action.
 
 function shuffle(a) {
   a = [...a];
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 const SPECIALS = ['voyante', 'sorciere', 'chasseur', 'cupidon', 'garde', 'ange', 'enfant'];
 const NIGHT_ORDER = ['cupid', 'wildchild', 'guard', 'seer', 'wolves', 'witch'];
+const REVEAL_MS = 11000;
+const DAY_MS = 120000;
+const VOTE_MS = 45000;
 
 export function createLoupGarou() {
   return {
     type: 'loupgarou',
-    phase: 'setup', // setup -> night -> day -> vote -> hunter -> over
+    phase: 'setup', // setup -> night -> reveal -> day -> vote -> reveal -> hunter -> over
     nightStep: null,
     config: { wolves: 2, voyante: true, sorciere: true, chasseur: true, cupidon: false, garde: false, ange: false, enfant: false },
     seats: [],
+    names: {},
     roles: {},
     alive: {},
     nightNo: 0,
@@ -35,6 +45,8 @@ export function createLoupGarou() {
     hunterPending: null,
     resumeTo: null,
     dayDeadline: null,
+    voteDeadline: null,
+    revealDeadline: null,
     lastDeaths: [],
     sayId: 0,
     say: '',
@@ -58,6 +70,12 @@ const aliveIds = (s) => s.seats.filter((id) => s.alive[id]);
 const aliveWolves = (s) => aliveIds(s).filter((id) => s.roles[id] === 'loup');
 const aliveRole = (s, role) => aliveIds(s).find((id) => s.roles[id] === role) || null;
 function narrate(state, text) { state.say = text; state.sayId += 1; }
+function nm(state, id) { return (state.names && state.names[id]) || 'quelqu\'un'; }
+function nameList(state, ids) {
+  const ns = ids.map((id) => nm(state, id));
+  if (ns.length <= 1) return ns.join('');
+  return `${ns.slice(0, -1).join(', ')} et ${ns[ns.length - 1]}`;
+}
 
 export function startLoupGarou(state, userId) {
   if (state.phase !== 'setup') throw new Error('Déjà démarrée.');
@@ -77,6 +95,7 @@ export function startLoupGarou(state, userId) {
   state.witch = { healUsed: false, killUsed: false, healChosen: false, killTarget: null };
   state.lovers = []; state.wildModel = null; state.guardLast = null;
   state.nightNo = 0; state.winner = null;
+  state.voteDeadline = null; state.revealDeadline = null; state.resumeTo = null;
   state.log = ['La partie commence !'];
   beginNight(state);
 }
@@ -103,20 +122,33 @@ function beginNight(state) {
   state.wolfVotes = {}; state.pendingVictim = null;
   state.witch.healChosen = false; state.witch.killTarget = null;
   state.seerSeen = {}; state.guardProtected = null; state.lastDeaths = [];
+  state.revealDeadline = null; state.voteDeadline = null;
   state.nightStep = firstStep(state);
-  narrate(state, state.nightNo === 1 ? 'La nuit tombe. Le village s\'endort…' : 'La nuit revient. Le village s\'endort…');
+  narrate(state, state.nightNo === 1
+    ? pick([
+      'La nuit tombe sur le village… Fermez les yeux, et que les âmes sensibles retiennent leur souffle.',
+      'La première nuit s\'installe doucement. Le village s\'endort, confiant… peut-être un peu trop.',
+      'Les lanternes s\'éteignent une à une. Que la nuit commence…',
+    ])
+    : pick([
+      'La nuit revient, plus lourde que la précédente. Tout le monde s\'endort…',
+      'L\'obscurité reprend ses droits. Fermez les yeux, le village s\'endort…',
+      'Une nouvelle nuit enveloppe le village. Silence… et dormez.',
+    ]));
   if (!state.nightStep) resolveNight(state);
   else announceStep(state);
 }
 
 function announceStep(state) {
   const t = {
-    cupid: 'Cupidon se réveille. Qui veux-tu lier par les liens de l\'amour ?',
-    wildchild: 'L\'Enfant Sauvage se réveille et choisit son modèle.',
-    guard: 'Le Garde se réveille et protège une personne des loups.',
-    seer: 'La Voyante se réveille et désigne une personne à sonder.',
-    wolves: aliveWolves(state).length > 1 ? 'Les Loups-Garous se réveillent et choisissent leur victime.' : 'Le Loup-Garou se réveille et choisit sa victime.',
-    witch: 'La Sorcière se réveille. Veux-tu empoisonner ou ressusciter quelqu\'un ?',
+    cupid: 'Cupidon se réveille sur la pointe des pieds. Qui vas-tu unir par les liens de l\'amour ?',
+    wildchild: 'L\'Enfant Sauvage ouvre les yeux et choisit en secret son modèle…',
+    guard: 'Le Garde se lève dans l\'ombre et veille sur l\'un d\'entre vous.',
+    seer: 'La Voyante se réveille et plonge dans sa boule de cristal… qui veux-tu sonder ?',
+    wolves: aliveWolves(state).length > 1
+      ? 'Les Loups-Garous se réveillent en silence et désignent leur proie de cette nuit…'
+      : 'Le Loup-Garou se réveille, affamé, et choisit sa victime…',
+    witch: 'La Sorcière se réveille auprès de son chaudron. Veux-tu sauver, empoisonner… ou ne rien faire ?',
   }[state.nightStep];
   if (t) narrate(state, t);
 }
@@ -199,10 +231,59 @@ function checkAnge(state) {
   // L'Ange gagne s'il est éliminé pendant le premier tour (1re nuit ou 1er vote).
   if (state.nightNo === 1 && state.lastDeaths.some((id) => state.roles[id] === 'ange')) {
     state.phase = 'over'; state.winner = 'ange';
-    narrate(state, 'L\'Ange a été éliminé dès le premier tour : il l\'emporte, seul !');
+    narrate(state, 'L\'Ange a été éliminé dès le premier tour : son vœu est exaucé, il l\'emporte… seul !');
     return true;
   }
   return false;
+}
+
+// Phase « reveal » : pause commentée (~11 s) avant la suite. `resumeTo` = 'day' ou 'night'.
+function enterReveal(state, resumeTo, text) {
+  state.phase = 'reveal';
+  state.resumeTo = resumeTo;
+  state.revealDeadline = Date.now() + REVEAL_MS;
+  state.dayDeadline = null; state.voteDeadline = null;
+  narrate(state, text);
+}
+
+function morningText(state, deaths) {
+  if (deaths.length === 0) {
+    return pick([
+      'Le soleil se lève… et, ô miracle, tout le monde est encore là ! Personne n\'est mort cette nuit.',
+      'Le jour se lève sur un village intact. Pas une victime — les loups auraient-ils hésité ?',
+      'L\'aube est douce ce matin : personne n\'a péri cette nuit. Profitez-en…',
+    ]);
+  }
+  const who = nameList(state, deaths);
+  const plural = deaths.length > 1;
+  const intro = pick([
+    'Le jour se lève… mais le village est en deuil.',
+    'Le coq chante, et avec lui vient la terrible nouvelle.',
+    'Le soleil éclaire une scène bien triste ce matin.',
+  ]);
+  const verb = plural ? 'nous ont quittés cette nuit' : 'nous a quittés cette nuit';
+  const sigh = pick([
+    plural ? 'Quel gâchis… on les aimait bien.' : 'Oh, quel dommage… on l\'aimait bien.',
+    'Un lourd silence tombe sur la place du village.',
+    'Le village ne sera plus jamais tout à fait le même.',
+    plural ? 'Reposez en paix, vous nous manquerez.' : 'Repose en paix, tu nous manqueras.',
+  ]);
+  return `${intro} ${who} ${verb}. ${sigh}`;
+}
+
+function verdictText(state, deaths, executed) {
+  if (deaths.length === 0) {
+    return pick([
+      'Le village n\'arrive pas à se décider… Personne ne sera exécuté aujourd\'hui. Les loups jubilent en silence.',
+      'Égalité ! La corde restera au placard ce soir. Espérons que vous ne le regrettiez pas…',
+    ]);
+  }
+  const who = nameList(state, deaths);
+  return pick([
+    `Le village a parlé. ${who} est conduit au bûcher… La sentence est tombée.`,
+    `D\'un même élan, le village condamne ${who}. Que justice soit faite !`,
+    `${who} paie le prix de la méfiance générale. On verra bientôt si le village a eu raison…`,
+  ]);
 }
 
 function resolveNight(state) {
@@ -213,26 +294,61 @@ function resolveNight(state) {
   state.nightStep = null;
   if (checkAnge(state)) return;
   if (checkWin(state)) return;
-  if (state.hunterPending) { state.phase = 'hunter'; state.resumeTo = 'day'; narrate(state, 'Dans un dernier souffle, le Chasseur saisit son fusil…'); return; }
-  openDay(state);
+  if (state.hunterPending) {
+    state.phase = 'hunter'; state.resumeTo = 'day';
+    narrate(state, 'Dans un dernier souffle, le Chasseur empoigne son fusil… qui va-t-il emporter ?');
+    return;
+  }
+  enterReveal(state, 'day', morningText(state, deaths));
 }
 
 function openDay(state) {
   state.phase = 'day';
   state.votes = {};
-  state.dayDeadline = Date.now() + 120000;
-  const n = state.lastDeaths.length;
-  const FR = ['zéro', 'une', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix'];
-  const w = FR[n] || String(n);
-  const morts = n ? `${w} personne${n > 1 ? 's sont mortes' : ' est morte'} cette nuit.` : 'Personne n\'est mort cette nuit.';
-  narrate(state, `Le village se réveille. ${morts} Vous avez deux minutes pour décider qui abattre aujourd'hui.`);
+  state.dayDeadline = Date.now() + DAY_MS;
+  state.revealDeadline = null;
+  narrate(state, pick([
+    'Place au débat ! Démasquez les loups… vous avez deux minutes avant le vote.',
+    'À vous de jouer, villageois. Discutez, accusez, défendez-vous : deux minutes au compteur.',
+    'Le village se rassemble sur la place. Qui est suspect ? Deux minutes pour en débattre.',
+  ]));
 }
 
 export function callVote(state, userId) {
   if (state.phase !== 'day') throw new Error('Pas le moment.');
   if (!state.seats.includes(userId)) throw new Error('Interdit.');
   state.phase = 'vote'; state.votes = {};
-  narrate(state, 'Le village doit désigner un coupable. Que le vote commence !');
+  state.dayDeadline = null;
+  state.voteDeadline = Date.now() + VOTE_MS;
+  narrate(state, pick([
+    'Assez parlé ! L\'heure du jugement a sonné. Que chacun désigne son suspect.',
+    'Le temps presse : levez la main et votez. Qui doit périr aujourd\'hui ?',
+    'Que le vote commence ! Pointez du doigt celui ou celle que vous soupçonnez.',
+  ]));
+}
+
+function tallyAndResolveDay(state) {
+  const voters = aliveIds(state);
+  const cast = voters.filter((id) => state.votes[id]);
+  const tally = {};
+  for (const v of cast) tally[state.votes[v]] = (tally[state.votes[v]] || 0) + 1;
+  const deaths = [];
+  let executed = null;
+  if (cast.length) {
+    const max = Math.max(...Object.values(tally));
+    const top = Object.keys(tally).filter((id) => tally[id] === max);
+    if (top.length === 1) { executed = top[0]; killPlayer(state, top[0], deaths); }
+  }
+  state.lastDeaths = deaths;
+  state.voteDeadline = null;
+  if (checkAnge(state)) return;
+  if (checkWin(state)) return;
+  if (state.hunterPending) {
+    state.phase = 'hunter'; state.resumeTo = 'night';
+    narrate(state, 'Touché à mort, le Chasseur lève une dernière fois son fusil…');
+    return;
+  }
+  enterReveal(state, 'night', verdictText(state, deaths, executed));
 }
 
 export function dayVote(state, userId, targetId) {
@@ -241,20 +357,23 @@ export function dayVote(state, userId, targetId) {
   if (!state.alive[targetId]) throw new Error('Cible invalide.');
   state.votes[userId] = targetId;
   const voters = aliveIds(state);
-  if (voters.every((id) => state.votes[id])) {
-    const tally = {};
-    for (const v of voters) tally[state.votes[v]] = (tally[state.votes[v]] || 0) + 1;
-    const max = Math.max(...Object.values(tally));
-    const top = Object.keys(tally).filter((id) => tally[id] === max);
-    const deaths = [];
-    if (top.length === 1) killPlayer(state, top[0], deaths);
-    state.lastDeaths = deaths;
-    narrate(state, deaths.length ? 'Le village a parlé. Le bûcher s\'embrase…' : 'Égalité… personne n\'est exécuté aujourd\'hui.');
-    if (checkAnge(state)) return;
-    if (checkWin(state)) return;
-    if (state.hunterPending) { state.phase = 'hunter'; state.resumeTo = 'night'; narrate(state, 'Le Chasseur, touché, lève son arme une dernière fois…'); return; }
-    beginNight(state);
-  }
+  if (voters.every((id) => state.votes[id])) tallyAndResolveDay(state);
+}
+
+// Fin du temps de vote : on résout avec les bulletins déposés (les abstentions comptent comme nulles).
+export function voteTimeout(state) {
+  if (state.phase !== 'vote') return;
+  if (state.voteDeadline && Date.now() < state.voteDeadline - 1500) return;
+  tallyAndResolveDay(state);
+}
+
+// L'hôte fait avancer la pause commentée (déclenché à la fin du minuteur).
+export function resumeLoupGarou(state, userId) {
+  if (state.phase !== 'reveal') return;
+  if (state.revealDeadline && Date.now() < state.revealDeadline - 1500) return;
+  const to = state.resumeTo;
+  state.resumeTo = null; state.revealDeadline = null;
+  if (to === 'day') openDay(state); else beginNight(state);
 }
 
 export function hunterShoot(state, userId, targetId) {
@@ -266,7 +385,10 @@ export function hunterShoot(state, userId, targetId) {
   state.lastDeaths = state.lastDeaths.concat(deaths);
   if (checkWin(state)) return;
   if (state.hunterPending) { state.phase = 'hunter'; return; }
-  if (state.resumeTo === 'night') beginNight(state); else openDay(state);
+  const to = state.resumeTo === 'night' ? 'night' : 'day';
+  state.resumeTo = null;
+  const shot = deaths.length ? `Le Chasseur emporte ${nameList(state, deaths)} dans sa chute.` : 'Le coup de feu se perd dans le vide.';
+  enterReveal(state, to, shot);
 }
 
 function checkWin(state) {
@@ -274,7 +396,7 @@ function checkWin(state) {
   // Les amoureux derniers en vie l'emportent.
   if (alive.length === 2 && state.lovers.length === 2 && state.lovers.every((l) => state.alive[l])) {
     state.phase = 'over'; state.winner = 'amoureux';
-    narrate(state, 'Les amoureux sont les derniers survivants : leur amour triomphe !');
+    narrate(state, 'Les amoureux sont les derniers survivants : leur amour triomphe de tout !');
     return true;
   }
   const wolves = aliveWolves(state).length;
@@ -319,12 +441,19 @@ export function viewFor(state, userId) {
     seerResult: state.seerSeen[userId] || null,
     canWolf: state.phase === 'night' && state.nightStep === 'wolves' && amWolf && state.alive[userId] && !state.wolfVotes[userId],
     wolfTarget: state.wolfVotes[userId] || null,
+    // Les loups voient en direct les cibles désignées par leurs complices (aura).
+    wolfPicks: (amWolf && state.phase === 'night' && state.nightStep === 'wolves') ? { ...state.wolfVotes } : null,
     witch: isWitchStep ? { victim: state.pendingVictim, healLeft: !state.witch.healUsed, killLeft: !state.witch.killUsed } : null,
     canVote: state.phase === 'vote' && state.alive[userId] && !state.votes[userId],
     myVote: state.votes[userId] || null,
+    // Votes publics du jour : tout le village voit qui accuse qui (aura + noms).
+    votes: state.phase === 'vote' ? { ...state.votes } : null,
     canShoot: state.phase === 'hunter' && state.hunterPending === userId,
     lastDeaths: state.lastDeaths.slice(),
+    resumeTo: state.phase === 'reveal' ? state.resumeTo : null,
     dayDeadline: state.phase === 'day' ? (state.dayDeadline || null) : null,
+    voteDeadline: state.phase === 'vote' ? (state.voteDeadline || null) : null,
+    revealDeadline: state.phase === 'reveal' ? (state.revealDeadline || null) : null,
     say: state.say,
     sayId: state.sayId,
     winner: state.winner,

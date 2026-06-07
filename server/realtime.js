@@ -387,6 +387,8 @@ export function createRealtime(httpServer) {
       const room = rooms.get(socket.data.roomId);
       if (!room || !room.game) return ack?.({ error: 'Aucune partie en cours.' });
       try {
+        // Le moteur peut avoir besoin des prénoms (ex. narration du Loup Garou).
+        room.game.names = Object.fromEntries(room.players.map((p) => [p.id, p.displayName]));
         GAMES[room.gameKey].action(room.game, socket.data.user.id, payload || {});
         ack?.({ ok: true });
         await emitRoomState(room.id);
