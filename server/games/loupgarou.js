@@ -46,6 +46,7 @@ export function createLoupGarou() {
     resumeTo: null,
     dayDeadline: null,
     voteDeadline: null,
+    voteResultDeadline: null,
     revealDeadline: null,
     lastDeaths: [],
     sayId: 0,
@@ -317,13 +318,28 @@ function openDay(state) {
 export function callVote(state, userId) {
   if (state.phase !== 'day') throw new Error('Pas le moment.');
   if (!state.seats.includes(userId)) throw new Error('Interdit.');
+  // Le vote démarre tout seul à la fin des 2 minutes de débat (pas de déclenchement manuel).
+  if (state.dayDeadline && Date.now() < state.dayDeadline - 1200) throw new Error('Le débat n\'est pas terminé.');
   state.phase = 'vote'; state.votes = {};
   state.dayDeadline = null;
+  state.voteResultDeadline = null;
   state.voteDeadline = Date.now() + VOTE_MS;
   narrate(state, pick([
     'Assez parlé ! L\'heure du jugement a sonné. Que chacun désigne son suspect.',
-    'Le temps presse : levez la main et votez. Qui doit périr aujourd\'hui ?',
-    'Que le vote commence ! Pointez du doigt celui ou celle que vous soupçonnez.',
+    'Le temps presse : choisissez votre suspect, puis validez votre vote.',
+    'Que le vote commence ! Désignez celui ou celle que vous soupçonnez, puis validez.',
+  ]));
+}
+
+// Tous les bulletins sont déposés : on les laisse affichés quelques secondes
+// (dépouillement) avant de résoudre, pour que chacun voie qui a voté qui.
+function lockVotes(state) {
+  if (state.voteResultDeadline) return;
+  state.voteDeadline = null;
+  state.voteResultDeadline = Date.now() + 6000;
+  narrate(state, pick([
+    'Les bulletins sont tombés… le village retient son souffle.',
+    'Tous les votes sont déposés. Voyons qui le village a désigné…',
   ]));
 }
 
@@ -353,17 +369,26 @@ function tallyAndResolveDay(state) {
 
 export function dayVote(state, userId, targetId) {
   if (state.phase !== 'vote') throw new Error('Pas de vote en cours.');
+  if (state.voteResultDeadline) throw new Error('Les votes sont clos.');
   if (!state.alive[userId]) throw new Error('Les morts ne votent pas.');
   if (!state.alive[targetId]) throw new Error('Cible invalide.');
   state.votes[userId] = targetId;
   const voters = aliveIds(state);
-  if (voters.every((id) => state.votes[id])) tallyAndResolveDay(state);
+  if (voters.every((id) => state.votes[id])) lockVotes(state);
 }
 
-// Fin du temps de vote : on résout avec les bulletins déposés (les abstentions comptent comme nulles).
+// Fin du temps de vote : on verrouille avec les bulletins déposés (abstentions = nulles).
 export function voteTimeout(state) {
-  if (state.phase !== 'vote') return;
+  if (state.phase !== 'vote' || state.voteResultDeadline) return;
   if (state.voteDeadline && Date.now() < state.voteDeadline - 1500) return;
+  lockVotes(state);
+}
+
+// Fin du dépouillement : on résout enfin (élimination).
+export function resolveVote(state) {
+  if (state.phase !== 'vote' || !state.voteResultDeadline) return;
+  if (Date.now() < state.voteResultDeadline - 1200) return;
+  state.voteResultDeadline = null;
   tallyAndResolveDay(state);
 }
 
@@ -444,10 +469,12 @@ export function viewFor(state, userId) {
     // Les loups voient en direct les cibles désignées par leurs complices (aura).
     wolfPicks: (amWolf && state.phase === 'night' && state.nightStep === 'wolves') ? { ...state.wolfVotes } : null,
     witch: isWitchStep ? { victim: state.pendingVictim, healLeft: !state.witch.healUsed, killLeft: !state.witch.killUsed } : null,
-    canVote: state.phase === 'vote' && state.alive[userId] && !state.votes[userId],
-    myVote: state.votes[userId] || null,
+    canVote: state.phase === 'vote' && !state.voteResultDeadline && state.alive[userId] && !state.votes[userId],
+    myVote: state.phase === 'vote' ? (state.votes[userId] || null) : null,
     // Votes publics du jour : tout le village voit qui accuse qui (aura + noms).
     votes: state.phase === 'vote' ? { ...state.votes } : null,
+    voteLocked: !!state.voteResultDeadline,
+    voteResultDeadline: state.phase === 'vote' ? (state.voteResultDeadline || null) : null,
     canShoot: state.phase === 'hunter' && state.hunterPending === userId,
     lastDeaths: state.lastDeaths.slice(),
     resumeTo: state.phase === 'reveal' ? state.resumeTo : null,

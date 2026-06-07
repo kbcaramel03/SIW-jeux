@@ -191,6 +191,7 @@ function applyLoupGarouAction(state, userId, payload) {
     case 'callVote': return loupgarou.callVote(state, userId);
     case 'vote': return loupgarou.dayVote(state, userId, payload.targetId);
     case 'voteTimeout': return loupgarou.voteTimeout(state, userId);
+    case 'resolveVote': return loupgarou.resolveVote(state, userId);
     case 'resume': return loupgarou.resumeLoupGarou(state, userId);
     case 'shoot': return loupgarou.hunterShoot(state, userId, payload.targetId);
     default: throw new Error('Action inconnue.');

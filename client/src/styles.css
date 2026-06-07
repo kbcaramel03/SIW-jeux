@@ -829,8 +829,9 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .lg-card3d-label { font-size: 0.56rem; font-weight: 800; color: var(--ink-soft); line-height: 1; }
 .lg-role-tag.loup { color: #6b2b2b; } .lg-role-tag.villageois { color: #2e8c47; }
 .lg-role-tag.voyante { color: #5d3a9c; } .lg-role-tag.sorciere { color: #1f7a6a; } .lg-role-tag.chasseur { color: #c4561f; }
-.lg-mj { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 48%; max-width: 210px;
-  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; pointer-events: none; }
+.lg-mj-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 3; pointer-events: none; }
+.lg-mj { width: 48%; max-width: 210px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; pointer-events: none; }
+.lg-mj.roaming .lg-mj-emo { filter: drop-shadow(0 0 10px rgba(176,122,69,0.8)); }
 .lg-mj .lg-mj-voice { pointer-events: auto; }
 .lg-mj-emo { font-size: 3rem; display: flex; color: #7a4a25; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.3)); }
 .lg-table.night .lg-mj-emo { color: #b07a45; }

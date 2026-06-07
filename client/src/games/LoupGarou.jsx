@@ -4,7 +4,7 @@ import { Play, Sparkles, Minus, Plus, Volume2, VolumeX, Skull } from 'lucide-rea
 import { AnimatePresence, motion } from 'framer-motion';
 import { GiWerewolf, GiFarmer, GiCrystalBall, GiCauldron, GiWinchesterRifle, GiWizardFace, GiMoon, GiCupidonArrow, GiShield, GiAngelWings, GiBabyFace } from 'react-icons/gi';
 import { Avatar } from '../components/OnlineRail.jsx';
-import { speak, stopSpeak, voiceSupported, listVoices, setVoiceByName, getChosenVoice } from '../voice.js';
+import { speak, stopSpeak } from '../voice.js';
 import { winConfetti } from '../effects.js';
 
 // Cartes de rôles illustrées (dessins : Game Icons / game-icons.net, CC BY 3.0).
@@ -31,7 +31,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const [poisonMode, setPoisonMode] = useState(false);
   const [witchKill, setWitchKill] = useState(null);
   const [cupidPicks, setCupidPicks] = useState([]);
-  const [voiceName, setVoiceName] = useState(getChosenVoice() || '');
+  const [voteSel, setVoteSel] = useState(null); // cible sélectionnée (à valider) au vote du jour
   const [, setTick] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [seerKnown, setSeerKnown] = useState({}); // ce que la voyante a vu (persistant pour elle)
@@ -51,7 +51,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
 
   // --- Minuteurs (jour / vote / pause commentée) : un seul ticker pour la phase active.
   const activeDeadline = g.phase === 'day' ? g.dayDeadline
-    : g.phase === 'vote' ? g.voteDeadline
+    : g.phase === 'vote' ? (g.voteResultDeadline || g.voteDeadline)
       : g.phase === 'reveal' ? g.revealDeadline : null;
   useEffect(() => {
     if (!activeDeadline) return undefined;
@@ -60,27 +60,29 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   }, [activeDeadline, g.phase]);
   const secsLeft = activeDeadline ? Math.max(0, Math.ceil((activeDeadline - now) / 1000)) : null;
 
-  // L'hôte fait avancer le jeu tout seul à la fin de chaque minuteur (plus besoin de cliquer).
+  // Le jeu avance tout seul à la fin de chaque minuteur (vote auto après le débat,
+  // pauses commentées, clôture du vote). Personne n'a à cliquer ; le serveur valide
+  // l'échéance, donc n'importe quel client peut déclencher (pas seulement l'hôte).
   useEffect(() => {
-    if (!isHost || !activeDeadline || now < activeDeadline) return;
+    if (!activeDeadline || now < activeDeadline) return;
     const key = `${g.phase}:${activeDeadline}`;
     if (firedRef.current === key) return;
     firedRef.current = key;
     if (g.phase === 'day') onAction({ kind: 'callVote' });
-    else if (g.phase === 'vote') onAction({ kind: 'voteTimeout' });
+    else if (g.phase === 'vote') onAction({ kind: g.voteResultDeadline ? 'resolveVote' : 'voteTimeout' });
     else if (g.phase === 'reveal') onAction({ kind: 'resume' });
-  }, [now, activeDeadline, isHost, g.phase]);
+  }, [now, activeDeadline, g.phase]);
 
-  // Narration : seul l'hôte parle (évite la cacophonie), à chaque nouvelle phrase.
+  // Narration : chaque joueur entend le MJ sur son propre appareil (chacun peut couper).
   useEffect(() => {
-    if (!isHost || !voiceOn) return;
+    if (!voiceOn) return;
     if (g.sayId != null && g.sayId !== lastSay.current) { lastSay.current = g.sayId; speak(g.say); }
-  }, [g.sayId, voiceOn, isHost]);
+  }, [g.sayId, voiceOn]);
   useEffect(() => () => stopSpeak(), []);
   useEffect(() => {
     if (g.phase === 'over' && ((g.winner === 'loups' && g.myRole === 'loup') || (g.winner === 'village' && g.myRole !== 'loup'))) winConfetti();
   }, [g.phase]);
-  useEffect(() => { setPoisonMode(false); setWitchKill(null); setCupidPicks([]); }, [g.nightStep, g.phase]);
+  useEffect(() => { setPoisonMode(false); setWitchKill(null); setCupidPicks([]); setVoteSel(null); }, [g.nightStep, g.phase]);
 
   // Bandeau d'ambiance plein écran à chaque bascule de phase.
   useEffect(() => {
@@ -134,24 +136,14 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
               );
             })}
           </div>
-          {isHost && voiceSupported() && (
-            <div className="lg-cfg-row lg-voice-row">
-              <span className="lg-cfg-label"><Volume2 size={18} /> Voix du MJ</span>
-              <select className="lg-voice-select" value={voiceName} onChange={(e) => { setVoiceName(e.target.value); setVoiceByName(e.target.value); speak('Bienvenue au village. Que la nuit tombe.'); }}>
-                <option value="">Voix automatique</option>
-                {listVoices().map((v) => <option key={v.name} value={v.name}>{v.name}</option>)}
-              </select>
-            </div>
-          )}
           {!isHost && <p className="muted">Seul l'hôte règle la composition.</p>}
         </div>
 
         <div className="cn-controls">
           {!g.amSeated && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'join' })}>Rejoindre</Button>}
-          {g.canStart && isHost && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la nuit</Button>}
+          {g.canStart && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la nuit</Button>}
         </div>
         {g.amSeated && g.seats.length < 4 && <p className="muted" style={{ textAlign: 'center' }}>En attente d'au moins 4 joueurs…</p>}
-        <p className="lg-credit">Illustrations : game-icons.net (CC BY 3.0)</p>
       </div>
     );
   }
@@ -175,7 +167,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
     if (g.canGuard && p.id !== g.guardLast) return onAction({ kind: 'guard', targetId: p.id });
     if (g.canSee && p.id !== me) return onAction({ kind: 'see', targetId: p.id });
     if (g.canWolf && p.id !== me && !(g.fellowWolves || []).includes(p.id)) return onAction({ kind: 'wolf', targetId: p.id });
-    if (g.canVote) return onAction({ kind: 'vote', targetId: p.id });
+    if (g.canVote) { setVoteSel((s) => (s === p.id ? null : p.id)); return; } // sélection ; on valide ensuite
     if (g.canShoot) return onAction({ kind: 'shoot', targetId: p.id });
   }
   const selecting = g.canSee || g.canWolf || g.canVote || g.canShoot || poisonMode || g.canCupid || g.canWild || g.canGuard;
@@ -189,12 +181,18 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
     }
     if (g.phase === 'hunter') return g.canShoot ? 'Chasseur : emporte quelqu\'un !' : 'Le Chasseur tire…';
     if (g.phase === 'reveal') return g.resumeTo === 'day' ? '🌅 Au petit matin…' : '⚖️ Le verdict du village';
-    if (g.phase === 'vote') return g.canVote ? 'Vote : qui pend-on ?' : 'Les votes tombent…';
+    if (g.phase === 'vote') return g.voteLocked ? '🗳️ Dépouillement…' : g.canVote ? 'Vote : choisis puis valide' : 'Les votes tombent…';
     if (g.phase === 'day') return 'Le village débat…';
     if (isNight) return `Nuit ${g.nightNo}`;
     return '';
   }
   const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  // La nuit, le MJ « fait sa ronde » autour de la table ; le jour, il reste au centre.
+  const R = 58;
+  const orbit = {
+    x: [0, R * 0.71, R, R * 0.71, 0, -R * 0.71, -R, -R * 0.71, 0],
+    y: [-R, -R * 0.71, 0, R * 0.71, R, R * 0.71, 0, -R * 0.71, -R],
+  };
 
   return (
     <div className="lg fade-up">
@@ -295,9 +293,10 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
           const known = knownKey ? ROLE[knownKey] : null;
           const voters = votesByTarget[p.id] || [];
           const wolfPickers = wolfByTarget[p.id] || [];
-          const aura = voters.length > 0 || wolfPickers.length > 0 || cupidPicks.includes(p.id);
+          const selected = voteSel === p.id || cupidPicks.includes(p.id);
+          const aura = voters.length > 0 || wolfPickers.length > 0 || selected;
           return (
-            <button key={p.id} className={`lg-player ${dead ? 'dead' : ''} ${selecting && p.alive ? 'pick' : ''} ${cupidPicks.includes(p.id) ? 'chosen' : ''} ${g.lovers && g.lovers.includes(p.id) ? 'lover' : ''} ${g.myVote === p.id ? 'myvote' : ''} ${voters.length ? 'targeted' : ''} ${wolfPickers.length ? 'wolf-target' : ''}`}
+            <button key={p.id} className={`lg-player ${dead ? 'dead' : ''} ${selecting && p.alive ? 'pick' : ''} ${selected ? 'chosen' : ''} ${g.lovers && g.lovers.includes(p.id) ? 'lover' : ''} ${g.myVote === p.id ? 'myvote' : ''} ${voters.length ? 'targeted' : ''} ${wolfPickers.length ? 'wolf-target' : ''}`}
               style={{ left: `${x}%`, top: `${y}%` }} disabled={!selecting || dead} onClick={() => clickPlayer(p)}>
               {aura && <span className="lg-aura" aria-hidden />}
               <div className="lg-player-av"><Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={36} />{dead && <span className="lg-dead-x"><Skull size={15} /></span>}</div>
@@ -319,28 +318,37 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
             </button>
           );
         })}
-        {/* Maître du jeu au centre */}
-        <motion.div className="lg-mj" key={g.sayId} initial={{ scale: 0.94 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 14 }}>
-          <span className="lg-mj-emo"><GiWizardFace /></span>
-          <span className="lg-mj-say">{g.say}</span>
-          {voiceSupported() && (
+        {/* Maître du jeu : la nuit il fait sa ronde, le jour il trône au centre */}
+        <div className="lg-mj-wrap">
+          <motion.div className={`lg-mj ${isNight ? 'roaming' : ''}`}
+            animate={isNight ? orbit : { x: 0, y: 0 }}
+            transition={isNight
+              ? { duration: 18, repeat: Infinity, ease: 'linear' }
+              : { type: 'spring', stiffness: 120, damping: 18 }}>
+            <span className="lg-mj-emo"><GiWizardFace /></span>
+            <span className="lg-mj-say">{g.say}</span>
             <IconButton size="small" className="lg-mj-voice" onClick={() => { setVoiceOn((v) => { if (v) stopSpeak(); return !v; }); }} title="Voix du maître du jeu">
               {voiceOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </IconButton>
-          )}
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
 
       {/* Contrôles bas */}
       {g.phase === 'day' && (
+        <p className="muted" style={{ textAlign: 'center' }}>Débattez… le vote démarrera tout seul à la fin des 2 minutes.</p>
+      )}
+      {(g.canSee || g.canWolf || g.canShoot) && <p className="muted" style={{ textAlign: 'center' }}>Choisis une personne ci-dessus.</p>}
+      {g.phase === 'vote' && g.canVote && (
         <div className="cn-controls">
-          {isHost
-            ? <Button variant="contained" onClick={() => onAction({ kind: 'callVote' })}>Lancer le vote maintenant</Button>
-            : <p className="muted" style={{ textAlign: 'center', margin: 0 }}>Débattez… le vote démarrera tout seul à la fin du temps.</p>}
+          <Button variant="contained" disabled={!voteSel}
+            onClick={() => { onAction({ kind: 'vote', targetId: voteSel }); setVoteSel(null); }}>
+            {voteSel ? `Valider mon vote : ${nameById[voteSel]}` : 'Choisis qui accuser ci-dessus…'}
+          </Button>
         </div>
       )}
-      {(g.canSee || g.canWolf || g.canVote || g.canShoot) && <p className="muted" style={{ textAlign: 'center' }}>Choisis une personne ci-dessus.</p>}
-      {g.phase === 'vote' && !g.canVote && g.alive && <p className="muted" style={{ textAlign: 'center' }}>Ton vote est enregistré — on attend les autres…</p>}
+      {g.phase === 'vote' && !g.canVote && !g.voteLocked && g.alive && <p className="muted" style={{ textAlign: 'center' }}>Ton vote est validé — on attend les autres…</p>}
+      {g.phase === 'vote' && g.voteLocked && <p className="muted" style={{ textAlign: 'center' }}>🗳️ Dépouillement… {secsLeft != null ? `${secsLeft}s` : ''}</p>}
       {isNight && !g.canSee && !g.canWolf && !g.witch && !g.canCupid && !g.canWild && !g.canGuard && g.alive && <p className="muted" style={{ textAlign: 'center' }}>Tu dors… 😴 (les rôles de la nuit agissent)</p>}
       {!g.alive && g.phase !== 'over' && <p className="muted" style={{ textAlign: 'center' }}>Tu es éliminé — tu observes la partie.</p>}
 
