@@ -483,8 +483,8 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .f7-action-fly { transform-origin: top right; }
 
 .f7-player-head { display: flex; align-items: center; gap: 9px; padding-right: 60px; min-height: 42px; }
-.f7-turn-controls { position: absolute; top: 8px; right: 10px; display: inline-flex; gap: 6px; z-index: 4; }
-.f7-turn-controls .MuiButton-root { min-width: 0; padding: 3px 10px; font-size: 0.74rem; line-height: 1.4; }
+.f7-turn-controls { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+.f7-turn-controls .MuiButton-root { min-width: 0; padding: 4px 14px; font-size: 0.8rem; }
 .f7-player-id { display: flex; flex-direction: column; line-height: 1.2; flex: 1; min-width: 0; }
 .f7-player-name { font-weight: 700; color: var(--ink); font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .f7-player-score { font-size: 0.78rem; color: var(--ink-soft); }

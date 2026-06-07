@@ -173,13 +173,6 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
                 </div>
                 {status === 'busted' && <span className="f7-badge bust">PERDU</span>}
                 {status === 'stayed' && <span className="f7-badge stay">resté</span>}
-                {/* Boutons d'action directement sur ma carte (en haut à droite) — plus besoin de scroller */}
-                {p.id === me && g.phase === 'playing' && g.isMyTurn && !pa && (
-                  <span className="f7-turn-controls">
-                    <Button size="small" variant="contained" onClick={() => onAction({ kind: 'hit' })}>Tirer</Button>
-                    <Button size="small" variant="outlined" onClick={() => onAction({ kind: 'stay' })}>Rester</Button>
-                  </span>
-                )}
               </div>
 
               <div className="f7-line">
@@ -203,6 +196,14 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
                   ? <span className="f7-round-pts">+{p.roundResult} cette manche</span>
                   : <span className="f7-cur">{l?.current ?? 0} pts en jeu</span>}
               </div>
+
+              {/* Boutons d'action sur MA carte (sous mes points) — pas de conflit avec les cartes Stop/Chance */}
+              {p.id === me && g.phase === 'playing' && g.isMyTurn && !pa && (
+                <div className="f7-turn-controls">
+                  <Button size="small" variant="contained" startIcon={<Hand size={16} />} onClick={() => onAction({ kind: 'hit' })}>Tirer</Button>
+                  <Button size="small" variant="outlined" startIcon={<PauseCircle size={16} />} onClick={() => onAction({ kind: 'stay' })}>Rester</Button>
+                </div>
+              )}
             </div>
           );
         })}
