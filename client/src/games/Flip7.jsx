@@ -173,6 +173,13 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
                 </div>
                 {status === 'busted' && <span className="f7-badge bust">PERDU</span>}
                 {status === 'stayed' && <span className="f7-badge stay">resté</span>}
+                {/* Boutons d'action directement sur ma carte (en haut à droite) — plus besoin de scroller */}
+                {p.id === me && g.phase === 'playing' && g.isMyTurn && !pa && (
+                  <span className="f7-turn-controls">
+                    <Button size="small" variant="contained" onClick={() => onAction({ kind: 'hit' })}>Tirer</Button>
+                    <Button size="small" variant="outlined" onClick={() => onAction({ kind: 'stay' })}>Rester</Button>
+                  </span>
+                )}
               </div>
 
               <div className="f7-line">
@@ -200,14 +207,6 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
           );
         })}
       </div>
-
-      {/* Mes contrôles */}
-      {g.phase === 'playing' && g.isMyTurn && (
-        <div className="cn-controls f7-controls">
-          <Button variant="contained" startIcon={<Hand size={18} />} onClick={() => onAction({ kind: 'hit' })}>Tirer</Button>
-          <Button variant="outlined" startIcon={<PauseCircle size={18} />} onClick={() => onAction({ kind: 'stay' })}>Rester</Button>
-        </div>
-      )}
 
       {g.phase === 'roundover' && isHost && (
         <div className="cn-over"><Button variant="contained" startIcon={<Sparkles size={18} />} onClick={() => onAction({ kind: 'next' })}>Manche suivante</Button></div>

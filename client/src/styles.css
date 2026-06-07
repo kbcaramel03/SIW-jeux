@@ -238,7 +238,10 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .cn-pickers { position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; z-index: 4; }
 .cn-picker-tag { background: var(--violet); color: #fff; font-family: var(--font-body); font-weight: 700; font-size: 0.6rem; padding: 1px 7px; border-radius: 9px; white-space: nowrap; box-shadow: var(--shadow-sm); }
 
-.cn-controls { display: flex; gap: 9px; align-items: center; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+.cn-controls { display: flex; gap: 9px; align-items: center; margin-top: 14px; flex-wrap: wrap; justify-content: center;
+  position: sticky; bottom: 10px; z-index: 30; }
+/* Fond discret quand la barre d'action colle au-dessus du contenu (toujours visible, zéro scroll) */
+.game-area .cn-controls { background: rgba(255,255,255,0.92); backdrop-filter: blur(6px); padding: 8px; border-radius: 16px; box-shadow: 0 4px 18px rgba(120,60,110,0.16); }
 .cn-count-input { width: 74px; flex: none; }
 .cn-wait { text-align: center; margin-top: 12px; }
 .cn-over { text-align: center; margin-top: 16px; animation: pop 0.4s ease both; }
@@ -480,6 +483,8 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .f7-action-fly { transform-origin: top right; }
 
 .f7-player-head { display: flex; align-items: center; gap: 9px; padding-right: 60px; min-height: 42px; }
+.f7-turn-controls { position: absolute; top: 8px; right: 10px; display: inline-flex; gap: 6px; z-index: 4; }
+.f7-turn-controls .MuiButton-root { min-width: 0; padding: 3px 10px; font-size: 0.74rem; line-height: 1.4; }
 .f7-player-id { display: flex; flex-direction: column; line-height: 1.2; flex: 1; min-width: 0; }
 .f7-player-name { font-weight: 700; color: var(--ink); font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .f7-player-score { font-size: 0.78rem; color: var(--ink-soft); }
@@ -770,7 +775,8 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   min-height: 120px; max-height: 220px; overflow-y: auto; font-size: 0.82rem; display: flex; flex-direction: column; gap: 3px; }
 .scr-line.system { color: var(--ink-soft); font-style: italic; }
 .scr-line.correct { color: #2e8c47; font-weight: 600; }
-.scr-guess { display: flex; align-items: center; gap: 6px; }
+.scr-guess { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.scr-found { margin-top: 8px; text-align: center; color: #2e8c47; font-weight: 700; }
 @media (max-width: 760px) {
   .scr-main { flex-direction: column; }
   .scr-side { width: 100%; flex-direction: row; }

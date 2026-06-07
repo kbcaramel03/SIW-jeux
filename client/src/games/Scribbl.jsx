@@ -65,6 +65,12 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
   }, [g.phase, g.deadline]);
   const left = g.phase === 'draw' && g.deadline ? Math.max(0, Math.round((g.deadline - now) / 1000)) : null;
   useEffect(() => { if (left === 0 && g.phase === 'draw') onAction({ kind: 'timeup' }); }, [left]);
+  // L'hôte déclenche la révélation progressive des lettres (le serveur décide quand).
+  useEffect(() => {
+    if (g.phase !== 'draw' || !isHost) return undefined;
+    const t = setInterval(() => onAction({ kind: 'reveal' }), 2500);
+    return () => clearInterval(t);
+  }, [g.phase, isHost]);
 
   // Dessin (dessinatrice uniquement)
   const canDraw = g.isDrawer && g.phase === 'draw';
@@ -141,6 +147,15 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
               <IconButton size="small" onClick={clearAll} title="Tout effacer"><Trash2 size={18} /></IconButton>
             </div>
           )}
+          {/* Champ de réponse juste sous le tableau */}
+          {g.canGuess && (
+            <div className="scr-guess">
+              <TextField size="small" fullWidth autoComplete="off" placeholder="Ta réponse…" value={guess}
+                onChange={(e) => setGuess(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendGuess(); } }} />
+              <IconButton color="primary" onClick={sendGuess}><Send size={20} /></IconButton>
+            </div>
+          )}
+          {g.iGuessed && g.phase === 'draw' && <div className="scr-found">✅ Tu as trouvé ! Patiente…</div>}
         </div>
 
         <div className="scr-side">
@@ -166,15 +181,6 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
           </div>
         </div>
       </div>
-
-      {/* Devinette */}
-      {g.canGuess && (
-        <div className="scr-guess">
-          <TextField size="small" fullWidth placeholder="Ta réponse…" value={guess}
-            onChange={(e) => setGuess(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendGuess(); } }} />
-          <IconButton color="primary" onClick={sendGuess}><Send size={20} /></IconButton>
-        </div>
-      )}
 
       {g.phase === 'turnend' && isHost && <div className="cn-controls"><Button variant="contained" onClick={() => onAction({ kind: 'next' })}>Tour suivant</Button></div>}
       {g.phase === 'turnend' && !isHost && <p className="muted" style={{ textAlign: 'center' }}>En attente de l'hôte…</p>}

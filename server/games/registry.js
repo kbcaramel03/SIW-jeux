@@ -171,6 +171,7 @@ function applyScribblAction(state, userId, payload) {
     case 'choose': return scribbl.chooseWord(state, userId, payload.word);
     case 'guess': return scribbl.guessScribbl(state, userId, payload.text);
     case 'timeup': return scribbl.timeupScribbl(state, userId);
+    case 'reveal': return scribbl.revealScribbl(state, userId);
     case 'next': return scribbl.nextScribbl(state, userId);
     default: throw new Error('Action inconnue.');
   }
