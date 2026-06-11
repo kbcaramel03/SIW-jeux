@@ -61,6 +61,38 @@ export function boomSound(big = false) {
   n.connect(ng); ng.connect(c.destination); n.start(t);
 }
 
+// Son de dé qui roule : petits clics secs rapprochés.
+export function diceSound() {
+  const c = audio();
+  if (!c) return;
+  const t = c.currentTime;
+  for (let i = 0; i < 5; i++) {
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = 'square';
+    o.frequency.setValueAtTime(900 + Math.random() * 700, t + i * 0.09);
+    g.gain.setValueAtTime(0.05, t + i * 0.09);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.05);
+    o.connect(g); g.connect(c.destination);
+    o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.06);
+  }
+}
+
+// Petit "pop" doux (pion qui se pose).
+export function popSound() {
+  const c = audio();
+  if (!c) return;
+  const t = c.currentTime;
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(520, t);
+  o.frequency.exponentialRampToValueAtTime(300, t + 0.09);
+  g.gain.setValueAtTime(0.14, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.13);
+}
+
 // Son "plouf" pour un tir à l'eau.
 export function splashSound() {
   const c = audio();

@@ -163,6 +163,10 @@ export function createRealtime(httpServer) {
       if (!saved?.id || !GAMES[saved.gameKey]) continue;
       const room = { ...saved, roster: saved.roster || {}, chat: saved.chat || [] };
       room.players = (room.players || []).map((p) => ({ ...p, connected: false }));
+      // On repart de zéro sur les chronos d'inactivité : le temps que tout le
+      // monde se reconnecte, le serveur ne doit pas jouer à leur place.
+      if (room.game?.stepSince) room.game.stepSince = Date.now();
+      if (room.game?.since) room.game.since = Date.now();
       rooms.set(room.id, room);
       scheduleDelete(room.id); // supprimé après le délai de grâce si personne ne revient
     }

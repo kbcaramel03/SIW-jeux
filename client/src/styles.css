@@ -951,3 +951,58 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 
 /* Bulle flottante du chat de salon (mobile) */
 .room-fab { position: fixed; right: 16px; bottom: 16px; z-index: 40; }
+
+/* ====== Ludo ====== */
+.ludo { display: flex; flex-direction: column; gap: 12px; }
+.ludo-wait { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+.ludo-dot { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.25); flex-shrink: 0; }
+
+.ludo-players { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ludo-chip { display: flex; align-items: center; gap: 7px; padding: 5px 11px 5px 6px; border-radius: 999px;
+  background: #fff; border: 2px solid var(--pc); box-shadow: 0 2px 8px rgba(60,30,80,0.08); font-size: 0.85rem; }
+.ludo-chip.active { background: var(--pc); color: #fff; animation: ludoPulse 1.6s ease-in-out infinite; }
+.ludo-chip-name { font-weight: 800; }
+.ludo-chip-home { font-size: 0.74rem; font-weight: 700; opacity: 0.85; }
+@keyframes ludoPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(60,30,80,0.25); } 50% { box-shadow: 0 0 0 7px rgba(60,30,80,0); } }
+
+.ludo-main { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: center; }
+.ludo-board { position: relative; width: min(88vw, 440px); aspect-ratio: 1; margin: 0 auto;
+  background: #fdfbff; border-radius: 18px; box-shadow: 0 10px 30px rgba(70,40,100,0.16); overflow: hidden;
+  border: 3px solid #fff; }
+.ludo-base { position: absolute; border-radius: 14px; box-shadow: inset 0 -5px 0 rgba(0,0,0,0.14); }
+.ludo-base-panel { position: absolute; inset: 16%; border-radius: 12px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.1); }
+.ludo-base-slot { position: absolute; width: 22%; height: 22%; transform: translate(-50%, -50%);
+  border-radius: 50%; background: rgba(255,255,255,0.85); box-shadow: inset 0 2px 5px rgba(0,0,0,0.18); }
+
+.ludo-cell { position: absolute; background: #fff; border: 1px solid #e7def4; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; }
+.ludo-cell.home { border-width: 1px; }
+.ludo-star { opacity: 0.95; }
+.ludo-center { position: absolute; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); }
+
+.ludo-token { position: absolute; width: 6.2%; transform: translate(-50%, -78%); cursor: default; }
+.ludo-pawn-svg { width: 100%; height: auto; display: block; }
+.ludo-token.movable { cursor: pointer; animation: ludoBounce 0.9s ease-in-out infinite; }
+.ludo-token.movable .ludo-pawn-svg { filter: drop-shadow(0 0 7px rgba(255,214,102,0.95)) drop-shadow(0 0 3px #fff); }
+.ludo-token.done { width: 4.6%; opacity: 0.92; }
+@keyframes ludoBounce { 0%, 100% { margin-top: 0; } 50% { margin-top: -5px; } }
+
+.ludo-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center; width: 175px; }
+.ludo-roll-hint { font-size: 0.82rem; font-weight: 800; color: var(--violet, #8a76a6); }
+.ludo-dice { background: none; border: none; padding: 10px; perspective: 420px; cursor: default; border-radius: 16px; }
+.ludo-dice.can-roll { cursor: pointer; background: radial-gradient(circle, rgba(255,214,102,0.35), transparent 70%);
+  animation: ludoPulse 1.4s ease-in-out infinite; }
+.ludo-dice-cube { width: 54px; height: 54px; position: relative; transform-style: preserve-3d; }
+.ludo-dice-face { position: absolute; inset: 0; background: linear-gradient(145deg, #ffffff, #efe9fa);
+  border: 2px solid #ddd0f0; border-radius: 11px; display: grid; grid-template-columns: repeat(3, 1fr);
+  place-items: center; padding: 7px; backface-visibility: hidden; }
+.ludo-dice-face .pip { width: 9px; height: 9px; border-radius: 50%; background: var(--dice-accent, #4a3a5c);
+  box-shadow: inset 0 -1.5px 0 rgba(0,0,0,0.25); }
+.ludo-dice-face .pip.off { visibility: hidden; }
+
+.ludo-sixes { font-size: 0.8rem; font-weight: 800; color: #b8902f; text-align: center; }
+.ludo-log { font-size: 0.76rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px; text-align: center; }
+
+.ludo-podium { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px;
+  background: #fff; border-radius: 16px; box-shadow: 0 6px 20px rgba(70,40,100,0.12); }
+.ludo-podium-row { display: flex; align-items: center; gap: 9px; font-size: 1rem; }

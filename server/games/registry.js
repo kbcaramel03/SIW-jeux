@@ -8,6 +8,7 @@ import * as bullshit from './bullshit.js';
 import * as conspiracy from './conspiracy.js';
 import * as loupgarou from './loupgarou.js';
 import * as scribbl from './scribbl.js';
+import * as ludo from './ludo.js';
 
 export const GAMES = {
   codenames: {
@@ -65,8 +66,14 @@ export const GAMES = {
     action: applyLoupGarouAction,
     tick: loupgarou.tickLoupGarou,
   },
+  ludo: {
+    key: 'ludo', label: 'Ludo', emoji: '🎲', minPlayers: 2, maxPlayers: 4, ready: true,
+    create: ludo.createLudo,
+    view: ludo.viewFor,
+    action: applyLudoAction,
+    tick: ludo.tickLudo,
+  },
   echecs: { key: 'echecs', label: 'Échecs', emoji: '♟️', minPlayers: 2, maxPlayers: 2, ready: false },
-  ludo: { key: 'ludo', label: 'Ludo', emoji: '🎲', minPlayers: 2, maxPlayers: 4, ready: false },
 };
 
 export function gameList() {
@@ -175,6 +182,16 @@ function applyScribblAction(state, userId, payload) {
     case 'timeup': return scribbl.timeupScribbl(state, userId);
     case 'reveal': return scribbl.revealScribbl(state, userId);
     case 'next': return scribbl.nextScribbl(state, userId);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyLudoAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return ludo.joinLudo(state, userId);
+    case 'start': return ludo.startLudo(state, userId);
+    case 'roll': return ludo.rollLudo(state, userId);
+    case 'move': return ludo.moveLudo(state, userId, payload.pawn);
     default: throw new Error('Action inconnue.');
   }
 }
