@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Paper, Button, Chip, Typography, Alert, Fab, Drawer, IconButton } from '@mui/material';
-import { ChevronLeft, Users, MessageCircle, Crown, X } from 'lucide-react';
+import { ChevronLeft, Users, MessageCircle, Crown, X, WifiOff } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import Chat from '../components/Chat.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
@@ -20,24 +20,42 @@ export default function Room() {
   const [room, setRoom] = useState(null);
   const [error, setError] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
     const socket = getSocket();
-    const onState = (state) => {
-      if (state.id === id) setRoom(state);
-    };
-    socket.on('room:state', onState);
-    socket.emit('room:join', { roomId: id }, (res) => {
+    const join = () => socket.emit('room:join', { roomId: id }, (res) => {
       if (res?.error) {
         setError(res.error);
         setTimeout(() => navigate('/'), 1500);
       }
     });
+    const onState = (state) => {
+      if (state.id === id) setRoom(state);
+    };
+    // Après une coupure (wifi, veille mobile), la socket se reconnecte toute
+    // seule mais n'est plus dans le salon : on le rejoint à chaque connexion.
+    const onConnect = () => { setOffline(false); join(); };
+    const onDisconnect = () => setOffline(true);
+    socket.on('room:state', onState);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    setOffline(!socket.connected);
+    join();
     return () => {
       socket.off('room:state', onState);
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
       socket.emit('room:leave');
     };
   }, [id]);
+
+  // Les erreurs d'action s'effacent toutes seules (pas de bannière qui traîne).
+  useEffect(() => {
+    if (!error || !room) return undefined;
+    const t = setTimeout(() => setError(''), 4000);
+    return () => clearTimeout(t);
+  }, [error, room]);
 
   function sendAction(payload) {
     return new Promise((resolve) => {
@@ -63,13 +81,14 @@ export default function Room() {
   const sidePanel = (
     <>
       <Paper elevation={1} className="players-box" sx={{ p: 2 }}>
-        <h3 className="section-title"><Users size={18} /> Joueurs ({room.players.length})</h3>
+        <h3 className="section-title"><Users size={18} /> Joueurs ({room.players.filter((p) => p.connected !== false).length})</h3>
         <ul className="player-list">
           {room.players.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className={p.connected === false ? 'away' : ''}>
               <Avatar name={p.displayName} gender={p.gender} avatar={p.avatar} />
               <span>{p.displayName}{p.id === room.me.id ? ' (toi)' : ''}</span>
               {p.id === room.hostId && <Crown size={15} color="#c2a36b" />}
+              {p.connected === false && <span className="away-tag"><WifiOff size={12} /> absent·e</span>}
             </li>
           ))}
         </ul>
@@ -90,6 +109,7 @@ export default function Room() {
         <Chip color="primary" label={room.gameLabel} />
       </div>
 
+      {offline && <Alert severity="warning" icon={<WifiOff size={18} />} sx={{ mb: 1.5 }}>Connexion perdue — reconnexion en cours…</Alert>}
       {error && <Alert severity="error" sx={{ mb: 1.5 }}>{error}</Alert>}
 
       <div className="room-body">

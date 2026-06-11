@@ -22,7 +22,7 @@ export default function Chat({ messages, meId }) {
     e.preventDefault();
     const clean = text.trim();
     if (!clean) return;
-    getSocket().emit('chat:send', { text: clean });
+    getSocket().emit('room:chat', { text: clean });
     setText('');
     setShowEmoji(false);
   }

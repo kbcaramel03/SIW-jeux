@@ -7,9 +7,10 @@ import { winConfetti } from '../effects.js';
 export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
   const g = room.game;
   const me = room.me.id;
-  const nameById = Object.fromEntries(room.players.map((p) => [p.id, p.displayName]));
-  const genderById = Object.fromEntries(room.players.map((p) => [p.id, p.gender]));
-  const avatarById = Object.fromEntries(room.players.map((p) => [p.id, p.avatar]));
+  const people = room.roster || room.players; // roster : noms conservés même après un départ
+  const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
+  const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
+  const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const [picked, setPicked] = useState([]);
 
   useEffect(() => { if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' }); }, [g.phase, g.amSeated]);

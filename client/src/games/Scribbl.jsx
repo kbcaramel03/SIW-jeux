@@ -12,9 +12,10 @@ const COLORS = ['#2a2230', '#e4433a', '#ef8c2f', '#edb015', '#3aa856', '#2b7fd4'
 export default function Scribbl({ room, isHost, onAction, onNewGame }) {
   const g = room.game;
   const me = room.me.id;
-  const nameById = Object.fromEntries(room.players.map((p) => [p.id, p.displayName]));
-  const genderById = Object.fromEntries(room.players.map((p) => [p.id, p.gender]));
-  const avatarById = Object.fromEntries(room.players.map((p) => [p.id, p.avatar]));
+  const people = room.roster || room.players; // roster : noms conservés même après un départ
+  const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
+  const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
+  const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
 
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
@@ -64,13 +65,8 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
     return () => clearInterval(t);
   }, [g.phase, g.deadline]);
   const left = g.phase === 'draw' && g.deadline ? Math.max(0, Math.round((g.deadline - now) / 1000)) : null;
-  useEffect(() => { if (left === 0 && g.phase === 'draw') onAction({ kind: 'timeup' }); }, [left]);
-  // L'hôte déclenche la révélation progressive des lettres (le serveur décide quand).
-  useEffect(() => {
-    if (g.phase !== 'draw' || !isHost) return undefined;
-    const t = setInterval(() => onAction({ kind: 'reveal' }), 2500);
-    return () => clearInterval(t);
-  }, [g.phase, isHost]);
+  // Fin du temps et lettres révélées : gérés par l'horloge du serveur (la partie
+  // avance même si l'onglet de l'hôte est en veille).
 
   // Dessin (dessinatrice uniquement)
   const canDraw = g.isDrawer && g.phase === 'draw';
@@ -183,7 +179,7 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
       </div>
 
       {g.phase === 'turnend' && isHost && <div className="cn-controls"><Button variant="contained" onClick={() => onAction({ kind: 'next' })}>Tour suivant</Button></div>}
-      {g.phase === 'turnend' && !isHost && <p className="muted" style={{ textAlign: 'center' }}>En attente de l'hôte…</p>}
+      {g.phase === 'turnend' && !isHost && <p className="muted" style={{ textAlign: 'center' }}>Tour suivant dans quelques secondes…</p>}
       {g.phase === 'over' && isHost && <div className="cn-over"><Button variant="contained" startIcon={<Sparkles size={18} />} onClick={onNewGame}>Rejouer</Button></div>}
     </div>
   );

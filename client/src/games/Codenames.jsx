@@ -5,7 +5,7 @@ import { Eye, Crown, Users, Check, SkipForward, Sparkles, ShieldCheck, Timer, Us
 export default function Codenames({ room, isHost, onAction, onNewGame }) {
   const game = room.game;
   const me = room.me.id;
-  const nameById = Object.fromEntries(room.players.map((p) => [p.id, p.displayName]));
+  const nameById = Object.fromEntries((room.roster || room.players).map((p) => [p.id, p.displayName]));
 
   if (!game) {
     return (

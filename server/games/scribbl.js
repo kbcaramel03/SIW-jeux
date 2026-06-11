@@ -59,7 +59,7 @@ export function createScribbl() {
     order: [], turnIdx: 0, round: 1, totalRounds: 2,
     drawer: null, choices: [], word: null, hint: null,
     revealOrder: [], revealed: 0, maxReveal: 0,
-    guessed: {}, deadline: null, reveal: null, log: [], winner: null,
+    guessed: {}, deadline: null, since: null, reveal: null, log: [], winner: null,
   };
 }
 
@@ -74,6 +74,7 @@ function beginTurn(state) {
   state.word = null; state.hint = null; state.guessed = {}; state.deadline = null; state.reveal = null;
   state.revealOrder = []; state.revealed = 0; state.maxReveal = 0;
   state.phase = 'choose';
+  state.since = Date.now();
   state.log.push({ kind: 'system', text: 'Nouveau tour — choix du mot…' });
 }
 
@@ -107,6 +108,7 @@ function activeGuessers(state) { return state.seats.filter((id) => id !== state.
 function endTurn(state) {
   state.reveal = state.word;
   state.phase = 'turnend';
+  state.since = Date.now();
   state.log.push({ kind: 'system', text: `Le mot était : ${state.word}.` });
 }
 
@@ -147,9 +149,7 @@ export function revealScribbl(state) {
   state.hint = maskOf(state.word, new Set(state.revealOrder.slice(0, state.revealed)));
 }
 
-export function nextScribbl(state, userId) {
-  if (state.phase !== 'turnend') throw new Error('Pas en fin de tour.');
-  if (!state.seats.includes(userId)) throw new Error('Interdit.');
+function advanceTurn(state) {
   state.turnIdx += 1;
   if (state.turnIdx >= state.order.length) { state.turnIdx = 0; state.round += 1; }
   if (state.round > state.totalRounds) {
@@ -159,6 +159,39 @@ export function nextScribbl(state, userId) {
     return;
   }
   beginTurn(state);
+}
+
+export function nextScribbl(state, userId) {
+  if (state.phase !== 'turnend') throw new Error('Pas en fin de tour.');
+  if (!state.seats.includes(userId)) throw new Error('Interdit.');
+  advanceTurn(state);
+}
+
+// Délais d'inactivité : choix du mot (drawer absent), enchaînement de fin de tour.
+const CHOOSE_SKIP_MS = 30000;
+const TURNEND_MS = 12000;
+
+// Horloge serveur (chaque seconde) : fin du temps de dessin, lettres révélées
+// au fil du temps, tour suivant automatique, et dessinateur déconnecté passé.
+export function tickScribbl(state) {
+  const now = Date.now();
+  if (state.phase === 'choose' && state.since && now >= state.since + CHOOSE_SKIP_MS
+    && state.offline && state.offline[state.drawer]) {
+    state.log.push({ kind: 'system', text: 'Dessinateur·rice absent·e — on passe au tour suivant.' });
+    advanceTurn(state);
+    return true;
+  }
+  if (state.phase === 'draw') {
+    const before = state.revealed;
+    revealScribbl(state);
+    if (state.deadline && now >= state.deadline) { endTurn(state); return true; }
+    return state.revealed !== before;
+  }
+  if (state.phase === 'turnend' && state.since && now >= state.since + TURNEND_MS) {
+    advanceTurn(state);
+    return true;
+  }
+  return false;
 }
 
 export function viewFor(state, userId) {

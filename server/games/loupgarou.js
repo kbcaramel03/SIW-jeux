@@ -21,6 +21,9 @@ const NIGHT_ORDER = ['cupid', 'wildchild', 'guard', 'seer', 'wolves', 'witch'];
 const REVEAL_MS = 11000;
 const DAY_MS = 120000;
 const VOTE_MS = 45000;
+// Si tous les joueurs attendus à une étape sont déconnectés depuis ce délai,
+// on passe l'étape automatiquement (la partie ne reste plus jamais figée).
+const OFFLINE_SKIP_MS = 45000;
 
 export function createLoupGarou() {
   return {
@@ -43,6 +46,7 @@ export function createLoupGarou() {
     seerSeen: {},
     votes: {},
     hunterPending: null,
+    stepSince: null,
     resumeTo: null,
     dayDeadline: null,
     voteDeadline: null,
@@ -68,6 +72,7 @@ export function configLoupGarou(state, userId, config) {
 }
 
 const aliveIds = (s) => s.seats.filter((id) => s.alive[id]);
+const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 const aliveWolves = (s) => aliveIds(s).filter((id) => s.roles[id] === 'loup');
 const aliveRole = (s, role) => aliveIds(s).find((id) => s.roles[id] === role) || null;
 function narrate(state, text) { state.say = text; state.sayId += 1; }
@@ -151,6 +156,7 @@ function announceStep(state) {
       : 'Le Loup-Garou se réveille, affamé, et choisit sa victime…',
     witch: 'La Sorcière se réveille auprès de son chaudron. Veux-tu sauver, empoisonner… ou ne rien faire ?',
   }[state.nightStep];
+  state.stepSince = Date.now();
   if (t) narrate(state, t);
 }
 function advanceNight(state, from) {
@@ -193,15 +199,24 @@ export function wolfPick(state, userId, targetId) {
   if (state.roles[userId] !== 'loup' || !state.alive[userId]) throw new Error('Tu n\'es pas un Loup.');
   if (!state.alive[targetId] || state.roles[targetId] === 'loup') throw new Error('Cible invalide.');
   state.wolfVotes[userId] = targetId;
+  // Un loup déconnecté ne bloque pas la meute : on n'attend que les présents.
   const wolves = aliveWolves(state);
-  if (wolves.every((w) => state.wolfVotes[w])) {
+  if (wolves.every((w) => state.wolfVotes[w] || isOffline(state, w))) closeWolves(state);
+}
+
+// Dépouille les voix des loups (même partielles) et passe à la suite.
+function closeWolves(state) {
+  const cast = aliveWolves(state).map((w) => state.wolfVotes[w]).filter(Boolean);
+  if (cast.length) {
     const tally = {};
-    for (const w of wolves) tally[state.wolfVotes[w]] = (tally[state.wolfVotes[w]] || 0) + 1;
+    for (const t of cast) tally[t] = (tally[t] || 0) + 1;
     const max = Math.max(...Object.values(tally));
     const top = Object.keys(tally).filter((id) => tally[id] === max);
     state.pendingVictim = top[Math.floor(Math.random() * top.length)];
-    advanceNight(state, 'wolves');
+  } else {
+    state.pendingVictim = null;
   }
+  advanceNight(state, 'wolves');
 }
 export function witchAct(state, userId, { heal, killTarget }) {
   if (state.phase !== 'night' || state.nightStep !== 'witch') throw new Error('Pas le moment.');
@@ -296,7 +311,7 @@ function resolveNight(state) {
   if (checkAnge(state)) return;
   if (checkWin(state)) return;
   if (state.hunterPending) {
-    state.phase = 'hunter'; state.resumeTo = 'day';
+    state.phase = 'hunter'; state.resumeTo = 'day'; state.stepSince = Date.now();
     narrate(state, 'Dans un dernier souffle, le Chasseur empoigne son fusil… qui va-t-il emporter ?');
     return;
   }
@@ -315,11 +330,7 @@ function openDay(state) {
   ]));
 }
 
-export function callVote(state, userId) {
-  if (state.phase !== 'day') throw new Error('Pas le moment.');
-  if (!state.seats.includes(userId)) throw new Error('Interdit.');
-  // Le vote démarre tout seul à la fin des 2 minutes de débat (pas de déclenchement manuel).
-  if (state.dayDeadline && Date.now() < state.dayDeadline - 1200) throw new Error('Le débat n\'est pas terminé.');
+function startVote(state) {
   state.phase = 'vote'; state.votes = {};
   state.dayDeadline = null;
   state.voteResultDeadline = null;
@@ -329,6 +340,14 @@ export function callVote(state, userId) {
     'Le temps presse : choisissez votre suspect, puis validez votre vote.',
     'Que le vote commence ! Désignez celui ou celle que vous soupçonnez, puis validez.',
   ]));
+}
+
+export function callVote(state, userId) {
+  if (state.phase !== 'day') throw new Error('Pas le moment.');
+  if (!state.seats.includes(userId)) throw new Error('Interdit.');
+  // Le vote démarre tout seul à la fin des 2 minutes de débat (pas de déclenchement manuel).
+  if (state.dayDeadline && Date.now() < state.dayDeadline - 1200) throw new Error('Le débat n\'est pas terminé.');
+  startVote(state);
 }
 
 // Tous les bulletins sont déposés : on les laisse affichés quelques secondes
@@ -360,7 +379,7 @@ function tallyAndResolveDay(state) {
   if (checkAnge(state)) return;
   if (checkWin(state)) return;
   if (state.hunterPending) {
-    state.phase = 'hunter'; state.resumeTo = 'night';
+    state.phase = 'hunter'; state.resumeTo = 'night'; state.stepSince = Date.now();
     narrate(state, 'Touché à mort, le Chasseur lève une dernière fois son fusil…');
     return;
   }
@@ -373,8 +392,9 @@ export function dayVote(state, userId, targetId) {
   if (!state.alive[userId]) throw new Error('Les morts ne votent pas.');
   if (!state.alive[targetId]) throw new Error('Cible invalide.');
   state.votes[userId] = targetId;
-  const voters = aliveIds(state);
-  if (voters.every((id) => state.votes[id])) lockVotes(state);
+  // Les votants déconnectés ne bloquent pas la clôture du vote.
+  const voters = aliveIds(state).filter((id) => !isOffline(state, id));
+  if (voters.length && voters.every((id) => state.votes[id])) lockVotes(state);
 }
 
 // Fin du temps de vote : on verrouille avec les bulletins déposés (abstentions = nulles).
@@ -401,6 +421,63 @@ export function resumeLoupGarou(state, userId) {
   if (to === 'day') openDay(state); else beginNight(state);
 }
 
+// Joueurs dont on attend l'action à l'étape de nuit courante.
+function stepActors(state) {
+  const step = state.nightStep;
+  if (step === 'cupid') return [aliveRole(state, 'cupidon')].filter(Boolean);
+  if (step === 'wildchild') return [aliveRole(state, 'enfant')].filter(Boolean);
+  if (step === 'guard') return [aliveRole(state, 'garde')].filter(Boolean);
+  if (step === 'seer') return [aliveRole(state, 'voyante')].filter(Boolean);
+  if (step === 'wolves') return aliveWolves(state).filter((w) => !state.wolfVotes[w]);
+  if (step === 'witch') return [aliveRole(state, 'sorciere')].filter(Boolean);
+  return [];
+}
+
+// Horloge serveur (appelée chaque seconde par la couche temps réel) :
+// résout les échéances (débat → vote, clôture, dépouillement, pauses commentées)
+// et débloque la nuit si tous les joueurs attendus sont déconnectés.
+export function tickLoupGarou(state) {
+  const now = Date.now();
+  if (state.phase === 'day' && state.dayDeadline && now >= state.dayDeadline) {
+    startVote(state);
+    return true;
+  }
+  if (state.phase === 'vote' && !state.voteResultDeadline && state.voteDeadline && now >= state.voteDeadline) {
+    lockVotes(state);
+    return true;
+  }
+  if (state.phase === 'vote' && state.voteResultDeadline && now >= state.voteResultDeadline) {
+    state.voteResultDeadline = null;
+    tallyAndResolveDay(state);
+    return true;
+  }
+  if (state.phase === 'reveal' && state.revealDeadline && now >= state.revealDeadline) {
+    const to = state.resumeTo;
+    state.resumeTo = null; state.revealDeadline = null;
+    if (to === 'day') openDay(state); else beginNight(state);
+    return true;
+  }
+  // Nuit / chasseur figés par un joueur déconnecté : on passe après un délai de grâce.
+  if (!state.stepSince || now < state.stepSince + OFFLINE_SKIP_MS) return false;
+  if (state.phase === 'hunter' && isOffline(state, state.hunterPending)) {
+    state.hunterPending = null;
+    const to = state.resumeTo === 'night' ? 'night' : 'day';
+    state.resumeTo = null;
+    enterReveal(state, to, 'Le Chasseur est introuvable… son fusil restera muet.');
+    return true;
+  }
+  if (state.phase === 'night') {
+    const actors = stepActors(state);
+    if (actors.length && actors.every((id) => isOffline(state, id))) {
+      if (state.nightStep === 'witch') resolveNight(state);
+      else if (state.nightStep === 'wolves') closeWolves(state);
+      else advanceNight(state, state.nightStep);
+      return true;
+    }
+  }
+  return false;
+}
+
 export function hunterShoot(state, userId, targetId) {
   if (state.phase !== 'hunter') throw new Error('Pas le moment.');
   if (state.hunterPending !== userId) throw new Error('Ce n\'est pas à toi de tirer.');
@@ -409,7 +486,7 @@ export function hunterShoot(state, userId, targetId) {
   if (state.alive[targetId]) killPlayer(state, targetId, deaths);
   state.lastDeaths = state.lastDeaths.concat(deaths);
   if (checkWin(state)) return;
-  if (state.hunterPending) { state.phase = 'hunter'; return; }
+  if (state.hunterPending) { state.phase = 'hunter'; state.stepSince = Date.now(); return; }
   const to = state.resumeTo === 'night' ? 'night' : 'day';
   state.resumeTo = null;
   const shot = deaths.length ? `Le Chasseur emporte ${nameList(state, deaths)} dans sa chute.` : 'Le coup de feu se perd dans le vide.';

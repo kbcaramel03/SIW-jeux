@@ -36,6 +36,11 @@ const totalUnread = (userId) => convListFor(userId).reduce((s, c) => s + c.unrea
 const rooms = new Map(); // roomId -> room
 const online = new Map(); // userId -> { displayName, gender, sockets:number }
 
+function gameInProgress(room) {
+  const phase = room.game?.phase;
+  return !!phase && !['setup', 'waiting', 'over'].includes(phase);
+}
+
 function roomSummary(room) {
   return {
     id: room.id,
@@ -43,9 +48,9 @@ function roomSummary(room) {
     gameKey: room.gameKey,
     gameLabel: GAMES[room.gameKey].label,
     emoji: GAMES[room.gameKey].emoji,
-    players: room.players.length,
+    players: room.players.filter((p) => p.connected !== false).length,
     maxPlayers: GAMES[room.gameKey].maxPlayers,
-    inProgress: !!room.game && room.game.phase !== 'setup' && room.game.phase !== 'over',
+    inProgress: gameInProgress(room),
   };
 }
 
@@ -57,18 +62,37 @@ function lobbyList() {
 // Indispensable car les handlers join/leave sont asynchrones et peuvent s'entrelacer
 // (React StrictMode qui double-monte en dev, ou simples reconnexions socket en prod) :
 // on ne se fie donc jamais à un compteur mutable, on relit l'état réel des sockets.
+// Pendant une partie en cours, un joueur déconnecté garde sa place (marqué
+// connected:false) : son nom reste affiché et il peut revenir reprendre sa partie.
 function reconcilePlayers(room, sockets) {
   const present = new Map();
   for (const s of sockets) {
     if (!present.has(s.data.user.id)) present.set(s.data.user.id, s.data.user);
   }
-  room.players = room.players.filter((p) => present.has(p.id));
+  const keepAbsent = gameInProgress(room);
+  room.players = room.players.filter((p) => present.has(p.id) || keepAbsent);
+  for (const p of room.players) p.connected = present.has(p.id);
   for (const [id, u] of present) {
     if (!room.players.some((p) => p.id === id)) {
-      room.players.push({ id, displayName: u.displayName, gender: u.gender, avatar: u.avatar || null });
+      room.players.push({ id, displayName: u.displayName, gender: u.gender, avatar: u.avatar || null, connected: true });
     }
   }
-  if (!present.has(room.hostId) && room.players[0]) room.hostId = room.players[0].id;
+  // Trombinoscope persistant : garde l'identité de tout le monde tant que le salon
+  // vit, pour que les noms restent affichés même après un départ définitif.
+  for (const p of room.players) room.roster[p.id] = { id: p.id, displayName: p.displayName, gender: p.gender, avatar: p.avatar || null };
+  const host = room.players.find((p) => p.id === room.hostId);
+  if (!host || !host.connected) {
+    const candidate = room.players.find((p) => p.connected);
+    if (candidate) room.hostId = candidate.id;
+  }
+}
+
+// Prénoms pour la narration des moteurs de jeu (Loup Garou…) + connectivité,
+// pour que les jeux puissent passer le tour d'un joueur durablement absent.
+function syncGameContext(room) {
+  if (!room.game) return;
+  room.game.names = Object.fromEntries(Object.values(room.roster).map((u) => [u.id, u.displayName]));
+  room.game.offline = Object.fromEntries(room.players.filter((p) => p.connected === false).map((p) => [p.id, true]));
 }
 
 export function createRealtime(httpServer) {
@@ -113,12 +137,15 @@ export function createRealtime(httpServer) {
     const room = rooms.get(roomId);
     if (!room) return;
     clearTimeout(room.deleteTimer);
+    // Pendant une partie en cours, on laisse une vraie marge : une coupure réseau
+    // générale (wifi, veille mobile) ne doit pas détruire la partie en 3 secondes.
+    const grace = gameInProgress(room) ? 120000 : 3000;
     room.deleteTimer = setTimeout(async () => {
       const r = rooms.get(roomId);
       if (!r) return;
       const socks = await io.in(roomId).fetchSockets();
       if (socks.length === 0) { rooms.delete(roomId); broadcastLobby(); }
-    }, 3000);
+    }, grace);
   }
 
   async function emitRoomState(roomId) {
@@ -126,6 +153,8 @@ export function createRealtime(httpServer) {
     if (!room) return;
     const sockets = await io.in(roomId).fetchSockets();
     reconcilePlayers(room, sockets);
+    syncGameContext(room);
+    const roster = Object.values(room.roster);
     for (const s of sockets) {
       const uid = s.data.user.id;
       const gameView = room.game ? GAMES[room.gameKey].view(room.game, uid) : null;
@@ -136,6 +165,7 @@ export function createRealtime(httpServer) {
         gameLabel: GAMES[room.gameKey].label,
         hostId: room.hostId,
         players: room.players,
+        roster,
         chat: room.chat.slice(-50),
         game: gameView,
         me: { id: uid },
@@ -155,7 +185,7 @@ export function createRealtime(httpServer) {
     // joueur encore présente via un autre onglet » et le transfert d'hôte).
     const others = await io.in(roomId).fetchSockets();
     reconcilePlayers(room, others);
-    if (room.players.length === 0) {
+    if (others.length === 0) {
       scheduleDelete(roomId);
     } else {
       await emitRoomState(roomId);
@@ -303,6 +333,7 @@ export function createRealtime(httpServer) {
         options: options || {},
         hostId: socket.data.user.id,
         players: [],
+        roster: {},
         chat: [],
         game: null,
         createdAt: Date.now(),
@@ -344,7 +375,10 @@ export function createRealtime(httpServer) {
       await leaveRoom(socket);
     });
 
-    socket.on('chat:send', async ({ text }) => {
+    // Chat du salon (événement distinct de 'chat:send' qui sert aux messages
+    // privés : avant, les deux partageaient le même nom et un message privé
+    // envoyé depuis un salon était aussi posté dans le chat du salon).
+    socket.on('room:chat', async ({ text }) => {
       const roomId = socket.data.roomId;
       const room = rooms.get(roomId);
       if (!room) return;
@@ -388,7 +422,7 @@ export function createRealtime(httpServer) {
       if (!room || !room.game) return ack?.({ error: 'Aucune partie en cours.' });
       try {
         // Le moteur peut avoir besoin des prénoms (ex. narration du Loup Garou).
-        room.game.names = Object.fromEntries(room.players.map((p) => [p.id, p.displayName]));
+        syncGameContext(room);
         GAMES[room.gameKey].action(room.game, socket.data.user.id, payload || {});
         ack?.({ ok: true });
         await emitRoomState(room.id);
@@ -404,6 +438,23 @@ export function createRealtime(httpServer) {
       broadcastPresence();
     });
   });
+
+  // Horloge serveur : fait avancer les jeux à minuteur (Loup Garou, Scribbl…)
+  // même si tous les onglets sont en veille. Avant, c'étaient les clients qui
+  // déclenchaient les fins de minuteur — un téléphone verrouillé figeait la partie.
+  setInterval(async () => {
+    for (const room of rooms.values()) {
+      const def = GAMES[room.gameKey];
+      if (!room.game || !def.tick) continue;
+      syncGameContext(room);
+      let changed = false;
+      try { changed = def.tick(room.game); } catch (e) { console.error('tick', room.gameKey, e); }
+      if (changed) {
+        await emitRoomState(room.id);
+        broadcastLobby();
+      }
+    }
+  }, 1000);
 
   return io;
 }

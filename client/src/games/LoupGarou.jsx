@@ -24,9 +24,10 @@ const SPECIALS = ['voyante', 'sorciere', 'chasseur', 'cupidon', 'garde', 'ange',
 export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const g = room.game;
   const me = room.me.id;
-  const nameById = Object.fromEntries(room.players.map((p) => [p.id, p.displayName]));
-  const genderById = Object.fromEntries(room.players.map((p) => [p.id, p.gender]));
-  const avatarById = Object.fromEntries(room.players.map((p) => [p.id, p.avatar]));
+  const people = room.roster || room.players; // roster : noms conservés même après un départ
+  const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
+  const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
+  const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const [voiceOn, setVoiceOn] = useState(true);
   const [poisonMode, setPoisonMode] = useState(false);
   const [witchKill, setWitchKill] = useState(null);
@@ -37,7 +38,6 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const [seerKnown, setSeerKnown] = useState({}); // ce que la voyante a vu (persistant pour elle)
   const [flash, setFlash] = useState(null); // bandeau d'ambiance au changement de phase
   const lastSay = useRef(-1);
-  const firedRef = useRef(null);
   const prevPhase = useRef(g.phase);
 
   // La voyante mémorise les rôles révélés ; on réinitialise à une nouvelle partie.
@@ -60,18 +60,9 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   }, [activeDeadline, g.phase]);
   const secsLeft = activeDeadline ? Math.max(0, Math.ceil((activeDeadline - now) / 1000)) : null;
 
-  // Le jeu avance tout seul à la fin de chaque minuteur (vote auto après le débat,
-  // pauses commentées, clôture du vote). Personne n'a à cliquer ; le serveur valide
-  // l'échéance, donc n'importe quel client peut déclencher (pas seulement l'hôte).
-  useEffect(() => {
-    if (!activeDeadline || now < activeDeadline) return;
-    const key = `${g.phase}:${activeDeadline}`;
-    if (firedRef.current === key) return;
-    firedRef.current = key;
-    if (g.phase === 'day') onAction({ kind: 'callVote' });
-    else if (g.phase === 'vote') onAction({ kind: g.voteResultDeadline ? 'resolveVote' : 'voteTimeout' });
-    else if (g.phase === 'reveal') onAction({ kind: 'resume' });
-  }, [now, activeDeadline, g.phase]);
+  // Les fins de minuteur (vote auto, clôture, dépouillement, pauses commentées)
+  // sont résolues par l'horloge du serveur : la partie avance même si tous les
+  // téléphones sont verrouillés. Ici on ne fait qu'afficher le compte à rebours.
 
   // Narration : chaque joueur entend le MJ sur son propre appareil (chacun peut couper).
   useEffect(() => {
