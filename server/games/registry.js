@@ -9,6 +9,7 @@ import * as conspiracy from './conspiracy.js';
 import * as loupgarou from './loupgarou.js';
 import * as scribbl from './scribbl.js';
 import * as ludo from './ludo.js';
+import * as echecs from './echecs.js';
 
 export const GAMES = {
   codenames: {
@@ -73,7 +74,12 @@ export const GAMES = {
     action: applyLudoAction,
     tick: ludo.tickLudo,
   },
-  echecs: { key: 'echecs', label: 'Échecs', emoji: '♟️', minPlayers: 2, maxPlayers: 2, ready: false },
+  echecs: {
+    key: 'echecs', label: 'Échecs', emoji: '♟️', minPlayers: 2, maxPlayers: 2, ready: true,
+    create: echecs.createEchecs,
+    view: echecs.viewFor,
+    action: applyEchecsAction,
+  },
 };
 
 export function gameList() {
@@ -182,6 +188,17 @@ function applyScribblAction(state, userId, payload) {
     case 'timeup': return scribbl.timeupScribbl(state, userId);
     case 'reveal': return scribbl.revealScribbl(state, userId);
     case 'next': return scribbl.nextScribbl(state, userId);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyEchecsAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return echecs.joinEchecs(state, userId);
+    case 'start': return echecs.startEchecs(state, userId);
+    case 'move': return echecs.moveEchecs(state, userId, payload);
+    case 'resign': return echecs.resignEchecs(state, userId);
+    case 'draw': return echecs.drawEchecs(state, userId);
     default: throw new Error('Action inconnue.');
   }
 }

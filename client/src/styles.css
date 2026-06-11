@@ -1013,3 +1013,43 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .ludo-podium { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px;
   background: #fff; border-radius: 16px; box-shadow: 0 6px 20px rgba(70,40,100,0.12); }
 .ludo-podium-row { display: flex; align-items: center; gap: 9px; font-size: 1rem; }
+
+/* ====== Echecs ====== */
+.ch-wrap { display: flex; flex-direction: column; gap: 8px; }
+.ch-board { position: relative; display: grid; grid-template-columns: repeat(8, 1fr);
+  width: min(88vw, 430px); aspect-ratio: 1; border-radius: 12px; overflow: hidden;
+  border: 4px solid #fff; box-shadow: 0 10px 30px rgba(70,40,100,0.18); }
+.ch-sq { position: relative; display: flex; align-items: center; justify-content: center; cursor: default; user-select: none; }
+.ch-sq.light { background: #f7f1fb; }
+.ch-sq.dark { background: #c4aede; }
+.ch-sq.mine { cursor: pointer; }
+.ch-sq.last { box-shadow: inset 0 0 0 100px rgba(237,176,21,0.28); }
+.ch-sq.selected { box-shadow: inset 0 0 0 100px rgba(237,176,21,0.45); }
+.ch-sq.check { box-shadow: inset 0 0 0 100px rgba(228,67,58,0.4); animation: ludoPulse 1.2s infinite; }
+.ch-coord { position: absolute; font-size: 0.55rem; font-weight: 800; opacity: 0.55; pointer-events: none; }
+.ch-coord.rank { top: 2px; left: 3px; }
+.ch-coord.file { bottom: 1px; right: 3px; }
+.ch-piece { width: 68%; height: 68%; filter: drop-shadow(0 2px 2px rgba(40,20,60,0.35)); pointer-events: none; }
+.ch-piece.white { color: #ffffff; stroke: #5a4673; stroke-width: 12; }
+.ch-piece.black { color: #43325c; }
+.ch-piece.small { width: 14px; height: 14px; filter: none; }
+.ch-dot { position: absolute; width: 30%; height: 30%; border-radius: 50%;
+  background: rgba(90,60,130,0.35); pointer-events: none; }
+.ch-dot.capture { width: 88%; height: 88%; background: none; border: 4px solid rgba(228,67,58,0.55); }
+.ch-player { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 999px;
+  background: #fff; box-shadow: 0 2px 8px rgba(60,30,80,0.08); font-size: 0.85rem; width: fit-content; }
+.ch-player.active { box-shadow: 0 0 0 2px #ecc94b, 0 2px 8px rgba(60,30,80,0.12); }
+.ch-player-name { font-weight: 800; }
+.ch-color-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #cbb9e2; }
+.ch-color-dot.white { background: #fff; }
+.ch-color-dot.black { background: #43325c; }
+.ch-captured { display: flex; align-items: center; gap: 1px; flex-wrap: wrap; }
+.ch-history { font-size: 0.72rem; color: var(--ink-soft); text-align: center; max-width: 190px; line-height: 1.5; }
+.ch-promo { position: absolute; inset: 0; background: rgba(40,25,60,0.55); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px; z-index: 10; }
+.ch-promo p { margin: 0; color: #fff; font-weight: 800; font-family: var(--font-head); }
+.ch-promo-row { display: flex; gap: 10px; }
+.ch-promo-row button { width: 56px; height: 56px; border-radius: 14px; border: none; background: #fff;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+.ch-promo-row button:hover { transform: scale(1.08); }
+.ch-promo-row .ch-piece { width: 60%; height: 60%; }
