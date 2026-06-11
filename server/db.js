@@ -65,9 +65,42 @@ db.data ||= defaultData;
 db.data.users ||= [];
 db.data.conversations ||= []; // chats privés & groupes
 db.data.messages ||= [];
+db.data.rooms ||= []; // sauvegarde des salons (pour survivre aux redémarrages)
 await db.write();
 
 export default db;
+
+// --- Écriture différée -------------------------------------------------------
+// Chaque db.write() réécrit TOUTE la base (avec les photos du chat !) dans
+// Postgres : fait à chaque message, ça rendait le chat lent. On regroupe donc
+// les écritures : on répond aux joueuses tout de suite, on sauvegarde juste après.
+let writeTimer = null;
+let writing = false;
+let dirtyAgain = false;
+
+export function scheduleWrite(delay = 1500) {
+  if (writeTimer) return;
+  writeTimer = setTimeout(() => flushWrites(), delay);
+}
+
+export async function flushWrites() {
+  clearTimeout(writeTimer);
+  writeTimer = null;
+  if (writing) { dirtyAgain = true; return; }
+  writing = true;
+  try { await db.write(); } catch (e) { console.error('Écriture base échouée :', e.message); }
+  writing = false;
+  if (dirtyAgain) { dirtyAgain = false; scheduleWrite(200); }
+}
+
+// À l'arrêt (déploiement, mise en veille Render), on sauvegarde ce qui reste.
+// setImmediate : laisse les autres handlers (sauvegarde des salons) passer d'abord.
+async function shutdown() {
+  try { await flushWrites(); } catch { /* tant pis, on quitte */ }
+  process.exit(0);
+}
+process.once('SIGTERM', () => setImmediate(shutdown));
+process.once('SIGINT', () => setImmediate(shutdown));
 
 // Renvoie l'utilisateur sans le hash du mot de passe (sûr à envoyer au client).
 export function publicUser(u) {

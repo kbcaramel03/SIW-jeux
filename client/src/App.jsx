@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AppBar, Toolbar, Button, Box, IconButton, Badge, Menu, MenuItem, ListItemIcon } from '@mui/material';
 import { Crown, Settings, LogOut, Heart, MessageCircle, Menu as MenuIcon } from 'lucide-react';
 import { useAuth } from './auth.jsx';
 import OnlineRail, { Avatar } from './components/OnlineRail.jsx';
 import MessagesDrawer, { useUnread } from './components/Messages.jsx';
-import Login from './pages/Login.jsx';
-import Register from './pages/Register.jsx';
-import Lobby from './pages/Lobby.jsx';
-import Room from './pages/Room.jsx';
-import Admin from './pages/Admin.jsx';
-import Account from './pages/Account.jsx';
+
+// Pages chargées à la demande : le premier chargement de l'appli est plus léger
+// (on ne télécharge pas l'admin ou les jeux pour afficher l'écran de connexion).
+const Login = lazy(() => import('./pages/Login.jsx'));
+const Register = lazy(() => import('./pages/Register.jsx'));
+const Lobby = lazy(() => import('./pages/Lobby.jsx'));
+const Room = lazy(() => import('./pages/Room.jsx'));
+const Admin = lazy(() => import('./pages/Admin.jsx'));
+const Account = lazy(() => import('./pages/Account.jsx'));
 
 function NavBar() {
   const { user, logout } = useAuth();
@@ -76,15 +79,17 @@ export default function App() {
       <Box className="shell">
         {user && <OnlineRail />}
         <main className="main">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={<Protected><Lobby /></Protected>} />
-            <Route path="/room/:id" element={<Protected><Room /></Protected>} />
-            <Route path="/compte" element={<Protected><Account /></Protected>} />
-            <Route path="/admin" element={<Protected staffOnly><Admin /></Protected>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<div className="center-screen">Chargement…</div>}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/" element={<Protected><Lobby /></Protected>} />
+              <Route path="/room/:id" element={<Protected><Room /></Protected>} />
+              <Route path="/compte" element={<Protected><Account /></Protected>} />
+              <Route path="/admin" element={<Protected staffOnly><Admin /></Protected>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </main>
       </Box>
     </div>

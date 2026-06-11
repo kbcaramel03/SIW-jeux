@@ -2,7 +2,7 @@
 // Les salons vivent en mémoire (transitoires) ; seuls les comptes sont persistés.
 import { Server } from 'socket.io';
 import { nanoid } from 'nanoid';
-import db from './db.js';
+import db, { scheduleWrite } from './db.js';
 import { userFromToken } from './auth.js';
 import { GAMES, gameList } from './games/registry.js';
 import { DEV_ORIGINS, IS_PROD } from './config.js';
@@ -144,9 +144,34 @@ export function createRealtime(httpServer) {
       const r = rooms.get(roomId);
       if (!r) return;
       const socks = await io.in(roomId).fetchSockets();
-      if (socks.length === 0) { rooms.delete(roomId); broadcastLobby(); }
+      if (socks.length === 0) { rooms.delete(roomId); snapshotRooms(); broadcastLobby(); }
     }, grace);
   }
+
+  // Sauvegarde les salons en base (sans le timer, non sérialisable) : le serveur
+  // gratuit redémarre ou s'endort parfois, et toutes les parties en cours
+  // disparaissaient d'un coup (« Aucune partie en cours » en plein jeu).
+  function snapshotRooms() {
+    db.data.rooms = [...rooms.values()].map(({ deleteTimer, ...r }) => r);
+    db.data.roomsSavedAt = Date.now();
+    scheduleWrite();
+  }
+
+  // Restaure les salons sauvegardés au démarrage (au plus 6 h en arrière).
+  if (Array.isArray(db.data.rooms) && Date.now() - (db.data.roomsSavedAt || 0) < 6 * 3600 * 1000) {
+    for (const saved of db.data.rooms) {
+      if (!saved?.id || !GAMES[saved.gameKey]) continue;
+      const room = { ...saved, roster: saved.roster || {}, chat: saved.chat || [] };
+      room.players = (room.players || []).map((p) => ({ ...p, connected: false }));
+      rooms.set(room.id, room);
+      scheduleDelete(room.id); // supprimé après le délai de grâce si personne ne revient
+    }
+    if (rooms.size) console.log(`♻️  ${rooms.size} salon(s) restauré(s) après redémarrage.`);
+  }
+
+  // Dernière sauvegarde avant l'arrêt (déploiement / mise en veille Render).
+  process.once('SIGTERM', snapshotRooms);
+  process.once('SIGINT', snapshotRooms);
 
   async function emitRoomState(roomId) {
     const room = rooms.get(roomId);
@@ -224,7 +249,7 @@ export function createRealtime(httpServer) {
       const conv = { id: nanoid(8), type: isGroup ? 'group' : 'dm', name: isGroup ? (name?.trim() || 'Groupe') : null,
         members, createdBy: uid, createdAt: Date.now(), reads: {} };
       db.data.conversations.push(conv);
-      await db.write();
+      scheduleWrite();
       for (const m of members) io.to(`u:${m}`).emit('chat:list', convListFor(m));
       ack?.({ convId: conv.id });
     });
@@ -233,7 +258,7 @@ export function createRealtime(httpServer) {
       const conv = db.data.conversations.find((c) => c.id === convId);
       if (!conv || !conv.members.includes(uid)) return ack?.({ error: 'Conversation introuvable.' });
       conv.reads = conv.reads || {}; conv.reads[uid] = Date.now();
-      await db.write();
+      scheduleWrite();
       const messages = db.data.messages.filter((m) => m.convId === convId).slice(-100);
       ack?.({ messages, conv: { id: conv.id, type: conv.type, name: conv.name, members: conv.members.map(userMini), reads: conv.reads } });
       // On diffuse à tous les membres pour mettre à jour les accusés de lecture.
@@ -258,7 +283,8 @@ export function createRealtime(httpServer) {
       if (img) msg.image = img;
       db.data.messages.push(msg);
       conv.reads = conv.reads || {}; conv.reads[uid] = msg.ts;
-      await db.write();
+      // On diffuse tout de suite (message instantané), la sauvegarde suit en fond.
+      scheduleWrite();
       for (const m of conv.members) {
         io.to(`u:${m}`).emit('chat:message', { convId, message: msg });
         io.to(`u:${m}`).emit('chat:list', convListFor(m));
@@ -270,7 +296,7 @@ export function createRealtime(httpServer) {
       const conv = db.data.conversations.find((c) => c.id === convId);
       if (!conv || !conv.members.includes(uid)) return;
       conv.reads = conv.reads || {}; conv.reads[uid] = Date.now();
-      await db.write();
+      scheduleWrite();
       for (const m of conv.members) io.to(`u:${m}`).emit('chat:list', convListFor(m));
       io.to(`u:${uid}`).emit('chat:inbox', { total: totalUnread(uid) });
     });
@@ -281,7 +307,7 @@ export function createRealtime(httpServer) {
       const clean = String(text || '').trim().slice(0, 800);
       if (!clean) return;
       msg.text = clean; msg.editedTs = Date.now();
-      await db.write();
+      scheduleWrite();
       const conv = db.data.conversations.find((c) => c.id === msg.convId);
       for (const m of conv.members) {
         io.to(`u:${m}`).emit('chat:message:update', { convId: msg.convId, message: msg });
@@ -293,7 +319,7 @@ export function createRealtime(httpServer) {
       const msg = db.data.messages.find((m) => m.id === messageId);
       if (!msg || msg.userId !== uid) return;
       msg.deleted = true; msg.text = '';
-      await db.write();
+      scheduleWrite();
       const conv = db.data.conversations.find((c) => c.id === msg.convId);
       for (const m of conv.members) {
         io.to(`u:${m}`).emit('chat:message:update', { convId: msg.convId, message: msg });
@@ -307,7 +333,7 @@ export function createRealtime(httpServer) {
       const members = conv.members.slice();
       db.data.conversations = db.data.conversations.filter((c) => c.id !== convId);
       db.data.messages = db.data.messages.filter((m) => m.convId !== convId);
-      await db.write();
+      scheduleWrite();
       for (const m of members) {
         io.to(`u:${m}`).emit('chat:removed', { convId });
         io.to(`u:${m}`).emit('chat:list', convListFor(m));
@@ -341,6 +367,7 @@ export function createRealtime(httpServer) {
       // On crée directement la partie (plus besoin de cliquer "Lancer la partie").
       room.game = GAMES[gameKey].create(room.options);
       rooms.set(id, room);
+      snapshotRooms();
       broadcastLobby();
       ack?.({ roomId: id });
     });
@@ -442,7 +469,9 @@ export function createRealtime(httpServer) {
   // Horloge serveur : fait avancer les jeux à minuteur (Loup Garou, Scribbl…)
   // même si tous les onglets sont en veille. Avant, c'étaient les clients qui
   // déclenchaient les fins de minuteur — un téléphone verrouillé figeait la partie.
+  let tickNo = 0;
   setInterval(async () => {
+    tickNo += 1;
     for (const room of rooms.values()) {
       const def = GAMES[room.gameKey];
       if (!room.game || !def.tick) continue;
@@ -454,6 +483,8 @@ export function createRealtime(httpServer) {
         broadcastLobby();
       }
     }
+    // Sauvegarde périodique des salons (toutes les ~10 s) pour survivre aux redémarrages.
+    if (tickNo % 10 === 0 && rooms.size) snapshotRooms();
   }, 1000);
 
   return io;

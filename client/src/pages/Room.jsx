@@ -1,18 +1,20 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Paper, Button, Chip, Typography, Alert, Fab, Drawer, IconButton } from '@mui/material';
 import { ChevronLeft, Users, MessageCircle, Crown, X, WifiOff } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import Chat from '../components/Chat.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
-import Codenames from '../games/Codenames.jsx';
-import Battleship from '../games/Battleship.jsx';
-import Uno from '../games/Uno.jsx';
-import Flip7 from '../games/Flip7.jsx';
-import Bullshit from '../games/Bullshit.jsx';
-import Conspiracy from '../games/Conspiracy.jsx';
-import LoupGarou from '../games/LoupGarou.jsx';
-import Scribbl from '../games/Scribbl.jsx';
+
+// Chaque jeu est chargé à la demande : on ne télécharge que celui auquel on joue.
+const Codenames = lazy(() => import('../games/Codenames.jsx'));
+const Battleship = lazy(() => import('../games/Battleship.jsx'));
+const Uno = lazy(() => import('../games/Uno.jsx'));
+const Flip7 = lazy(() => import('../games/Flip7.jsx'));
+const Bullshit = lazy(() => import('../games/Bullshit.jsx'));
+const Conspiracy = lazy(() => import('../games/Conspiracy.jsx'));
+const LoupGarou = lazy(() => import('../games/LoupGarou.jsx'));
+const Scribbl = lazy(() => import('../games/Scribbl.jsx'));
 
 export default function Room() {
   const { id } = useParams();
@@ -114,6 +116,7 @@ export default function Room() {
 
       <div className="room-body">
         <div className="game-area">
+          <Suspense fallback={<div className="center-screen">Chargement du jeu…</div>}>
           {room.gameKey === 'codenames' && (
             <Codenames room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
@@ -138,6 +141,7 @@ export default function Room() {
           {room.gameKey === 'scribbl' && (
             <Scribbl room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
+          </Suspense>
         </div>
 
         <aside className="room-side">{sidePanel}</aside>

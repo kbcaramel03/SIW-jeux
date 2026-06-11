@@ -52,6 +52,9 @@ app.get('/api/tts', async (req, res) => {
 // En production, on sert le site React compilé (client/dist).
 const clientDist = join(__dirname, '..', 'client', 'dist');
 if (existsSync(clientDist)) {
+  // Les fichiers de /assets ont un nom unique par version (hash Vite) : on peut
+  // les mettre en cache un an, les téléphones ne les retéléchargent plus.
+  app.use('/assets', express.static(join(clientDist, 'assets'), { immutable: true, maxAge: '1y' }));
   app.use(express.static(clientDist));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
