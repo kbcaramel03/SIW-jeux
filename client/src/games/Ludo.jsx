@@ -1,58 +1,59 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@mui/material';
-import { Play, Sparkles, Star } from 'lucide-react';
+import { Play, Sparkles, Star, ArrowRight } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti, boomSound, diceSound, popSound, burstAtEl } from '../effects.js';
 
-// ---- Géométrie du plateau (grille 15×15, coordonnées en « cases ») ----------
-const U = 100 / 15; // taille d'une case en %
+// ---- Géométrie du plateau façon Plato (grille 15×15, coordonnées en cases) ---
+const U = 100 / 15;
 
-// Boucle des 52 cases de la piste, dans le sens de la marche (horaire).
-const TRACK = [
-  [1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7],
-  [7, 6], [7, 5], [7, 4], [7, 3], [7, 2], [7, 1],
-  [8, 1],
-  [9, 1], [9, 2], [9, 3], [9, 4], [9, 5], [9, 6],
-  [10, 7], [11, 7], [12, 7], [13, 7], [14, 7], [15, 7],
-  [15, 8],
-  [15, 9], [14, 9], [13, 9], [12, 9], [11, 9], [10, 9],
-  [9, 10], [9, 11], [9, 12], [9, 13], [9, 14], [9, 15],
-  [8, 15],
-  [7, 15], [7, 14], [7, 13], [7, 12], [7, 11], [7, 10],
-  [6, 9], [5, 9], [4, 9], [3, 9], [2, 9], [1, 9],
-  [1, 8],
-];
-const START = { red: 1, green: 14, yellow: 27, blue: 40 };
-const SAFE = [1, 9, 14, 22, 27, 35, 40, 48];
-const HOME = {
-  red: [[2, 8], [3, 8], [4, 8], [5, 8], [6, 8]],
-  green: [[8, 2], [8, 3], [8, 4], [8, 5], [8, 6]],
-  yellow: [[14, 8], [13, 8], [12, 8], [11, 8], [10, 8]],
-  blue: [[8, 14], [8, 13], [8, 12], [8, 11], [8, 10]],
+// Anneau de 56 cases autour du plateau, sens horaire depuis le coin haut-gauche.
+const RING = [];
+for (let c = 1; c <= 15; c++) RING.push([c, 1]);
+for (let r = 2; r <= 15; r++) RING.push([15, r]);
+for (let c = 14; c >= 1; c--) RING.push([c, 15]);
+for (let r = 14; r >= 2; r--) RING.push([1, r]);
+
+const START = { red: 8, green: 22, yellow: 36, blue: 50 };
+const START_BY_CELL = { 8: 'red', 22: 'green', 36: 'yellow', 50: 'blue' };
+const STARS = [0, 14, 28, 42]; // les 4 coins : cases étoiles protégées
+// Flèches de sens de marche (cases départ) et d'entrée de ligne d'arrivée,
+// orientées dans la direction du parcours (rotation en degrés depuis →).
+const START_ARROW = { 8: 0, 22: 90, 36: 180, 50: 270 };
+const ENTRY_BY_CELL = { 7: 'red', 21: 'green', 35: 'yellow', 49: 'blue' };
+const ENTRY_ARROW = { 7: 90, 21: 180, 35: 270, 49: 0 };
+
+// Lignes d'arrivée (6 cases) du bord vers le centre.
+const LANES = {
+  red: [[8, 2], [8, 3], [8, 4], [8, 5], [8, 6], [8, 7]],
+  green: [[14, 8], [13, 8], [12, 8], [11, 8], [10, 8], [9, 8]],
+  yellow: [[8, 14], [8, 13], [8, 12], [8, 11], [8, 10], [8, 9]],
+  blue: [[2, 8], [3, 8], [4, 8], [5, 8], [6, 8], [7, 8]],
 };
-const BASE_ORIGIN = { red: [0, 0], green: [9, 0], yellow: [9, 9], blue: [0, 9] };
-const BASE_SLOTS = [[2, 2], [4, 2], [2, 4], [4, 4]]; // centres, relatifs au coin
-const GOAL_SPOT = { red: [6.7, 7.5], green: [7.5, 6.7], yellow: [8.3, 7.5], blue: [7.5, 8.3] };
+// Écuries : pochettes arrondies dans les quatre quartiers.
+const POCKET_SIZE = 4.2;
+const POCKET = { blue: [2.4, 2.4], red: [8.4, 2.4], green: [8.4, 8.4], yellow: [2.4, 8.4] };
+const SLOTS = [[1.05, 1.05], [3.15, 1.05], [1.05, 3.15], [3.15, 3.15]];
+const GOAL_SPOT = { red: [7.5, 6.65], green: [8.35, 7.5], yellow: [7.5, 8.35], blue: [6.65, 7.5] };
 
 const HEX = { red: '#e4433a', green: '#3aa856', yellow: '#edb015', blue: '#2b7fd4' };
 const HEX_DARK = { red: '#b32d26', green: '#27753c', yellow: '#bf8a0a', blue: '#1d5fa3' };
 const TINT = { red: '#fbdedc', green: '#dcf2e3', yellow: '#fdf2d0', blue: '#dcebf9' };
-const FR = { red: 'Rouge', green: 'Vert', yellow: 'Jaune', blue: 'Bleu' };
 
 // Centre (en unités de case) d'un pion selon sa position p et sa couleur.
 function spotOf(color, p, pawnIdx) {
   if (p === -1) {
-    const [ox, oy] = BASE_ORIGIN[color];
-    const [sx, sy] = BASE_SLOTS[pawnIdx];
+    const [ox, oy] = POCKET[color];
+    const [sx, sy] = SLOTS[pawnIdx];
     return [ox + sx, oy + sy];
   }
-  if (p <= 50) {
-    const [c, r] = TRACK[(START[color] + p) % 52];
+  if (p <= 55) {
+    const [c, r] = RING[(START[color] + p) % 56];
     return [c - 0.5, r - 0.5];
   }
-  if (p <= 55) {
-    const [c, r] = HOME[color][p - 51];
+  if (p <= 61) {
+    const [c, r] = LANES[color][p - 56];
     return [c - 0.5, r - 0.5];
   }
   return GOAL_SPOT[color];
@@ -157,7 +158,8 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card ludo-wait">
         <h3 className="section-title">🎲 Ludo</h3>
-        <p className="muted">2 à 4 joueuses. Fais le tour du plateau et rentre tes 4 pions !</p>
+        <p className="muted">2 à 4 joueuses. Sors tes pions avec un <b>1 ou un 6</b>, fais le grand tour du plateau
+          et rentre tes 4 pions ! Les cases ⭐ sont protégées, et on ne peut pas s'empiler : une pièce par case.</p>
         <div className="uno-seats">
           {g.seats.map((id, i) => (
             <div key={id} className="uno-seat">
@@ -183,7 +185,7 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
         : g.isMyTurn ? `Tu as fait ${g.die} — choisis un pion`
           : `Au tour de ${turnName}…`;
 
-  // ---- Pions (avec décalage quand plusieurs partagent une case) ----
+  // ---- Pions (léger décalage si plusieurs pions rentrés au même endroit) ----
   const tokens = [];
   for (const pl of g.players) {
     pl.pawns.forEach((p, i) => tokens.push({ id: `${pl.id}-${i}`, owner: pl.id, color: pl.color, p, idx: i }));
@@ -198,8 +200,6 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
   for (const group of Object.values(bySpot)) {
     group.forEach((t, i) => { if (group.length > 1) t.x += (i - (group.length - 1) / 2) * 0.34; });
   }
-
-  const startCells = Object.fromEntries(Object.entries(START).map(([c, i]) => [i, c]));
 
   return (
     <div className="ludo">
@@ -220,47 +220,48 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
       {/* Plateau + dé côte à côte (le dé passe dessous sur mobile) */}
       <div className="ludo-main">
       <div className="ludo-board" ref={boardRef}>
-        {/* Écuries (coins) */}
-        {Object.entries(BASE_ORIGIN).map(([color, [ox, oy]]) => (
-          <div key={color} className="ludo-base" style={{ left: `${ox * U}%`, top: `${oy * U}%`, width: `${6 * U}%`, height: `${6 * U}%`, background: HEX[color] }}>
-            <div className="ludo-base-panel" style={{ background: TINT[color] }} />
-            {BASE_SLOTS.map(([sx, sy], i) => (
-              <span key={i} className="ludo-base-slot" style={{ left: `${(sx / 6) * 100}%`, top: `${(sy / 6) * 100}%` }} />
+        {/* Écuries (pochettes des quartiers) */}
+        {Object.entries(POCKET).map(([color, [ox, oy]]) => (
+          <div key={color} className="ludo-pocket"
+            style={{ left: `${ox * U}%`, top: `${oy * U}%`, width: `${POCKET_SIZE * U}%`, height: `${POCKET_SIZE * U}%`, background: TINT[color], borderColor: HEX[color] }}>
+            {SLOTS.map(([sx, sy], i) => (
+              <span key={i} className="ludo-base-slot" style={{ left: `${(sx / POCKET_SIZE) * 100}%`, top: `${(sy / POCKET_SIZE) * 100}%` }} />
             ))}
           </div>
         ))}
 
-        {/* Piste */}
-        {TRACK.map(([c, r], i) => {
-          const startColor = startCells[i];
-          const safe = SAFE.includes(i);
+        {/* Anneau de 56 cases (le grand parcours) */}
+        {RING.map(([c, r], i) => {
+          const startColor = START_BY_CELL[i];
+          const entryColor = ENTRY_BY_CELL[i];
+          const star = STARS.includes(i);
           return (
             <div key={i}
-              className={`ludo-cell ${safe ? 'safe' : ''}`}
+              className={`ludo-cell ${star ? 'star-cell' : ''}`}
               style={{
                 left: `${(c - 1) * U}%`, top: `${(r - 1) * U}%`, width: `${U}%`, height: `${U}%`,
-                background: startColor ? HEX[startColor] : undefined,
+                background: startColor ? HEX[startColor] : entryColor ? TINT[entryColor] : undefined,
+                borderColor: startColor ? HEX_DARK[startColor] : entryColor ? HEX[entryColor] : undefined,
               }}>
-              {safe && <Star size={11} className="ludo-star" fill={startColor ? '#ffffff' : '#cbb9e2'} stroke="none" />}
+              {star && <Star className="ludo-star gold" size={15} fill="#f5c022" stroke="#c79204" strokeWidth={1.4} />}
+              {startColor && <ArrowRight className="ludo-arrow" size={14} color="#ffffff" strokeWidth={3.2}
+                style={{ transform: `rotate(${START_ARROW[i]}deg)` }} />}
+              {entryColor && <ArrowRight className="ludo-arrow" size={14} color={HEX[entryColor]} strokeWidth={3.2}
+                style={{ transform: `rotate(${ENTRY_ARROW[i]}deg)` }} />}
             </div>
           );
         })}
 
-        {/* Colonnes d'arrivée */}
-        {Object.entries(HOME).map(([color, cells]) => cells.map(([c, r], i) => (
-          <div key={`${color}-${i}`} className="ludo-cell home"
+        {/* Lignes d'arrivée vers le centre */}
+        {Object.entries(LANES).map(([color, cells]) => cells.map(([c, r], i) => (
+          <div key={`${color}-${i}`} className="ludo-cell lane"
             style={{ left: `${(c - 1) * U}%`, top: `${(r - 1) * U}%`, width: `${U}%`, height: `${U}%`, background: TINT[color], borderColor: HEX[color] }} />
         )))}
 
-        {/* Centre : 4 triangles vers les arrivées */}
-        <svg className="ludo-center" viewBox="0 0 90 90" style={{ left: `${6 * U}%`, top: `${6 * U}%`, width: `${3 * U}%`, height: `${3 * U}%` }}>
-          <polygon points="0,0 45,45 0,90" fill={HEX.red} />
-          <polygon points="0,0 90,0 45,45" fill={HEX.green} />
-          <polygon points="90,0 90,90 45,45" fill={HEX.yellow} />
-          <polygon points="0,90 45,45 90,90" fill={HEX.blue} />
-          <circle cx="45" cy="45" r="11" fill="#fff" />
-          <text x="45" y="49.5" textAnchor="middle" fontSize="13">🏆</text>
-        </svg>
+        {/* Centre : l'arrivée */}
+        <div className="ludo-finish" style={{ left: `${7.5 * U}%`, top: `${7.5 * U}%` }}>
+          <span className="ludo-finish-inner">🏆</span>
+        </div>
 
         {/* Pions */}
         {tokens.map((t) => {
@@ -268,7 +269,7 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
           return (
             <motion.div
               key={t.id}
-              className={`ludo-token ${movable ? 'movable' : ''} ${t.p === 56 ? 'done' : ''}`}
+              className={`ludo-token ${movable ? 'movable' : ''} ${t.p === 62 ? 'done' : ''}`}
               animate={{ left: `${t.x * U}%`, top: `${t.y * U}%` }}
               transition={{ type: 'spring', stiffness: 240, damping: 22 }}
               style={{ zIndex: movable ? 30 : 20 }}
@@ -286,9 +287,6 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
           onRoll={() => onAction({ kind: 'roll' })} />
         {g.canRoll && <span className="ludo-roll-hint">Tape le dé !</span>}
         {g.sixes === 2 && g.phase === 'playing' && <span className="ludo-sixes">⚠️ Encore un 6 et le tour est perdu !</span>}
-        <div className="ludo-log">
-          {g.log.slice(-4).map((l, i) => <div key={i}>{l}</div>)}
-        </div>
       </div>
       </div>
 

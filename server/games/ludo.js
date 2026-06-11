@@ -1,26 +1,49 @@
-// Moteur de Ludo (2 à 4 joueurs), logique pure. Règles classiques :
-// - il faut un 6 pour sortir un pion de l'écurie ; un 6 fait rejouer ;
-// - trois 6 d'affilée : le tour est perdu ;
-// - atterrir sur un pion adverse (hors case étoile) le renvoie à l'écurie
-//   et fait rejouer ; les cases étoiles (et départs) sont protégées ;
+// Moteur de Ludo façon Plato (2 à 4 joueurs), logique pure.
+// Parcours : un grand anneau de 56 cases autour du plateau (plus long que le
+// Ludo classique), puis une ligne d'arrivée privée de 6 cases vers le centre.
+// Règles (comme l'appli Plato) :
+// - on sort de l'écurie avec un 1 OU un 6 ;
+// - un 6 fait rejouer ; trois 6 d'affilée : tour perdu ;
+// - une seule pièce par case : on ne peut pas s'empiler, une case occupée par
+//   soi-même est bloquée ;
+// - atterrir sur un pion adverse le renvoie à l'écurie et fait rejouer ;
+// - 4 cases étoiles protégées (les coins) ; la case départ de chaque couleur
+//   protège uniquement les pions de cette couleur ;
 // - l'arrivée se fait au compte exact ; rentrer un pion fait rejouer ;
-// - premier à rentrer ses 4 pions = vainqueur (on classe les suivants).
+// - première à rentrer ses 4 pions = vainqueur (on classe les suivantes).
 //
-// Position d'un pion (p) : -1 = écurie ; 0..50 = piste (case absolue =
-// (départ + p) % 52) ; 51..55 = colonne d'arrivée ; 56 = au centre (rentré).
+// Position d'un pion (p) : -1 = écurie ; 0..55 = anneau (case absolue =
+// (départ + p) % 56) ; 56..61 = ligne d'arrivée ; 62 = au centre (rentré).
 
-const GOAL = 56;
+const RING = 56;
+const GOAL = 62;
 const COLOR_ORDER = ['red', 'green', 'yellow', 'blue'];
-// Décalage du départ de chaque couleur sur la boucle de 52 cases.
-const START = { red: 1, green: 14, yellow: 27, blue: 40 };
-// Cases protégées : les 4 départs + les 4 étoiles (8 cases au total).
-const SAFE = new Set([1, 9, 14, 22, 27, 35, 40, 48]);
+// Départ de chaque couleur sur l'anneau (au milieu de son côté).
+const START = { red: 8, green: 22, yellow: 36, blue: 50 };
+// Cases étoiles (les 4 coins) : protégées pour tout le monde.
+const STARS = new Set([0, 14, 28, 42]);
+// Cases départ : protègent uniquement leur propre couleur (règle Plato).
+const START_CELL = { 8: 'red', 22: 'green', 36: 'yellow', 50: 'blue' };
 const FR = { red: 'Rouge', green: 'Vert', yellow: 'Jaune', blue: 'Bleu' };
 const OFFLINE_SKIP_MS = 45000;
 
-const absCell = (color, p) => (START[color] + p) % 52;
+const absCell = (color, p) => (START[color] + p) % RING;
 const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 function nm(state, id) { return (state.names && state.names[id]) || 'quelqu\'un'; }
+function isProtected(cell, color) { return STARS.has(cell) || START_CELL[cell] === color; }
+
+// Qui occupe cette case de l'anneau ? (au plus un pion : pas d'empilement)
+function occupantAt(state, cell) {
+  for (const id of state.seats) {
+    const c = state.colors[id];
+    const pawns = state.pawns[id];
+    for (let i = 0; i < 4; i++) {
+      const p = pawns[i];
+      if (p >= 0 && p < RING && absCell(c, p) === cell) return { id, idx: i, color: c };
+    }
+  }
+  return null;
+}
 
 export function createLudo() {
   return {
@@ -58,14 +81,14 @@ export function startLudo(state, userId) {
   if (state.phase !== 'waiting') throw new Error('Déjà démarrée.');
   if (!state.seats.includes(userId)) throw new Error('Tu n\'es pas dans la partie.');
   if (state.seats.length < 2) throw new Error('Il faut au moins 2 joueurs.');
-  // À 2 joueuses : coins opposés (plus équitable) ; à 3-4 : ordre classique.
+  // À 2 joueuses : côtés opposés (plus équitable) ; à 3-4 : ordre classique.
   const layout = { 2: ['red', 'yellow'], 3: ['red', 'green', 'yellow'], 4: COLOR_ORDER }[state.seats.length];
   state.seats.forEach((id, i) => { state.colors[id] = layout[i]; });
   state.phase = 'playing';
   state.turn = state.seats[Math.floor(Math.random() * state.seats.length)];
   state.die = null; state.sixes = 0; state.movable = [];
   state.stepSince = Date.now();
-  state.log = [`${FR[state.colors[state.turn]]} commence !`];
+  state.log = [`${FR[state.colors[state.turn]]} commence ! (sortie avec un 1 ou un 6)`];
 }
 
 function pushLog(state, text) {
@@ -90,13 +113,30 @@ function replay(state) {
   state.stepSince = Date.now();
 }
 
-// Pions jouables avec ce dé : sortir (6) ou avancer sans dépasser l'arrivée.
+// Un pion peut-il jouer ce dé ? (sortie au 1/6, case exacte, pas d'empilement,
+// pions adverses protégés sur les étoiles et sur leur case départ)
+function canMove(state, userId, pawnIdx, die) {
+  const color = state.colors[userId];
+  const p = state.pawns[userId][pawnIdx];
+  if (p === GOAL) return false;
+  if (p === -1) {
+    if (die !== 6 && die !== 1) return false;
+    const occ = occupantAt(state, START[color]);
+    return !occ || (occ.id !== userId && !isProtected(START[color], occ.color));
+  }
+  const np = p + die;
+  if (np > GOAL) return false;
+  if (np < RING) {
+    const cell = absCell(color, np);
+    const occ = occupantAt(state, cell);
+    return !occ || (occ.id !== userId && !isProtected(cell, occ.color));
+  }
+  if (np < GOAL && state.pawns[userId].some((q, j) => j !== pawnIdx && q === np)) return false;
+  return true;
+}
+
 function movablePawns(state, userId, die) {
-  const out = [];
-  state.pawns[userId].forEach((p, i) => {
-    if (p === -1 ? die === 6 : p + die <= GOAL) out.push(i);
-  });
-  return out;
+  return [0, 1, 2, 3].filter((i) => canMove(state, userId, i, die));
 }
 
 export function rollLudo(state, userId) {
@@ -137,37 +177,31 @@ export function moveLudo(state, userId, pawnIdx) {
   const pawns = state.pawns[userId];
   let bonus = die === 6;
 
+  let np;
   if (pawns[idx] === -1) {
-    pawns[idx] = 0;
+    np = 0;
     event(state, 'out', userId);
     pushLog(state, `${nm(state, userId)} sort un pion !`);
   } else {
-    pawns[idx] += die;
+    np = pawns[idx] + die;
     event(state, 'move', userId);
   }
-  const p = pawns[idx];
 
-  // Capture : case de piste non protégée occupée par l'adversaire.
-  if (p >= 0 && p <= 50) {
-    const cell = absCell(color, p);
-    if (!SAFE.has(cell)) {
-      for (const other of state.seats) {
-        if (other === userId) continue;
-        const oc = state.colors[other];
-        state.pawns[other].forEach((op, oi) => {
-          if (op >= 0 && op <= 50 && absCell(oc, op) === cell) {
-            state.pawns[other][oi] = -1;
-            bonus = true;
-            event(state, 'capture', userId);
-            pushLog(state, `${nm(state, userId)} mange un pion de ${nm(state, other)} !`);
-          }
-        });
-      }
+  // Capture : un pion adverse non protégé sur la case d'arrivée du coup.
+  if (np < RING) {
+    const cell = absCell(color, np);
+    const occ = occupantAt(state, cell);
+    if (occ && occ.id !== userId) {
+      state.pawns[occ.id][occ.idx] = -1;
+      bonus = true;
+      event(state, 'capture', userId);
+      pushLog(state, `${nm(state, userId)} mange un pion de ${nm(state, occ.id)} ! Oups…`);
     }
   }
+  pawns[idx] = np;
 
   // Arrivée au centre : pion rentré, on rejoue.
-  if (p === GOAL) {
+  if (np === GOAL) {
     bonus = true;
     event(state, 'goal', userId);
     pushLog(state, `${nm(state, userId)} rentre un pion ! (${pawns.filter((x) => x === GOAL).length}/4)`);
@@ -190,7 +224,7 @@ export function moveLudo(state, userId, pawnIdx) {
 }
 
 // Horloge serveur : si la joueuse dont c'est le tour est déconnectée depuis
-// un moment, on joue pour elle (lancer puis premier pion jouable).
+// un moment, on joue pour elle (lancer puis un pion jouable au hasard).
 export function tickLudo(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;

@@ -966,19 +966,26 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 @keyframes ludoPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(60,30,80,0.25); } 50% { box-shadow: 0 0 0 7px rgba(60,30,80,0); } }
 
 .ludo-main { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: center; }
-.ludo-board { position: relative; width: min(88vw, 440px); aspect-ratio: 1; margin: 0 auto;
-  background: #fdfbff; border-radius: 18px; box-shadow: 0 10px 30px rgba(70,40,100,0.16); overflow: hidden;
-  border: 3px solid #fff; }
-.ludo-base { position: absolute; border-radius: 14px; box-shadow: inset 0 -5px 0 rgba(0,0,0,0.14); }
-.ludo-base-panel { position: absolute; inset: 16%; border-radius: 12px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.1); }
-.ludo-base-slot { position: absolute; width: 22%; height: 22%; transform: translate(-50%, -50%);
-  border-radius: 50%; background: rgba(255,255,255,0.85); box-shadow: inset 0 2px 5px rgba(0,0,0,0.18); }
+.ludo-board { position: relative; width: min(88vw, 445px); aspect-ratio: 1; margin: 0 auto;
+  background: linear-gradient(150deg, #fdfbff, #f4edfb); border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(70,40,100,0.16); overflow: hidden; border: 3px solid #fff; }
+.ludo-pocket { position: absolute; border-radius: 18%; border: 3px solid; box-shadow: 0 3px 10px rgba(60,30,80,0.12); }
+.ludo-base-slot { position: absolute; width: 34%; height: 34%; transform: translate(-50%, -50%);
+  border-radius: 50%; background: rgba(255,255,255,0.85); box-shadow: inset 0 2px 5px rgba(0,0,0,0.16); }
 
-.ludo-cell { position: absolute; background: #fff; border: 1px solid #e7def4; box-sizing: border-box;
-  display: flex; align-items: center; justify-content: center; }
-.ludo-cell.home { border-width: 1px; }
+/* Cases rondes façon Plato (anneau + lignes d'arrivée) */
+.ludo-cell { position: absolute; background: #fff; border: 1.5px solid #e3d8f2; box-sizing: border-box;
+  border-radius: 50%; transform: scale(0.94); display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 -2px 0 rgba(90,50,120,0.07); }
+.ludo-cell.star-cell { background: #fff7e0; border-color: #ecc94b; }
+.ludo-cell.lane { box-shadow: none; }
 .ludo-star { opacity: 0.95; }
-.ludo-center { position: absolute; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); }
+
+.ludo-finish { position: absolute; width: 16%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
+  background: conic-gradient(#e4433a 0 90deg, #3aa856 90deg 180deg, #edb015 180deg 270deg, #2b7fd4 270deg 360deg);
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(60,30,80,0.25); }
+.ludo-finish-inner { width: 72%; aspect-ratio: 1; border-radius: 50%; background: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
 
 .ludo-token { position: absolute; width: 6.2%; transform: translate(-50%, -78%); cursor: default; }
 .ludo-pawn-svg { width: 100%; height: auto; display: block; }
