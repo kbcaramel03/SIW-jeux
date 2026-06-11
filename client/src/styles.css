@@ -1017,9 +1017,10 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 /* ====== Echecs ====== */
 .ch-wrap { display: flex; flex-direction: column; gap: 8px; }
 .ch-board { position: relative; display: grid; grid-template-columns: repeat(8, 1fr);
-  width: min(88vw, 430px); aspect-ratio: 1; border-radius: 12px; overflow: hidden;
-  border: 4px solid #fff; box-shadow: 0 10px 30px rgba(70,40,100,0.18); }
-.ch-sq { position: relative; display: flex; align-items: center; justify-content: center; cursor: default; user-select: none; }
+  grid-template-rows: repeat(8, 1fr); width: min(88vw, 430px); aspect-ratio: 1; border-radius: 12px;
+  overflow: hidden; border: 4px solid #fff; box-shadow: 0 10px 30px rgba(70,40,100,0.18); }
+.ch-sq { position: relative; display: flex; align-items: center; justify-content: center; cursor: default;
+  user-select: none; min-height: 0; min-width: 0; overflow: hidden; }
 .ch-sq.light { background: #f7f1fb; }
 .ch-sq.dark { background: #c4aede; }
 .ch-sq.mine { cursor: pointer; }
