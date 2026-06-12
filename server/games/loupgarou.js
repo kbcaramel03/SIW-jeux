@@ -30,7 +30,7 @@ export function createLoupGarou() {
     type: 'loupgarou',
     phase: 'setup', // setup -> night -> reveal -> day -> vote -> reveal -> hunter -> over
     nightStep: null,
-    config: { wolves: 2, voyante: true, sorciere: true, chasseur: true, cupidon: false, garde: false, ange: false, enfant: false },
+    config: { wolves: 2, voyante: true, sorciere: true, chasseur: true, cupidon: true, garde: false, ange: false, enfant: false },
     seats: [],
     names: {},
     roles: {},

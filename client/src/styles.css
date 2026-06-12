@@ -1050,3 +1050,15 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .ch-promo-row button:hover { transform: scale(1.08); }
 .ch-promo-row .ch-piece { width: 60%; height: 60%; }
 
+
+/* ====== Tactile (telephones) ====== */
+/* Supprime le delai de double-tap et le zoom accidentel sur tous les boutons. */
+button, [role="button"], .ludo-token, .ch-sq, .game-tile {
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+/* Zones de tap elargies (invisibles) sur les petites cibles. */
+.lg-player.pick { z-index: 4; }
+.lg-player.pick::after { content: ""; position: absolute; inset: -9px; }
+.ludo-token.movable::before { content: ""; position: absolute; inset: -11px; }
+.ludo-dice.can-roll::after { content: ""; position: absolute; inset: -8px; }
+.ludo-dice { position: relative; }
