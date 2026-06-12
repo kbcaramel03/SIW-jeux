@@ -9,7 +9,7 @@ import { existsSync } from 'fs';
 import { PORT, DEV_ORIGINS, IS_PROD } from './config.js';
 import db from './db.js';
 import { ensureSeed } from './seedData.js';
-import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
+import { synthesize } from './tts.js';
 import { router as authRouter } from './auth.js';
 import { router as adminRouter } from './admin.js';
 import { createRealtime } from './realtime.js';
@@ -27,24 +27,34 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
 
-// Synthèse vocale « maître du jeu » : voix neural masculine française (Microsoft
-// Edge TTS, gratuite et sans clé), débit lent + grave pour un ton de vieux sage.
+// Synthèse vocale « maître du jeu » : voix neurales françaises (Microsoft
+// Edge TTS, gratuites et sans clé). La voix, le débit et la hauteur sont
+// paramétrables (liste blanche + bornes pour éviter les abus).
+const TTS_VOICES = new Set([
+  'fr-FR-RemyMultilingualNeural',     // français, dernière génération
+  'fr-FR-HenriNeural',                // français classique
+  'fr-FR-VivienneMultilingualNeural', // française, dernière génération
+  'en-US-AndrewMultilingualNeural',   // multilingue, très grave (parle français)
+  'en-US-BrianMultilingualNeural',    // multilingue, posé (parle français)
+]);
+const clampPct = (v, def) => {
+  const n = Number(String(v || '').replace('%', ''));
+  if (!Number.isFinite(n)) return def;
+  return `${Math.max(-40, Math.min(20, Math.round(n)))}%`;
+};
 app.get('/api/tts', async (req, res) => {
   const text = String(req.query.text || '').slice(0, 400);
-  const voice = String(req.query.voice || 'fr-FR-HenriNeural');
+  const voice = TTS_VOICES.has(String(req.query.voice)) ? String(req.query.voice) : 'fr-FR-RemyMultilingualNeural';
+  const rate = clampPct(req.query.rate, '-12%');
+  const pitch = clampPct(req.query.pitch, '-12%');
   if (!text) return res.status(400).end();
   try {
-    const tts = new MsEdgeTTS();
-    await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-    const { audioStream } = tts.toStream(text, { rate: '-12%', pitch: '-12%' });
+    const audio = await synthesize(text, voice, rate, pitch);
     res.set('Content-Type', 'audio/mpeg');
     res.set('Cache-Control', 'public, max-age=86400');
-    let sent = false;
-    audioStream.on('data', (d) => { sent = true; res.write(d); });
-    audioStream.on('end', () => res.end());
-    audioStream.on('close', () => res.end());
-    audioStream.on('error', () => { if (!sent) res.status(502).end(); else res.end(); });
-  } catch {
+    res.send(audio);
+  } catch (e) {
+    console.error('TTS :', e.message);
     res.status(502).end();
   }
 });

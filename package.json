@@ -19,10 +19,10 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "lowdb": "^7.0.1",
-    "msedge-tts": "^2.0.5",
     "nanoid": "^5.0.7",
     "pg": "^8.13.0",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"

@@ -89,10 +89,13 @@ function reconcilePlayers(room, sockets) {
 
 // Prénoms pour la narration des moteurs de jeu (Loup Garou…) + connectivité,
 // pour que les jeux puissent passer le tour d'un joueur durablement absent.
+// L'hôte est aussi transmis (certains pouvoirs lui sont réservés, ex. écourter
+// le débat du Loup Garou).
 function syncGameContext(room) {
   if (!room.game) return;
   room.game.names = Object.fromEntries(Object.values(room.roster).map((u) => [u.id, u.displayName]));
   room.game.offline = Object.fromEntries(room.players.filter((p) => p.connected === false).map((p) => [p.id, true]));
+  room.game.hostId = room.hostId;
 }
 
 export function createRealtime(httpServer) {

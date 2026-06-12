@@ -1049,3 +1049,12 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
 .ch-promo-row button:hover { transform: scale(1.08); }
 .ch-promo-row .ch-piece { width: 60%; height: 60%; }
+
+/* Loup Garou : choix de la voix du maitre du jeu */
+.lg-voicepick { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.lg-voicepick small { font-weight: 500; opacity: 0.7; }
+.lg-voice-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.lg-voice-chip { border: 2px solid #e3d8f2; background: #fff; border-radius: 999px; padding: 6px 13px;
+  font: inherit; font-size: 0.82rem; font-weight: 700; color: var(--ink); cursor: pointer; }
+.lg-voice-chip:hover { border-color: #c9b3e0; }
+.lg-voice-chip.on { background: linear-gradient(120deg, #8d5bc6, #6b5ca8); border-color: #6b5ca8; color: #fff; }

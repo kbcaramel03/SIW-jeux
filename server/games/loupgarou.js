@@ -345,8 +345,10 @@ function startVote(state) {
 export function callVote(state, userId) {
   if (state.phase !== 'day') throw new Error('Pas le moment.');
   if (!state.seats.includes(userId)) throw new Error('Interdit.');
-  // Le vote démarre tout seul à la fin des 2 minutes de débat (pas de déclenchement manuel).
-  if (state.dayDeadline && Date.now() < state.dayDeadline - 1200) throw new Error('Le débat n\'est pas terminé.');
+  // Le vote démarre tout seul à la fin des 2 minutes de débat ; l'hôte peut
+  // aussi écourter le débat à tout moment (« Passer au vote »).
+  const isHost = state.hostId && userId === state.hostId;
+  if (!isHost && state.dayDeadline && Date.now() < state.dayDeadline - 1200) throw new Error('Le débat n\'est pas terminé.');
   startVote(state);
 }
 
