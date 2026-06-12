@@ -4,7 +4,7 @@ import { Play, Sparkles, Minus, Plus, Volume2, VolumeX, Skull, Vote } from 'luci
 import { AnimatePresence, motion } from 'framer-motion';
 import { GiWerewolf, GiFarmer, GiCrystalBall, GiCauldron, GiWinchesterRifle, GiWizardFace, GiMoon, GiCupidonArrow, GiShield, GiAngelWings, GiBabyFace } from 'react-icons/gi';
 import { Avatar } from '../components/OnlineRail.jsx';
-import { speak, stopSpeak, NARRATORS, getNarrator, setNarrator, sampleNarrator } from '../voice.js';
+import { speak, stopSpeak } from '../voice.js';
 import { winConfetti } from '../effects.js';
 
 // Cartes de rôles illustrées (dessins : Game Icons / game-icons.net, CC BY 3.0).
@@ -29,7 +29,6 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const [voiceOn, setVoiceOn] = useState(true);
-  const [narrator, setNarratorSel] = useState(getNarrator().id);
   const [poisonMode, setPoisonMode] = useState(false);
   const [witchKill, setWitchKill] = useState(null);
   const [cupidPicks, setCupidPicks] = useState([]);
@@ -129,19 +128,6 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
             })}
           </div>
           {!isHost && <p className="muted">Seul l'hôte règle la composition.</p>}
-        </div>
-
-        {/* Voix du maître du jeu : choix par appareil, clic = aperçu audio */}
-        <div className="lg-voicepick">
-          <span className="lg-cfg-label"><Volume2 size={18} /> Voix du maître du jeu <small>(sur ton appareil — clique pour écouter)</small></span>
-          <div className="lg-voice-row">
-            {NARRATORS.map((n) => (
-              <button key={n.id} type="button" className={`lg-voice-chip ${narrator === n.id ? 'on' : ''}`}
-                onClick={() => { setNarrator(n.id); setNarratorSel(n.id); sampleNarrator(n.id); }}>
-                {n.label}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className="cn-controls">

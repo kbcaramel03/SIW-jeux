@@ -86,37 +86,17 @@ function phonetic(text) {
   return t;
 }
 
-// --- Narrateurs du maître du jeu (voix neurales Edge via /api/tts) -----------
-// Chaque narrateur a ses réglages « vieux mage » : lent et grave, plus ou moins.
-export const NARRATORS = [
-  { id: 'remy', label: 'Rémy — naturel', voice: 'fr-FR-RemyMultilingualNeural', rate: -14, pitch: -16 },
-  { id: 'andrew', label: 'Andrew — grave et profond', voice: 'en-US-AndrewMultilingualNeural', rate: -14, pitch: -10 },
-  { id: 'brian', label: 'Brian — vieux conteur', voice: 'en-US-BrianMultilingualNeural', rate: -16, pitch: -12 },
-  { id: 'henri', label: 'Henri — classique', voice: 'fr-FR-HenriNeural', rate: -12, pitch: -12 },
-  { id: 'vivienne', label: 'Vivienne — conteuse', voice: 'fr-FR-VivienneMultilingualNeural', rate: -14, pitch: -10 },
-];
-let narratorId = (typeof localStorage !== 'undefined' && localStorage.getItem('sj_narrator')) || 'remy';
-export function getNarrator() { return NARRATORS.find((n) => n.id === narratorId) || NARRATORS[0]; }
-export function setNarrator(id) {
-  narratorId = NARRATORS.some((n) => n.id === id) ? id : 'remy';
-  try { localStorage.setItem('sj_narrator', narratorId); } catch { /* ignore */ }
-}
-// Petite phrase d'essai pour écouter un narrateur avant de choisir.
-export function sampleNarrator(id) {
-  const prev = narratorId;
-  narratorId = id;
-  speak('La nuit tombe sur le village… que les âmes sensibles ferment les yeux.');
-  narratorId = prev;
-}
+// Voix du maître du jeu : Andrew (neurale multilingue, grave et profonde),
+// ralentie et abaissée pour un ton de vieux mage. Même voix pour tout le monde.
+const NARRATOR = { voice: 'en-US-AndrewMultilingualNeural', rate: -14, pitch: -10 };
 
-// Voix naturelle (Edge neural français via notre proxy /api/tts), repli local si erreur.
+// Voix naturelle (Edge neural via notre proxy /api/tts), repli local si erreur.
 export function speak(text) {
   if (!text) return;
   stopSpeak();
   const spoken = phonetic(text);
-  const n = getNarrator();
   try {
-    audio = new Audio(`/api/tts?voice=${encodeURIComponent(n.voice)}&rate=${n.rate}&pitch=${n.pitch}&text=${encodeURIComponent(spoken)}`);
+    audio = new Audio(`/api/tts?voice=${encodeURIComponent(NARRATOR.voice)}&rate=${NARRATOR.rate}&pitch=${NARRATOR.pitch}&text=${encodeURIComponent(spoken)}`);
     audio.play().catch(() => speakLocal(spoken));
     audio.onerror = () => speakLocal(spoken);
   } catch {
