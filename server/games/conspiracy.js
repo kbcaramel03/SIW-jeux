@@ -1,12 +1,16 @@
-// Moteur de Conspiracy (déduction sociale « Société vs Espions », style The Resistance).
-// La Société ne sait pas qui est qui ; les Espions se connaissent entre eux.
-// 5 missions max. Chaque mission : une cheffe propose une équipe -> tout le monde
-// vote Pour/Contre -> si acceptée, les membres jouent secrètement Succès/Sabotage
-// (la Société DOIT réussir). On révèle seulement le nombre de sabotages.
-//   - >= sabotages requis -> mission échouée ; sinon réussie.
-// Premier camp à 3 missions gagne. 3 rejets d'affilée -> résultat aléatoire.
+// Moteur de Conspiracy (déduction sociale « Société vs Espions »), fidèle au
+// Complot de Plato / The Resistance. La Société ne sait pas qui est qui ; les
+// Espions se connaissent entre eux. 5 missions max. Chaque mission : un chef
+// propose une équipe (il ne peut PAS se choisir lui-même, règle Plato) ->
+// tout le monde vote Pour/Contre -> si acceptée, les membres jouent
+// secrètement Succès/Sabotage (la Société DOIT réussir). On révèle seulement
+// le nombre de sabotages : >= sabotages requis -> mission échouée.
+// Premier camp à 3 missions gagne. 4 propositions rejetées pour la même
+// mission -> les Espions gagnent (règle Plato).
+// À 4 joueurs : variante maison (1 espion, équipes 2-2-2-3-3).
 
 const SPIES_BY_COUNT = { 4: 1, 5: 2, 6: 2, 7: 3, 8: 3 };
+const MAX_REJECTS = 4;
 
 function shuffle(a) {
   a = [...a];
@@ -14,13 +18,11 @@ function shuffle(a) {
   return a;
 }
 
-// Tailles d'équipe par mission selon le nombre de joueurs.
-// 4 & 5 joueurs : deux variantes possibles, tirées au sort au début.
+// Tailles d'équipe par mission selon le nombre de joueurs (tables officielles
+// de The Resistance pour 5-8 ; variante maison équilibrée pour 4).
 function pickTeamSizes(n) {
-  if (n === 4 || n === 5) {
-    const variants = [[2, 2, 2, 3, 3], [2, 3, 2, 3, 3]];
-    return variants[Math.floor(Math.random() * variants.length)];
-  }
+  if (n === 4) return [2, 2, 2, 3, 3];
+  if (n === 5) return [2, 3, 2, 3, 3];
   if (n === 6) return [2, 3, 4, 3, 4];
   if (n === 7) return [2, 3, 3, 4, 4];
   return [3, 4, 4, 5, 5]; // 8
@@ -102,11 +104,11 @@ function tallyVotes(state) {
     state.phase = 'mission';
   } else {
     state.rejectStreak += 1;
-    if (state.rejectStreak >= 3) {
-      // 3 rejets d'affilée : la mission est résolue au hasard.
-      const outcome = Math.random() < 0.5 ? 'success' : 'fail';
-      state.rejectStreak = 0;
-      recordOutcome(state, outcome, { random: true, outcome });
+    if (state.rejectStreak >= MAX_REJECTS) {
+      // 4 propositions rejetées pour la même mission : les Espions gagnent (règle Plato).
+      state.winner = 'spies';
+      state.phase = 'over';
+      state.lastReveal = { rejected: true };
     } else {
       state.team = []; state.votes = {};
       state.phase = 'team';
@@ -121,6 +123,7 @@ export function proposeTeam(state, userId, team) {
   if (!Array.isArray(team) || team.length !== size) throw new Error(`Il faut exactement ${size} membres.`);
   if (new Set(team).size !== team.length) throw new Error('Doublon dans l\'équipe.');
   if (team.some((id) => !state.seats.includes(id))) throw new Error('Membre invalide.');
+  if (team.includes(userId)) throw new Error('Le chef ne peut pas se choisir lui-même (règle du Complot).');
   state.team = [...team];
   state.votes = {};
   state.lastVote = null;

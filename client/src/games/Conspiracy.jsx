@@ -52,10 +52,10 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
   function banner() {
     if (g.phase === 'over') {
       const iWon = (g.winner === 'spies' && g.myRole === 'spy') || (g.winner === 'society' && g.myRole === 'society');
-      return `${g.winner === 'spies' ? 'Les Espions' : 'La Société'} gagnent — ${iWon ? 'tu gagnes 🎉' : 'tu perds'}`;
+      const why = g.lastReveal?.rejected ? ' (4 équipes rejetées !)' : '';
+      return `${g.winner === 'spies' ? 'Les Espions' : 'La Société'} gagnent${why} — ${iWon ? 'tu gagnes 🎉' : 'tu perds'}`;
     }
     if (g.phase === 'reveal') {
-      if (g.lastReveal?.random) return `3 rejets : mission ${g.lastReveal.outcome === 'success' ? 'réussie' : 'sabotée'} au hasard !`;
       return `Mission ${g.lastReveal?.outcome === 'success' ? 'RÉUSSIE' : 'SABOTÉE'} — ${g.lastReveal?.fails || 0} sabotage(s)`;
     }
     if (g.phase === 'team') return g.isLeader ? `À toi de former l'équipe (${g.teamSize})` : `${nameById[g.leader] || '?'} forme l'équipe (${g.teamSize})`;
@@ -93,7 +93,7 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
 
       {/* Rejets d'affilée */}
       {g.phase !== 'over' && (
-        <div className="csp-rejects">Rejets d'affilée : {[0, 1, 2].map((i) => <span key={i} className={`dot ${i < g.rejectStreak ? 'on' : ''}`} />)} <span className="muted">(3 → mission au hasard)</span></div>
+        <div className="csp-rejects">Équipes rejetées : {[0, 1, 2, 3].map((i) => <span key={i} className={`dot ${i < g.rejectStreak ? 'on' : ''}`} />)} <span className="muted">(4 → les Espions gagnent)</span></div>
       )}
 
       {/* Joueurs */}
@@ -103,7 +103,8 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
           const isPicked = picked.includes(p.id);
           const voteIcon = g.lastVote && (g.phase === 'team' || g.phase === 'mission' || g.phase === 'reveal')
             ? (g.lastVote.approve.includes(p.id) ? 'up' : g.lastVote.reject.includes(p.id) ? 'down' : null) : null;
-          const clickable = g.isLeader && g.phase === 'team';
+          // Règle du Complot : le chef ne peut pas se choisir lui-même.
+          const clickable = g.isLeader && g.phase === 'team' && p.id !== me;
           return (
             <button key={p.id} className={`csp-player ${onTeam ? 'team' : ''} ${isPicked ? 'picked' : ''}`}
               disabled={!clickable} onClick={() => clickable && togglePick(p.id)}>
@@ -120,11 +121,12 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
 
       {/* Contrôles selon la phase */}
       {g.phase === 'team' && g.isLeader && (
-        <div className="cn-controls">
+        <div className="cn-controls" style={{ flexDirection: 'column', gap: 6 }}>
           <Button variant="contained" startIcon={<Users size={18} />} disabled={picked.length !== g.teamSize}
             onClick={() => onAction({ kind: 'propose', team: picked })}>
             Proposer l'équipe ({picked.length}/{g.teamSize})
           </Button>
+          <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>Tu ne peux pas te choisir toi-même.</p>
         </div>
       )}
 
