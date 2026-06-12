@@ -28,6 +28,34 @@ const WORDS = [
   'astronaute', 'cosmonaute', 'pirate', 'sirène', 'chevalier', 'roi', 'reine', 'couronne', 'épée', 'bouclier',
   'trésor', 'boussole', 'sablier', 'téléscope', 'microscope', 'aimant', 'parachute', 'montgolfière', 'sous-marin', 'phare',
   'cascade', 'tornade', 'séisme', 'gravité', 'électricité', 'orchestre', 'marathon', 'équilibre', 'labyrinthe', 'mirage',
+  // Métiers
+  'pompier', 'policière', 'chirurgien', 'coiffeuse', 'boulanger', 'facteur', 'plombier', 'avocate', 'arbitre', 'clown',
+  'magicien', 'jardinier', 'photographe', 'professeure', 'serveuse', 'pêcheur', 'chanteuse', 'dentiste', 'vétérinaire', 'détective',
+  // Actions (à faire deviner en dessin !)
+  'éternuer', 'applaudir', 'bâiller', 'ronfler', 'nager', 'grimper', 'pleurer', 'chuchoter', 'trébucher', 'jongler',
+  'plonger', 'se maquiller', 'faire la sieste', 'prendre un selfie', 'faire du yoga', 'faire un câlin', 'faire la vaisselle',
+  'étendre le linge', 'faire du vélo', 'claquer des doigts',
+  // Sports & loisirs
+  'escrime', 'judo', 'boxe', 'patinage', 'équitation', 'ping-pong', 'bowling', 'fléchettes', 'pétanque', 'surf',
+  'escalade', 'tir à l\'arc', 'gymnastique', 'haltérophilie', 'badminton', 'billard', 'karaté', 'plongée', 'canoë', 'slalom',
+  // Lieux & monuments
+  'pyramide', 'igloo', 'moulin', 'aéroport', 'bibliothèque', 'prison', 'cimetière', 'hammam', 'mosquée', 'stade',
+  'cirque', 'musée', 'oasis', 'banquise', 'gratte-ciel', 'Tour de Pise', 'Statue de la Liberté', 'Big Ben', 'Colisée', 'Sahara',
+  // Abstraits difficiles
+  'jalousie', 'vertige', 'insomnie', 'déjà-vu', 'karma', 'liberté', 'chance', 'mensonge', 'timidité', 'nostalgie',
+  'courage', 'silence', 'écho', 'infini', 'hasard', 'paresse', 'migraine', 'canicule', 'frisson', 'patience',
+  // Objets précis (durs à dessiner)
+  'tire-bouchon', 'passoire', 'ventouse', 'agrafeuse', 'hamac', 'échasses', 'périscope', 'métronome', 'catapulte', 'menottes',
+  'perceuse', 'arrosoir', 'cintre', 'pince à linge', 'dé à coudre', 'ascenseur', 'escalier roulant', 'distributeur', 'tapis volant', 'lampe magique',
+  // Cuisine du monde
+  'couscous', 'tajine', 'paella', 'ramen', 'kebab', 'falafel', 'churros', 'tiramisu', 'baklava', 'raclette',
+  'crêpe', 'fondue', 'escargots', 'harira', 'msemen', 'thé à la menthe', 'chorba', 'pastilla', 'briouate', 'cornes de gazelle',
+  // Personnages & films
+  'Pikachu', 'Mario', 'Spiderman', 'Harry Potter', 'Cendrillon', 'Shrek', 'Titanic', 'Minion', 'Aladdin', 'La Reine des Neiges',
+  'Batman', 'Dracula', 'Hulk', 'Stitch', 'Bob l\'éponge', 'Tom et Jerry', 'Mickey', 'Maléfique', 'Raiponce', 'Mulan',
+  // Animaux rares
+  'paresseux', 'ornithorynque', 'caméléon', 'flamant rose', 'méduse', 'scorpion', 'chauve-souris', 'autruche', 'paon', 'hippocampe',
+  'lama', 'castor', 'taupe', 'suricate', 'axolotl', 'narval', 'tatou', 'gecko', 'mante religieuse', 'phacochère',
   // Prénoms de la team
   'Khadija', 'Zineb', 'Aya', 'Alia', 'Yasmine',
 ];
@@ -56,7 +84,7 @@ export function createScribbl() {
   return {
     type: 'scribbl', phase: 'waiting', // waiting -> choose -> draw -> turnend -> over
     seats: [], scores: {},
-    order: [], turnIdx: 0, round: 1, totalRounds: 2,
+    order: [], turnIdx: 0, round: 1, totalRounds: 3,
     drawer: null, choices: [], word: null, hint: null,
     revealOrder: [], revealed: 0, maxReveal: 0,
     guessed: {}, deadline: null, since: null, reveal: null, log: [], winner: null,
