@@ -2,8 +2,8 @@
 // joue au hasard jusqu'à la fin et vérifie les invariants des règles.
 import { createLudo, joinLudo, startLudo, rollLudo, moveLudo, viewFor } from './server/games/ludo.js';
 
-const RING = 56;
-const START = { red: 8, green: 22, yellow: 36, blue: 50 };
+const RING = 52;
+const START = { red: 1, green: 14, yellow: 27, blue: 40 };
 
 let captures = 0, threeSixes = 0, exitOnOne = 0;
 for (let game = 0; game < 200; game++) {
@@ -28,8 +28,8 @@ for (let game = 0; game < 200; game++) {
     const occ = new Set();
     for (const id of s.seats) {
       for (const p of s.pawns[id]) {
-        if (p === -1 || p === 62) continue;
-        const key = p < RING ? `r${(START[s.colors[id]] + p) % RING}` : `${s.colors[id]}-l${p}`;
+        if (p === -1 || p === 56) continue;
+        const key = p <= 50 ? `r${(START[s.colors[id]] + p) % RING}` : `${s.colors[id]}-l${p}`;
         if (occ.has(key)) throw new Error(`Deux pions sur la case ${key} !`);
         occ.add(key);
       }
@@ -37,7 +37,7 @@ for (let game = 0; game < 200; game++) {
     // Invariant : 4 pions chacun, positions dans [-1, 62].
     for (const id of s.seats) {
       if (s.pawns[id].length !== 4) throw new Error('Pas 4 pions !');
-      if (s.pawns[id].some((p) => p < -1 || p > 62)) throw new Error('Position hors limites !');
+      if (s.pawns[id].some((p) => p < -1 || p > 56)) throw new Error('Position hors limites !');
     }
   }
   if (s.phase !== 'over') throw new Error(`Partie ${game} sans fin (${steps} coups)`);

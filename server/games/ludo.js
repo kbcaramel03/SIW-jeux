@@ -1,29 +1,29 @@
-// Moteur de Ludo façon Plato (2 à 4 joueurs), logique pure.
-// Parcours : un grand anneau de 56 cases autour du plateau (plus long que le
-// Ludo classique), puis une ligne d'arrivée privée de 6 cases vers le centre.
+// Moteur de Ludo (2 à 4 joueurs), logique pure. Plateau classique en croix :
+// piste de 52 cases, puis colonne d'arrivée privée de 5 cases vers le centre.
 // Règles (comme l'appli Plato) :
 // - on sort de l'écurie avec un 1 OU un 6 ;
 // - un 6 fait rejouer ; trois 6 d'affilée : tour perdu ;
 // - une seule pièce par case : on ne peut pas s'empiler, une case occupée par
 //   soi-même est bloquée ;
 // - atterrir sur un pion adverse le renvoie à l'écurie et fait rejouer ;
-// - 4 cases étoiles protégées (les coins) ; la case départ de chaque couleur
-//   protège uniquement les pions de cette couleur ;
+// - 4 cases étoiles protégées pour tout le monde ; la case départ de chaque
+//   couleur protège uniquement les pions de cette couleur ;
 // - l'arrivée se fait au compte exact ; rentrer un pion fait rejouer ;
 // - première à rentrer ses 4 pions = vainqueur (on classe les suivantes).
 //
-// Position d'un pion (p) : -1 = écurie ; 0..55 = anneau (case absolue =
-// (départ + p) % 56) ; 56..61 = ligne d'arrivée ; 62 = au centre (rentré).
+// Position d'un pion (p) : -1 = écurie ; 0..50 = piste (case absolue =
+// (départ + p) % 52) ; 51..55 = colonne d'arrivée ; 56 = au centre (rentré).
 
-const RING = 56;
-const GOAL = 62;
+const RING = 52;
+const TRACK_MAX = 50; // dernière position sur la piste partagée
+const GOAL = 56;
 const COLOR_ORDER = ['red', 'green', 'yellow', 'blue'];
-// Départ de chaque couleur sur l'anneau (au milieu de son côté).
-const START = { red: 8, green: 22, yellow: 36, blue: 50 };
-// Cases étoiles (les 4 coins) : protégées pour tout le monde.
-const STARS = new Set([0, 14, 28, 42]);
+// Départ de chaque couleur sur la piste.
+const START = { red: 1, green: 14, yellow: 27, blue: 40 };
+// Cases étoiles : protégées pour tout le monde.
+const STARS = new Set([9, 22, 35, 48]);
 // Cases départ : protègent uniquement leur propre couleur (règle Plato).
-const START_CELL = { 8: 'red', 22: 'green', 36: 'yellow', 50: 'blue' };
+const START_CELL = { 1: 'red', 14: 'green', 27: 'yellow', 40: 'blue' };
 const FR = { red: 'Rouge', green: 'Vert', yellow: 'Jaune', blue: 'Bleu' };
 const OFFLINE_SKIP_MS = 45000;
 
@@ -39,7 +39,7 @@ function occupantAt(state, cell) {
     const pawns = state.pawns[id];
     for (let i = 0; i < 4; i++) {
       const p = pawns[i];
-      if (p >= 0 && p < RING && absCell(c, p) === cell) return { id, idx: i, color: c };
+      if (p >= 0 && p <= TRACK_MAX && absCell(c, p) === cell) return { id, idx: i, color: c };
     }
   }
   return null;
@@ -126,7 +126,7 @@ function canMove(state, userId, pawnIdx, die) {
   }
   const np = p + die;
   if (np > GOAL) return false;
-  if (np < RING) {
+  if (np <= TRACK_MAX) {
     const cell = absCell(color, np);
     const occ = occupantAt(state, cell);
     return !occ || (occ.id !== userId && !isProtected(cell, occ.color));
@@ -188,7 +188,7 @@ export function moveLudo(state, userId, pawnIdx) {
   }
 
   // Capture : un pion adverse non protégé sur la case d'arrivée du coup.
-  if (np < RING) {
+  if (np <= TRACK_MAX) {
     const cell = absCell(color, np);
     const occ = occupantAt(state, cell);
     if (occ && occ.id !== userId) {
