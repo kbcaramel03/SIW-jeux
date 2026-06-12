@@ -80,8 +80,14 @@ function reconcilePlayers(room, sockets) {
   // Trombinoscope persistant : garde l'identité de tout le monde tant que le salon
   // vit, pour que les noms restent affichés même après un départ définitif.
   for (const p of room.players) room.roster[p.id] = { id: p.id, displayName: p.displayName, gender: p.gender, avatar: p.avatar || null };
+  // L'hôte : la créatrice du salon reprend sa couronne dès qu'elle est connectée
+  // (avant, une micro-coupure la faisait passer à quelqu'un d'autre pour de bon,
+  // et elle perdait ses boutons d'hôte en pleine partie).
+  const owner = room.players.find((p) => p.id === room.ownerId && p.connected);
   const host = room.players.find((p) => p.id === room.hostId);
-  if (!host || !host.connected) {
+  if (owner) {
+    room.hostId = owner.id;
+  } else if (!host || !host.connected) {
     const candidate = room.players.find((p) => p.connected);
     if (candidate) room.hostId = candidate.id;
   }
@@ -365,6 +371,7 @@ export function createRealtime(httpServer) {
         gameKey,
         options: options || {},
         hostId: socket.data.user.id,
+        ownerId: socket.data.user.id, // créatrice du salon : prioritaire pour la couronne
         players: [],
         roster: {},
         chat: [],
