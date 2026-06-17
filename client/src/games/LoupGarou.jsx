@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, IconButton } from '@mui/material';
-import { Play, Sparkles, Minus, Plus, Volume2, VolumeX, Skull, Vote } from 'lucide-react';
+import { Play, Sparkles, Minus, Plus, Volume2, VolumeX, Skull, Vote, MinusCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GiWerewolf, GiFarmer, GiCrystalBall, GiCauldron, GiWinchesterRifle, GiWizardFace, GiMoon, GiCupidonArrow, GiShield, GiAngelWings, GiBabyFace } from 'react-icons/gi';
 import { Avatar } from '../components/OnlineRail.jsx';
@@ -344,9 +344,13 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
             onClick={() => { onAction({ kind: 'vote', targetId: voteSel }); setVoteSel(null); }}>
             {voteSel ? `Valider mon vote : ${nameById[voteSel]}` : 'Choisis qui accuser ci-dessus…'}
           </Button>
+          <Button variant="outlined" startIcon={<MinusCircle size={16} />}
+            onClick={() => { onAction({ kind: 'vote', targetId: 'blank' }); setVoteSel(null); }}>
+            Vote blanc
+          </Button>
         </div>
       )}
-      {g.phase === 'vote' && !g.canVote && !g.voteLocked && g.alive && <p className="muted" style={{ textAlign: 'center' }}>Ton vote est validé — on attend les autres…</p>}
+      {g.phase === 'vote' && !g.canVote && !g.voteLocked && g.alive && <p className="muted" style={{ textAlign: 'center' }}>{g.myVote === 'blank' ? '🤍 Vote blanc enregistré' : 'Ton vote est validé'} — on attend les autres…</p>}
       {g.phase === 'vote' && g.voteLocked && <p className="muted" style={{ textAlign: 'center' }}>🗳️ Dépouillement… {secsLeft != null ? `${secsLeft}s` : ''}</p>}
       {isNight && !g.canSee && !g.canWolf && !g.witch && !g.canCupid && !g.canWild && !g.canGuard && g.alive && <p className="muted" style={{ textAlign: 'center' }}>Tu dors… 😴 (les rôles de la nuit agissent)</p>}
       {!g.alive && g.phase !== 'over' && <p className="muted" style={{ textAlign: 'center' }}>Tu es éliminé — tu observes la partie.</p>}

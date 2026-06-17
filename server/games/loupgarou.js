@@ -366,7 +366,8 @@ function lockVotes(state) {
 
 function tallyAndResolveDay(state) {
   const voters = aliveIds(state);
-  const cast = voters.filter((id) => state.votes[id]);
+  // Les votes blancs ne comptent pour personne : on les exclut du dépouillement.
+  const cast = voters.filter((id) => state.votes[id] && state.votes[id] !== 'blank');
   const tally = {};
   for (const v of cast) tally[state.votes[v]] = (tally[state.votes[v]] || 0) + 1;
   const deaths = [];
@@ -392,7 +393,8 @@ export function dayVote(state, userId, targetId) {
   if (state.phase !== 'vote') throw new Error('Pas de vote en cours.');
   if (state.voteResultDeadline) throw new Error('Les votes sont clos.');
   if (!state.alive[userId]) throw new Error('Les morts ne votent pas.');
-  if (!state.alive[targetId]) throw new Error('Cible invalide.');
+  // 'blank' = vote blanc (abstention) : compte comme avoir voté, mais n'accuse personne.
+  if (targetId !== 'blank' && !state.alive[targetId]) throw new Error('Cible invalide.');
   state.votes[userId] = targetId;
   // Les votants déconnectés ne bloquent pas la clôture du vote.
   const voters = aliveIds(state).filter((id) => !isOffline(state, id));
