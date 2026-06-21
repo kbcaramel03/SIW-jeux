@@ -71,30 +71,39 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
     setPendingWild(null);
   }
 
-  const opponents = g.players.filter((p) => p.id !== me);
-
   return (
     <div className="uno fade-up">
-      {/* Table ronde : adversaires disposés en arc autour du centre */}
+      {/* Table ronde : tous les joueurs dans l'ordre réel de la partie */}
       <div className="uno-table">
-        {opponents.map((p, i) => {
-          const n = opponents.length;
-          const t = n === 1 ? 0.5 : i / (n - 1);
-          // Arc sur la moitié haute de la table (150° → 30°), les joueurs sont « en face ».
-          const ang = ((150 - 120 * t) * Math.PI) / 180;
-          const x = 50 + Math.cos(ang) * 44;
-          const y = 40 - Math.sin(ang) * 30;
-          // L'éventail s'ouvre vers le bas (le tapis), légèrement incliné vers le centre.
-          const fanRot = 180 + (x - 50) * 0.5;
+        {g.players.map((p, i) => {
+          const n = g.players.length;
+          const meIdx = Math.max(0, g.players.findIndex((pl) => pl.id === me));
+          const rel = (i - meIdx + n) % n;
+          const ang = ((90 + (rel / n) * 360) * Math.PI) / 180;
+          const x = 50 + Math.cos(ang) * 42;
+          const y = 50 + Math.sin(ang) * 39;
+          const fanRot = (ang * 180) / Math.PI + 90;
           const fan = Math.min(p.count, 7);
+          const penalty = g.lastPenalty?.targetId === p.id ? g.lastPenalty : null;
           return (
-            <div key={p.id} className={`uno-opp ${g.turn === p.id ? 'active' : ''}`}
+            <div key={p.id} className={`uno-opp ${p.id === me ? 'me' : ''} ${g.turn === p.id ? 'active' : ''}`}
               style={{ left: `${x}%`, top: `${y}%` }}>
               <div className="uno-opp-info">
                 <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={26} />
-                <span className="uno-opp-name">{nameById[p.id] || '?'}</span>
+                <span className="uno-opp-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
                 <span className="uno-count">{p.count}</span>
               </div>
+              <AnimatePresence>
+                {penalty && (
+                  <motion.div key={penalty.nonce} className="uno-penalty"
+                    initial={{ scale: 0.35, y: -16, opacity: 0 }}
+                    animate={{ scale: [0.35, 1.25, 1], y: [-16, -36, -30], opacity: [0, 1, 1] }}
+                    exit={{ opacity: 0, y: -46 }}
+                    transition={{ duration: 1.2 }}>
+                    +{penalty.count}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="uno-opp-fan" style={{ transform: `rotate(${fanRot}deg)` }}>
                 {Array.from({ length: fan }).map((_, j) => {
                   const rot = fan === 1 ? 0 : -22 + (44 / (fan - 1)) * j;

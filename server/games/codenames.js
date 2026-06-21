@@ -41,10 +41,10 @@ export function createCodenames(options = {}) {
     mode, // 'versus' | 'duet' (choisi à la création du salon)
     board: words.map((word) => ({ word, revealed: false, kind: null })),
     teams: {
-      red: { spymaster: null, operatives: [] },
-      blue: { spymaster: null, operatives: [] },
+      red: { spymaster: null, spymasters: [], operatives: [] },
+      blue: { spymaster: null, spymasters: [], operatives: [] },
     },
-    selections: {}, // userId -> index de carte sélectionnée (transitoire)
+    selections: {}, // userId -> [index] de cartes présélectionnées (transitoire)
     // --- versus ---
     colors: null, // [25] 'red'|'blue'|'neutral'|'assassin'
     startingTeam: null,
@@ -65,11 +65,37 @@ export function createCodenames(options = {}) {
 
 // Versus : une équipe est complète si elle a un maître-espion ET au moins un agent.
 export function canPlay(state, team) {
-  return !!state.teams[team].spymaster && state.teams[team].operatives.length > 0;
+  return spymastersOf(state, team).length > 0 && operativesOf(state, team).length > 0;
 }
 // Duo : un côté est « occupé » dès qu'au moins un joueur y est (rôle indifférent).
 export function sideManned(state, team) {
-  return !!state.teams[team].spymaster || state.teams[team].operatives.length > 0;
+  return spymastersOf(state, team).length > 0 || operativesOf(state, team).length > 0;
+}
+
+function spymastersOf(state, team) {
+  const t = state.teams[team] || {};
+  const ids = [...(t.spymasters || []), t.spymaster].filter(Boolean);
+  return [...new Set(ids)];
+}
+
+function operativesOf(state, team) {
+  const ids = state.teams[team]?.operatives || [];
+  return [...new Set(ids.filter(Boolean))];
+}
+
+function normalizedTeams(state) {
+  return {
+    red: {
+      spymaster: null,
+      spymasters: spymastersOf(state, 'red'),
+      operatives: operativesOf(state, 'red'),
+    },
+    blue: {
+      spymaster: null,
+      spymasters: spymastersOf(state, 'blue'),
+      operatives: operativesOf(state, 'blue'),
+    },
+  };
 }
 
 // --- Composition des équipes ---
@@ -78,15 +104,14 @@ export function assignRole(state, userId, team, role) {
   if (!['red', 'blue'].includes(team)) throw new Error('Équipe invalide.');
   for (const t of ['red', 'blue']) {
     if (state.teams[t].spymaster === userId) state.teams[t].spymaster = null;
-    state.teams[t].operatives = state.teams[t].operatives.filter((id) => id !== userId);
+    state.teams[t].spymasters = spymastersOf(state, t).filter((id) => id !== userId);
+    state.teams[t].operatives = operativesOf(state, t).filter((id) => id !== userId);
   }
   if (role === 'spymaster') {
-    if (state.teams[team].spymaster && state.teams[team].spymaster !== userId) {
-      throw new Error('Cette équipe a déjà un maître-espion.');
-    }
-    state.teams[team].spymaster = userId;
+    state.teams[team].spymaster = null;
+    state.teams[team].spymasters = [...spymastersOf(state, team), userId];
   } else {
-    state.teams[team].operatives.push(userId);
+    state.teams[team].operatives = [...operativesOf(state, team), userId];
   }
 }
 
@@ -170,19 +195,19 @@ export function giveClue(state, userId, word, count) {
 
 // Qui a le droit de donner l'indice ?
 function isClueGiver(state, userId) {
-  if (state.mode === 'versus') return state.teams[state.turn].spymaster === userId;
+  if (state.mode === 'versus') return spymastersOf(state, state.turn).includes(userId);
   // duet : n'importe quel joueur du côté actif
   return isOnSide(state, userId, state.turn);
 }
 // Qui a le droit de deviner ?
 function isGuesser(state, userId) {
-  if (state.mode === 'versus') return state.teams[state.turn].operatives.includes(userId);
+  if (state.mode === 'versus') return operativesOf(state, state.turn).includes(userId);
   // duet : les joueurs du côté opposé à celui qui donne l'indice
   const other = state.turn === 'red' ? 'blue' : 'red';
   return isOnSide(state, userId, other);
 }
 function isOnSide(state, userId, side) {
-  return state.teams[side].spymaster === userId || state.teams[side].operatives.includes(userId);
+  return spymastersOf(state, side).includes(userId) || operativesOf(state, side).includes(userId);
 }
 function sideLabel(side) {
   return side === 'red' ? 'rouge' : 'bleu';
@@ -195,23 +220,36 @@ export function selectCard(state, userId, index) {
   if (!isGuesser(state, userId)) throw new Error('Ce n\'est pas à ton équipe de deviner.');
   const card = state.board[index];
   if (!card || card.revealed) throw new Error('Carte invalide.');
-  // Clique à nouveau sur la même carte = on désélectionne.
-  if (state.selections[userId] === index) delete state.selections[userId];
-  else state.selections[userId] = index;
+  const current = Array.isArray(state.selections[userId])
+    ? state.selections[userId]
+    : state.selections[userId] == null ? [] : [state.selections[userId]];
+  if (current.includes(index)) {
+    const next = current.filter((i) => i !== index);
+    if (next.length) state.selections[userId] = next;
+    else delete state.selections[userId];
+  } else {
+    state.selections[userId] = [...current, index];
+  }
 }
 
-// --- Validation : révèle la carte sélectionnée par ce joueur ---
-export function confirmCard(state, userId) {
+// --- Validation : révèle une carte présélectionnée par ce joueur ---
+export function confirmCard(state, userId, index = null) {
   if (state.phase !== 'playing') throw new Error('La partie n\'est pas en cours.');
   if (!isGuesser(state, userId)) throw new Error('Ce n\'est pas à ton équipe de deviner.');
-  const index = state.selections[userId];
-  if (index === undefined) throw new Error('Sélectionne d\'abord une carte.');
-  reveal(state, index);
+  const selected = Array.isArray(state.selections[userId])
+    ? state.selections[userId]
+    : state.selections[userId] == null ? [] : [state.selections[userId]];
+  const chosen = index == null ? selected[0] : Number(index);
+  if (!selected.includes(chosen)) throw new Error('Sélectionne d\'abord cette carte.');
+  reveal(state, chosen);
 }
 
 function clearSelectionsOn(state, index) {
   for (const uid of Object.keys(state.selections)) {
-    if (state.selections[uid] === index) delete state.selections[uid];
+    const selected = Array.isArray(state.selections[uid]) ? state.selections[uid] : [state.selections[uid]];
+    const next = selected.filter((i) => i !== index);
+    if (next.length) state.selections[uid] = next;
+    else delete state.selections[uid];
   }
 }
 
@@ -327,7 +365,7 @@ export function viewFor(state, userId) {
     type: 'codenames',
     phase: state.phase,
     mode: state.mode,
-    teams: state.teams,
+    teams: normalizedTeams(state),
     clue: state.clue,
     guessesLeft: state.guessesLeft,
     turn: state.turn,
@@ -345,7 +383,7 @@ export function viewFor(state, userId) {
   }
 
   if (state.mode === 'versus') {
-    const isSpymaster = state.teams.red.spymaster === userId || state.teams.blue.spymaster === userId;
+    const isSpymaster = spymastersOf(state, 'red').includes(userId) || spymastersOf(state, 'blue').includes(userId);
     const showAll = isSpymaster || state.phase === 'over';
     return {
       ...common,

@@ -9,6 +9,7 @@
 // Score : (somme des nombres) ×2 si ×2, PUIS + bonus (+N), PUIS +15 si Flip 7.
 
 const TARGET = 200;
+const ROUNDOVER_MS = 5000;
 
 function shuffle(a) {
   a = [...a];
@@ -36,6 +37,7 @@ export function createFlip7() {
     type: 'flip7', phase: 'waiting', // waiting -> playing -> roundover -> over
     seats: [], scores: {}, starter: 0,
     deck: [], discard: [], round: null,
+    nextRoundAt: null,
     target: TARGET, winner: null, log: [],
   };
 }
@@ -50,6 +52,7 @@ function newLine() { return { numbers: [], mods: [], actions: [], second: false,
 function beginRound(state) {
   state.deck = shuffle(buildDeck());
   state.discard = [];
+  state.nextRoundAt = null;
   const lines = {};
   for (const id of state.seats) lines[id] = newLine();
   state.round = {
@@ -221,6 +224,7 @@ function endRound(state) {
     state.log.push('Fin de partie !');
   } else {
     state.phase = 'roundover';
+    state.nextRoundAt = Date.now() + ROUNDOVER_MS;
     state.log.push('Fin de manche.');
   }
 }
@@ -229,6 +233,17 @@ export function nextRound(state, userId) {
   if (state.phase !== 'roundover') throw new Error('Pas en fin de manche.');
   if (!state.seats.includes(userId)) throw new Error('Tu n\'es pas dans la partie.');
   beginRound(state);
+}
+
+export function tickFlip7(state) {
+  if (state.phase !== 'roundover') return false;
+  if (!state.nextRoundAt) {
+    state.nextRoundAt = Date.now() + ROUNDOVER_MS;
+    return true;
+  }
+  if (Date.now() < state.nextRoundAt) return false;
+  beginRound(state);
+  return true;
 }
 
 export function viewFor(state, userId) {
@@ -263,6 +278,7 @@ export function viewFor(state, userId) {
     iResolve: pa ? pa.by === userId : false,
     targets,
     deckCount: state.deck.length,
+    nextRoundAt: state.phase === 'roundover' ? state.nextRoundAt : null,
     target: state.target,
     winner: state.winner,
     log: state.log.slice(-8),

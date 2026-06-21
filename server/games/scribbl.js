@@ -56,6 +56,28 @@ const WORDS = [
   // Animaux rares
   'paresseux', 'ornithorynque', 'caméléon', 'flamant rose', 'méduse', 'scorpion', 'chauve-souris', 'autruche', 'paon', 'hippocampe',
   'lama', 'castor', 'taupe', 'suricate', 'axolotl', 'narval', 'tatou', 'gecko', 'mante religieuse', 'phacochère',
+  // Encore plus corsé
+  'panneau stop', 'passage piéton', 'station essence', 'casque audio', 'manette', 'chargeur', 'multiprise', 'batterie externe',
+  'code secret', 'mot de passe', 'wifi', 'bug informatique', 'capture d\'écran', 'imprimante', 'scanner', 'clé USB',
+  'machine à laver', 'aspirateur', 'réfrigérateur', 'micro-ondes', 'grille-pain', 'mixeur', 'casserole', 'poêle',
+  'rouleau à pâtisserie', 'planche à découper', 'ouvre-boîte', 'saladier', 'verre doseur', 'tablier', 'toque', 'livreur',
+  'feu tricolore', 'embouteillage', 'rond-point', 'parking', 'péage', 'trottinette', 'skateboard', 'rollers',
+  'bousculade', 'queue de poisson', 'panne d\'essence', 'contrôle radar', 'permis de conduire', 'carte bancaire',
+  'ticket de caisse', 'liste de courses', 'panier', 'caddie', 'cabine d\'essayage', 'étiquette', 'soldes', 'vitrine',
+  'boîte aux lettres', 'colis perdu', 'facture', 'signature', 'tampon', 'calendrier', 'réveil', 'agenda',
+  'examen', 'antisèche', 'récréation', 'cantine', 'cartable', 'trousse', 'compas', 'rapporteur',
+  'diplôme', 'bureau', 'réunion', 'présentation', 'visioconférence', 'micro coupé', 'pause café', 'retard',
+  'fou rire', 'malaise', 'grosse fatigue', 'fierté', 'panique', 'suspense', 'trahison', 'réconciliation',
+  'cache-cache', 'chasse au trésor', 'jeu de piste', 'karaoké', 'blind test', 'soirée pyjama', 'photomaton', 'selfie raté',
+  'potion magique', 'baguette magique', 'portail temporel', 'machine à remonter le temps', 'soucoupe volante', 'rayon laser',
+  'base secrète', 'agent double', 'espion', 'détecteur de mensonge', 'coffre-fort', 'empreinte digitale', 'loupe', 'menace',
+  'opéra', 'ballet', 'graffiti', 'sculpture', 'portrait robot', 'caricature', 'tatouage', 'déguisement',
+  'mariage', 'anniversaire surprise', 'piñata', 'bouquet', 'feu d\'artifice', 'discothèque', 'limousine', 'tapis rouge',
+  'bain moussant', 'masque beauté', 'spa', 'sauna', 'serviette', 'peignoir', 'brosse à dents', 'dentifrice',
+  'pharmacie', 'pansement', 'béquilles', 'thermomètre', 'stéthoscope', 'ambulance', 'piqûre', 'radiographie',
+  'zodiaque', 'horoscope', 'porte-bonheur', 'mauvais œil', 'trèfle', 'fer à cheval', 'étoile filante', 'vœu',
+  'météorite', 'éclipse', 'constellation', 'satellite', 'combinaison spatiale', 'trou noir', 'planète Mars', 'voie lactée',
+  'pluie de confettis', 'boule à facettes', 'fumigène', 'projecteur', 'rideau rouge', 'coulisses', 'applaudissements', 'rappel',
   // Prénoms de la team
   'Khadija', 'Zineb', 'Aya', 'Alia', 'Yasmine',
 ];
@@ -70,7 +92,10 @@ function norm(s) {
 }
 const isLetter = (c) => /[a-zA-ZÀ-ÿ0-9]/.test(c);
 function maskOf(word, revealedSet) {
-  return word.split('').map((c, i) => (isLetter(c) ? ((revealedSet && revealedSet.has(i)) ? c : '_') : c)).join(' ');
+  return word.split('').map((c, i) => {
+    if (isLetter(c)) return (revealedSet && revealedSet.has(i)) ? c : '_';
+    return c;
+  }).join(' ');
 }
 // Nombre max de lettres révélées selon la longueur (3-4 lettres -> 1, etc.).
 function maxRevealFor(len) {

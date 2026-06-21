@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Eye, Crown, Users, Check, SkipForward, Sparkles, ShieldCheck, Timer, UserSearch, LogIn, Handshake } from 'lucide-react';
 
+const CLUE_COUNTS = Array.from({ length: 10 }, (_, value) => value);
+
 // Affiche le jeu Code Names. Reçoit la vue personnalisée du serveur.
 export default function Codenames({ room, isHost, onAction, onNewGame }) {
   const game = room.game;
@@ -41,7 +43,11 @@ export default function Codenames({ room, isHost, onAction, onNewGame }) {
 }
 
 function sideMembers(team) {
-  return [team.spymaster, ...team.operatives].filter(Boolean);
+  return [...new Set([...(team.spymasters || []), team.spymaster, ...(team.operatives || [])].filter(Boolean))];
+}
+
+function spymasters(team) {
+  return [...new Set([...(team.spymasters || []), team.spymaster].filter(Boolean))];
 }
 
 /* ---------- SETUP VERSUS (4+) ---------- */
@@ -53,12 +59,12 @@ function VersusTeam({ side, game, nameById, onAction }) {
       <h4>Équipe {label}</h4>
       <div className="cn-role">
         <Crown size={16} /> <span>Maître-espion :</span>
-        <strong>{t.spymaster ? nameById[t.spymaster] || '—' : '(personne)'}</strong>
-        <button className="btn btn-secondary btn-mini" onClick={() => onAction({ kind: 'assign', team: side, role: 'spymaster' })}>Prendre</button>
+        <strong>{spymasters(t).map((id) => nameById[id] || '?').join(', ') || '(personne)'}</strong>
+        <button className="btn btn-secondary btn-mini" onClick={() => onAction({ kind: 'assign', team: side, role: 'spymaster' })}>Rejoindre</button>
       </div>
       <div className="cn-role">
         <Users size={16} /> <span>Agents :</span>
-        <strong>{t.operatives.map((id) => nameById[id] || '?').join(', ') || '(personne)'}</strong>
+        <strong>{(t.operatives || []).map((id) => nameById[id] || '?').join(', ') || '(personne)'}</strong>
         <button className="btn btn-secondary btn-mini" onClick={() => onAction({ kind: 'assign', team: side, role: 'operative' })}>Rejoindre</button>
       </div>
     </div>
@@ -66,7 +72,7 @@ function VersusTeam({ side, game, nameById, onAction }) {
 }
 
 function VersusSetup({ game, isHost, nameById, onAction }) {
-  const canPlay = (t) => !!game.teams[t].spymaster && game.teams[t].operatives.length > 0;
+  const canPlay = (t) => spymasters(game.teams[t]).length > 0 && (game.teams[t].operatives || []).length > 0;
   const ready = canPlay('red') && canPlay('blue');
   return (
     <div className="cn-setup card">
@@ -183,11 +189,13 @@ function TopBar({ game, me, nameById }) {
 /* ---------- PLATEAU ---------- */
 function Board({ game, me, nameById, onAction }) {
   const canGuess = game.phase === 'playing' && game.clue && game.isGuesser;
-  const mySelection = game.selections?.[me];
+  const rawSelection = game.selections?.[me];
+  const mySelections = Array.isArray(rawSelection) ? rawSelection : rawSelection == null ? [] : [rawSelection];
 
   const pickers = {};
   for (const [uid, idx] of Object.entries(game.selections || {})) {
-    (pickers[idx] ||= []).push(nameById[uid] || '?');
+    const indexes = Array.isArray(idx) ? idx : [idx];
+    for (const one of indexes) (pickers[one] ||= []).push(nameById[uid] || '?');
   }
 
   return (
@@ -199,7 +207,7 @@ function Board({ game, me, nameById, onAction }) {
           if (card.color) cls.push(`hint-${card.color}`); // versus : vue maître-espion
           if (card.hint) cls.push(`hint-${card.hint}`);    // duo : ma clé
         }
-        if (mySelection === i) cls.push('selected-me');
+        if (mySelections.includes(i)) cls.push('selected-me');
         if (canGuess && !card.revealed) cls.push('clickable');
         return (
           <button
@@ -240,20 +248,32 @@ function Controls({ game, me, onAction }) {
         }}
       >
         <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="Ton indice (un seul mot)" style={{ maxWidth: 240 }} />
-        <input type="number" min="0" max="9" value={count} onChange={(e) => setCount(+e.target.value)} className="cn-count-input input" />
+        <select
+          value={count}
+          onChange={(e) => setCount(Number(e.target.value))}
+          className="cn-count-select input"
+          aria-label="Nombre de mots à faire deviner"
+        >
+          {CLUE_COUNTS.map((value) => (
+            <option key={value} value={value}>{value}</option>
+          ))}
+        </select>
         <button className="btn btn-primary"><Eye size={17} /> Donner l'indice</button>
       </form>
     );
   }
 
   if (game.isGuesser && game.clue) {
-    const hasSelection = game.selections?.[me] !== undefined;
+    const rawSelection = game.selections?.[me];
+    const mySelections = Array.isArray(rawSelection) ? rawSelection : rawSelection == null ? [] : [rawSelection];
     return (
       <div className="cn-controls">
-        <span className="muted">Sélectionne une carte, puis valide :</span>
-        <button className="btn btn-primary" disabled={!hasSelection} onClick={() => onAction({ kind: 'confirm' })}>
-          <Check size={17} /> Valider ma carte
-        </button>
+        <span className="muted">Présélectionne un ou plusieurs mots, puis valide celui que tu veux révéler :</span>
+        {mySelections.map((idx) => (
+          <button key={idx} className="btn btn-primary" onClick={() => onAction({ kind: 'confirm', index: idx })}>
+            <Check size={17} /> {game.board[idx]?.word}
+          </button>
+        ))}
         <button className="btn btn-ghost" onClick={() => onAction({ kind: 'pass' })}><SkipForward size={16} /> Passer</button>
       </div>
     );

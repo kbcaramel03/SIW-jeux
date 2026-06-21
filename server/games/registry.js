@@ -40,6 +40,7 @@ export const GAMES = {
     create: flip7.createFlip7,
     view: flip7.viewFor,
     action: applyFlip7Action,
+    tick: flip7.tickFlip7,
   },
   bullshit: {
     key: 'bullshit', label: 'Bullshit', emoji: '🤥', minPlayers: 2, maxPlayers: 8, ready: true,
@@ -52,6 +53,7 @@ export const GAMES = {
     create: conspiracy.createConspiracy,
     view: conspiracy.viewFor,
     action: applyConspiracyAction,
+    tick: conspiracy.tickConspiracy,
   },
   scribbl: {
     key: 'scribbl', label: 'Scribbl', emoji: '🎨', minPlayers: 2, maxPlayers: 10, ready: true,
@@ -99,7 +101,7 @@ function applyCodenamesAction(state, userId, payload) {
     case 'select':
       return codenames.selectCard(state, userId, payload.index);
     case 'confirm':
-      return codenames.confirmCard(state, userId);
+      return codenames.confirmCard(state, userId, payload.index);
     case 'pass':
       return codenames.passTurn(state, userId);
     default:

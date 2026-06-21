@@ -146,6 +146,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
   // Votes publics du jour : on regroupe les votants par cible (aura + noms sur la cible).
   const votesByTarget = {};
   if (g.votes) for (const [voter, target] of Object.entries(g.votes)) (votesByTarget[target] ||= []).push(voter);
+  const blankVoters = votesByTarget.blank || [];
   // Cibles désignées par les loups (visible entre loups uniquement).
   const wolfByTarget = {};
   if (g.wolfPicks) for (const [w, target] of Object.entries(g.wolfPicks)) (wolfByTarget[target] ||= []).push(w);
@@ -211,7 +212,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
 
       <div className={`lg-banner ${isDark ? 'night' : ''}`}>
         {banner()}
-        {g.phase === 'day' && secsLeft != null && <span className="lg-timer"> · ⏳ {fmt(secsLeft)}</span>}
+        {g.phase === 'day' && secsLeft != null && <span className="lg-timer"> · débat {fmt(secsLeft)}</span>}
         {g.phase === 'vote' && secsLeft != null && <span className="lg-timer"> · ⏳ {secsLeft}s</span>}
       </div>
 
@@ -245,6 +246,27 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
 
       {/* Résultat voyante */}
       {g.seerResult && <div className="lg-info">🔮 {nameById[g.seerResult.targetId]} est <b>{ROLE[g.seerResult.role].label}</b></div>}
+
+      {g.phase === 'vote' && blankVoters.length > 0 && (
+        <div className="lg-info">
+          Vote blanc : <b>{blankVoters.map((id) => nameById[id] || '?').join(', ')}</b>
+        </div>
+      )}
+
+      {g.phase === 'over' && g.say && (
+        <motion.div className="lg-ending"
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+          <b>Récap du MJ</b>
+          <span>{g.say}</span>
+        </motion.div>
+      )}
+
+      {g.story && g.story.length > 0 && (
+        <div className="lg-story">
+          <b>Déroulé de la partie</b>
+          {g.story.map((item, i) => <span key={`${item.at}-${i}`}>{item.text}</span>)}
+        </div>
+      )}
 
       {/* Amoureux / modèle de l'enfant sauvage */}
       {g.amLover && g.lovers && <div className="lg-info">💘 Tu es amoureux·se de <b>{nameById[g.lovers.find((l) => l !== me)] || '?'}</b></div>}
@@ -328,7 +350,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
       {/* Contrôles bas */}
       {g.phase === 'day' && (
         <div className="cn-controls" style={{ flexDirection: 'column', gap: 6 }}>
-          <p className="muted" style={{ margin: 0 }}>Débattez… le vote démarrera tout seul à la fin des 2 minutes.</p>
+          <p className="muted" style={{ margin: 0 }}>Débattez… le vote démarrera tout seul à la fin des 3 minutes.</p>
           {isHost && (
             <Button size="small" variant="contained" startIcon={<Vote size={16} />}
               onClick={() => onAction({ kind: 'callVote' })}>
@@ -346,7 +368,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
           </Button>
           <Button variant="outlined" startIcon={<MinusCircle size={16} />}
             onClick={() => { onAction({ kind: 'vote', targetId: 'blank' }); setVoteSel(null); }}>
-            Vote blanc
+            Vote blanc · n'accuser personne
           </Button>
         </div>
       )}

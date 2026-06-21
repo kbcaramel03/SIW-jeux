@@ -47,7 +47,7 @@ export default function Chat({ messages, meId }) {
       )}
 
       <form className="chat-input" onSubmit={send}>
-        <TextField size="small" fullWidth value={text} onChange={(e) => setText(e.target.value)} placeholder="Écris un message…" inputProps={{ maxLength: 400 }} />
+        <TextField size="small" fullWidth value={text} onChange={(e) => setText(e.target.value)} placeholder="Écris un message…" slotProps={{ htmlInput: { maxLength: 400 } }} />
         <IconButton onClick={() => setShowEmoji((s) => !s)} title="Emojis" sx={{ border: '1px solid #efe6fb' }}><Smile size={20} /></IconButton>
         <IconButton type="submit" color="primary" sx={{ bgcolor: 'primary.main', color: '#fff', '&:hover': { bgcolor: 'primary.dark' } }}><Send size={18} /></IconButton>
       </form>

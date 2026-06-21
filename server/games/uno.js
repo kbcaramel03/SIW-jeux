@@ -39,6 +39,7 @@ export function createUno() {
     direction: 1,
     turn: null,
     drawnCardId: null, // carte piochée jouable ce tour (par le joueur actif)
+    lastPenalty: null, // { targetId, count, by, nonce } pour l'animation +2/+4
     winner: null,
     log: [],
   };
@@ -87,6 +88,7 @@ export function startUno(state, userId) {
   state.turn = state.seats[0];
   state.phase = 'playing';
   state.drawnCardId = null;
+  state.lastPenalty = null;
   state.log.push('La partie commence !');
 }
 
@@ -143,12 +145,14 @@ export function playCard(state, userId, cardId, chosenColor) {
     case 'draw2': {
       const victim = nextPlayer(state);
       drawCards(state, victim, 2);
+      state.lastPenalty = { targetId: victim, count: 2, by: userId, nonce: Date.now() };
       advance(state, 2);
       break;
     }
     case 'wild4': {
       const victim = nextPlayer(state);
       drawCards(state, victim, 4);
+      state.lastPenalty = { targetId: victim, count: 4, by: userId, nonce: Date.now() };
       advance(state, 2);
       break;
     }
@@ -199,6 +203,7 @@ export function viewFor(state, userId) {
     isMyTurn: state.turn === userId,
     myDrawnCardId: state.turn === userId ? state.drawnCardId : null,
     deckCount: state.deck.length,
+    lastPenalty: state.lastPenalty,
     winner: state.winner,
     log: state.log.slice(-8),
   };

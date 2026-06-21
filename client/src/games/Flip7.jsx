@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@mui/material';
 import { Play, Hand, PauseCircle, Sparkles, Layers } from 'lucide-react';
@@ -18,6 +18,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' });
@@ -26,6 +27,11 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
   useEffect(() => {
     if (g.phase === 'over' && g.winner === me) winConfetti();
   }, [g.phase]);
+  useEffect(() => {
+    if (g.phase !== 'roundover' || !g.nextRoundAt) return undefined;
+    const t = setInterval(() => setNow(Date.now()), 300);
+    return () => clearInterval(t);
+  }, [g.phase, g.nextRoundAt]);
 
   // ----- Salle d'attente -----
   if (g.phase === 'waiting') {
@@ -56,10 +62,13 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
 
   const pa = g.pendingAction;
   const paInfo = pa ? ACTION_INFO[pa.type] : null;
+  const nextRoundLeft = g.phase === 'roundover' && g.nextRoundAt
+    ? Math.max(0, Math.ceil((g.nextRoundAt - now) / 1000))
+    : null;
 
   function bannerText() {
     if (g.phase === 'over') return g.winner === me ? '🎉 Tu as gagné !' : `${nameById[g.winner] || 'Quelqu\'un'} remporte la partie`;
-    if (g.phase === 'roundover') return 'Fin de manche — voici les scores';
+    if (g.phase === 'roundover') return `Fin de manche — suivante dans ${nextRoundLeft ?? 5}s`;
     if (pa) {
       if (g.iResolve) return `${paInfo.label} : à toi de choisir une cible`;
       return `${nameById[pa.by] || '?'} doit résoudre « ${paInfo.label} »`;
@@ -210,10 +219,11 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
         })}
       </div>
 
-      {g.phase === 'roundover' && isHost && (
-        <div className="cn-over"><Button variant="contained" startIcon={<Sparkles size={18} />} onClick={() => onAction({ kind: 'next' })}>Manche suivante</Button></div>
+      {g.phase === 'roundover' && (
+        <p className="muted" style={{ textAlign: 'center' }}>
+          Manche suivante automatique dans {nextRoundLeft ?? 5}s…
+        </p>
       )}
-      {g.phase === 'roundover' && !isHost && <p className="muted" style={{ textAlign: 'center' }}>En attente de l'hôte pour la manche suivante…</p>}
 
       {g.phase === 'over' && isHost && (
         <div className="cn-over"><Button variant="contained" startIcon={<Sparkles size={18} />} onClick={onNewGame}>Rejouer</Button></div>

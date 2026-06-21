@@ -18,9 +18,9 @@ function shuffle(a) {
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 const SPECIALS = ['voyante', 'sorciere', 'chasseur', 'cupidon', 'garde', 'ange', 'enfant'];
 const NIGHT_ORDER = ['cupid', 'wildchild', 'guard', 'seer', 'wolves', 'witch'];
-const REVEAL_MS = 11000;
-const DAY_MS = 120000;
-const VOTE_MS = 45000;
+const REVEAL_MS = 17000;
+const DAY_MS = 180000;
+const VOTE_MS = 75000;
 // Si tous les joueurs attendus à une étape sont déconnectés depuis ce délai,
 // on passe l'étape automatiquement (la partie ne reste plus jamais figée).
 const OFFLINE_SKIP_MS = 45000;
@@ -56,6 +56,7 @@ export function createLoupGarou() {
     sayId: 0,
     say: '',
     winner: null,
+    story: [],
     log: [],
   };
 }
@@ -76,11 +77,47 @@ const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 const aliveWolves = (s) => aliveIds(s).filter((id) => s.roles[id] === 'loup');
 const aliveRole = (s, role) => aliveIds(s).find((id) => s.roles[id] === role) || null;
 function narrate(state, text) { state.say = text; state.sayId += 1; }
+function story(state, text) {
+  state.story ||= [];
+  state.story.push({ at: Date.now(), text });
+  if (state.story.length > 18) state.story = state.story.slice(-18);
+}
 function nm(state, id) { return (state.names && state.names[id]) || 'quelqu\'un'; }
 function nameList(state, ids) {
   const ns = ids.map((id) => nm(state, id));
   if (ns.length <= 1) return ns.join('');
   return `${ns.slice(0, -1).join(', ')} et ${ns[ns.length - 1]}`;
+}
+function roleLabel(role) {
+  return ({
+    loup: 'Loup-Garou',
+    villageois: 'Villageois',
+    voyante: 'Voyante',
+    sorciere: 'Sorcière',
+    chasseur: 'Chasseur',
+    cupidon: 'Cupidon',
+    garde: 'Garde',
+    ange: 'Ange',
+    enfant: 'Enfant Sauvage',
+  })[role] || role || 'rôle inconnu';
+}
+function finalRosterText(state) {
+  const alive = aliveIds(state);
+  const dead = state.seats.filter((id) => !state.alive[id]);
+  const aliveText = alive.length
+    ? `Survivants : ${alive.map((id) => `${nm(state, id)} (${roleLabel(state.roles[id])})`).join(', ')}.`
+    : 'Il ne reste plus personne debout.';
+  const deadText = dead.length
+    ? `Éliminés : ${dead.map((id) => `${nm(state, id)} (${roleLabel(state.roles[id])})`).join(', ')}.`
+    : 'Personne n\'a été éliminé.';
+  return `${aliveText} ${deadText}`;
+}
+function finishGame(state, winner, text) {
+  state.phase = 'over';
+  state.winner = winner;
+  const full = `${text} ${finalRosterText(state)}`;
+  narrate(state, full);
+  story(state, full);
 }
 
 export function startLoupGarou(state, userId) {
@@ -102,7 +139,9 @@ export function startLoupGarou(state, userId) {
   state.lovers = []; state.wildModel = null; state.guardLast = null;
   state.nightNo = 0; state.winner = null;
   state.voteDeadline = null; state.revealDeadline = null; state.resumeTo = null;
+  state.story = [];
   state.log = ['La partie commence !'];
+  story(state, `La partie commence avec ${n} joueurs. Les rôles sont distribués en secret.`);
   beginNight(state);
 }
 
@@ -246,8 +285,8 @@ function killPlayer(state, id, deaths) {
 function checkAnge(state) {
   // L'Ange gagne s'il est éliminé pendant le premier tour (1re nuit ou 1er vote).
   if (state.nightNo === 1 && state.lastDeaths.some((id) => state.roles[id] === 'ange')) {
-    state.phase = 'over'; state.winner = 'ange';
-    narrate(state, 'L\'Ange a été éliminé dès le premier tour : son vœu est exaucé, il l\'emporte… seul !');
+    const angel = state.lastDeaths.find((id) => state.roles[id] === 'ange');
+    finishGame(state, 'ange', `${nm(state, angel)} était l'Ange et a été éliminé dès le premier tour. Son vœu est exaucé : il l'emporte seul, pendant que le village découvre trop tard ce qu'il vient de faire.`);
     return true;
   }
   return false;
@@ -260,6 +299,7 @@ function enterReveal(state, resumeTo, text) {
   state.revealDeadline = Date.now() + REVEAL_MS;
   state.dayDeadline = null; state.voteDeadline = null;
   narrate(state, text);
+  story(state, text);
 }
 
 function morningText(state, deaths) {
@@ -290,15 +330,23 @@ function morningText(state, deaths) {
 function verdictText(state, deaths, executed) {
   if (deaths.length === 0) {
     return pick([
-      'Le village n\'arrive pas à se décider… Personne ne sera exécuté aujourd\'hui. Les loups jubilent en silence.',
-      'Égalité ! La corde restera au placard ce soir. Espérons que vous ne le regrettiez pas…',
+      'Le verdict tombe… et personne ne nous a quittés aujourd\'hui. Le village reste entier, mais le doute aussi.',
+      'Après le dépouillement, aucune majorité claire. Personne ne nous a quittés aujourd\'hui.',
+      'Le village retient son souffle… puis se relâche : personne ne nous a quittés aujourd\'hui.',
     ]);
   }
   const who = nameList(state, deaths);
+  const plural = deaths.length > 1;
   return pick([
-    `Le village a parlé. ${who} est conduit au bûcher… La sentence est tombée.`,
-    `D\'un même élan, le village condamne ${who}. Que justice soit faite !`,
-    `${who} paie le prix de la méfiance générale. On verra bientôt si le village a eu raison…`,
+    plural
+      ? `Le verdict tombe… malheureusement, ${who} nous ont quittés. Le village vient de faire son choix.`
+      : `Le verdict tombe… malheureusement, ${who} nous a quittés. Le village vient de faire son choix.`,
+    plural
+      ? `Le dépouillement est terminé : ${who} nous ont quittés aujourd'hui.`
+      : `Le dépouillement est terminé : ${who} nous a quittés aujourd'hui.`,
+    plural
+      ? `Le village a parlé. Malheureusement, ${who} ne verront pas la prochaine nuit.`
+      : `Le village a parlé. Malheureusement, ${who} ne verra pas la prochaine nuit.`,
   ]);
 }
 
@@ -354,14 +402,19 @@ export function callVote(state, userId) {
 
 // Tous les bulletins sont déposés : on les laisse affichés quelques secondes
 // (dépouillement) avant de résoudre, pour que chacun voie qui a voté qui.
-function lockVotes(state) {
+function lockVotes(state, reason = 'done') {
   if (state.voteResultDeadline) return;
   state.voteDeadline = null;
   state.voteResultDeadline = Date.now() + 6000;
-  narrate(state, pick([
-    'Les bulletins sont tombés… le village retient son souffle.',
-    'Tous les votes sont déposés. Voyons qui le village a désigné…',
-  ]));
+  narrate(state, reason === 'all'
+    ? pick([
+      'Tout le monde a voté. Le dépouillement commence… le village retient son souffle.',
+      'Tous les bulletins sont déposés. Un silence tombe sur la place du village…',
+    ])
+    : pick([
+      'Le temps est écoulé. Les votes déposés vont être dépouillés…',
+      'Fin du vote. Les bulletins sont comptés, et le village attend le verdict…',
+    ]));
 }
 
 function tallyAndResolveDay(state) {
@@ -398,14 +451,14 @@ export function dayVote(state, userId, targetId) {
   state.votes[userId] = targetId;
   // Les votants déconnectés ne bloquent pas la clôture du vote.
   const voters = aliveIds(state).filter((id) => !isOffline(state, id));
-  if (voters.length && voters.every((id) => state.votes[id])) lockVotes(state);
+  if (voters.length && voters.every((id) => state.votes[id])) lockVotes(state, 'all');
 }
 
 // Fin du temps de vote : on verrouille avec les bulletins déposés (abstentions = nulles).
 export function voteTimeout(state) {
   if (state.phase !== 'vote' || state.voteResultDeadline) return;
   if (state.voteDeadline && Date.now() < state.voteDeadline - 1500) return;
-  lockVotes(state);
+  lockVotes(state, 'time');
 }
 
 // Fin du dépouillement : on résout enfin (élimination).
@@ -447,7 +500,7 @@ export function tickLoupGarou(state) {
     return true;
   }
   if (state.phase === 'vote' && !state.voteResultDeadline && state.voteDeadline && now >= state.voteDeadline) {
-    lockVotes(state);
+    lockVotes(state, 'time');
     return true;
   }
   if (state.phase === 'vote' && state.voteResultDeadline && now >= state.voteResultDeadline) {
@@ -501,14 +554,20 @@ function checkWin(state) {
   const alive = aliveIds(state);
   // Les amoureux derniers en vie l'emportent.
   if (alive.length === 2 && state.lovers.length === 2 && state.lovers.every((l) => state.alive[l])) {
-    state.phase = 'over'; state.winner = 'amoureux';
-    narrate(state, 'Les amoureux sont les derniers survivants : leur amour triomphe de tout !');
+    finishGame(state, 'amoureux', `${nameList(state, state.lovers)} sont les derniers survivants. Les amoureux ont traversé les votes, les nuits et les soupçons : leur amour triomphe de tout.`);
     return true;
   }
   const wolves = aliveWolves(state).length;
   const others = alive.length - wolves;
-  if (wolves === 0) { state.phase = 'over'; state.winner = 'village'; narrate(state, 'L\'aube se lève : tous les Loups ont été éliminés. Le village triomphe !'); return true; }
-  if (wolves >= others) { state.phase = 'over'; state.winner = 'loups'; narrate(state, 'Les Loups-Garous l\'emportent… le village a perdu.'); return true; }
+  if (wolves === 0) {
+    finishGame(state, 'village', 'L\'aube se lève sur un village sauvé : tous les Loups-Garous ont été éliminés. Les derniers votes et les dernières nuits ont fini par révéler la vérité.');
+    return true;
+  }
+  if (wolves >= others) {
+    const wolfNames = aliveWolves(state);
+    finishGame(state, 'loups', `La partie s'arrête car les Loups-Garous sont désormais au moins aussi nombreux que les villageois. ${nameList(state, wolfNames)} prennent le contrôle du village : les soupçons n'ont pas suffi à les arrêter.`);
+    return true;
+  }
   return false;
 }
 
@@ -564,6 +623,7 @@ export function viewFor(state, userId) {
     revealDeadline: state.phase === 'reveal' ? (state.revealDeadline || null) : null,
     say: state.say,
     sayId: state.sayId,
+    story: (state.story || []).slice(-8),
     winner: state.winner,
   };
 }

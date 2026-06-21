@@ -6,8 +6,7 @@ import { FaUserSecret } from 'react-icons/fa';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti, boomSound, popSound } from '../effects.js';
 
-// Le Complot — ambiance « salle de crise » : panneau sombre, médaillons de
-// mission, tampons de vote et cartes à jouer Succès/Sabotage.
+// Le Complot — ambiance « salle de crise », joueuses autour d'une table ronde.
 export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
   const g = room.game;
   const me = room.me.id;
@@ -16,16 +15,22 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const [picked, setPicked] = useState([]);
+  const [selectedMission, setSelectedMission] = useState(null);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => { if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' }); }, [g.phase, g.amSeated]);
   useEffect(() => { setPicked([]); }, [g.phase, g.missionNo]);
   useEffect(() => {
     if (g.phase === 'over' && ((g.winner === 'spies' && g.myRole === 'spy') || (g.winner === 'society' && g.myRole === 'society'))) winConfetti();
   }, [g.phase]);
-  // Petit son au verdict de chaque mission.
   useEffect(() => {
     if (g.phase === 'reveal') { if (g.lastReveal?.outcome === 'fail') boomSound(); else popSound(); }
   }, [g.phase]);
+  useEffect(() => {
+    if (g.phase !== 'vote' || !g.voteDeadline) return undefined;
+    const t = setInterval(() => setNow(Date.now()), 300);
+    return () => clearInterval(t);
+  }, [g.phase, g.voteDeadline]);
 
   // ---- Salle d'attente ----
   if (g.phase === 'waiting') {
@@ -54,6 +59,8 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
   const successCount = g.results.filter((r) => r === 'success').length;
   const failCount = g.results.filter((r) => r === 'fail').length;
   const isSpy = g.myRole === 'spy';
+  const voteLeft = g.phase === 'vote' && g.voteDeadline ? Math.max(0, Math.ceil((g.voteDeadline - now) / 1000)) : null;
+  const missionDetails = selectedMission != null ? g.missionLog?.[selectedMission] : null;
 
   function togglePick(id) {
     setPicked((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length >= g.teamSize ? s : [...s, id]));
@@ -66,15 +73,25 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
       return `${g.winner === 'spies' ? '🕵️ Les Espions gagnent' : '🛡️ La Société gagne'}${why} ${iWon ? '· Tu gagnes 🎉' : '· Tu perds'}`;
     }
     if (g.phase === 'reveal') {
-      return g.lastReveal?.outcome === 'success'
-        ? `✅ Mission réussie — ${g.lastReveal?.fails || 0} sabotage`
-        : `💥 Mission sabotée — ${g.lastReveal?.fails || 0} sabotage(s)`;
+      // On NE révèle PAS le nombre de sabotages : juste réussi ou saboté.
+      return g.lastReveal?.outcome === 'success' ? '✅ Mission réussie !' : '💥 Mission sabotée !';
     }
     if (g.phase === 'team') return g.isLeader ? `À toi, chef : choisis ${g.teamSize} agents` : `${nameById[g.leader] || '?'} compose l'équipe (${g.teamSize} agents)`;
     if (g.phase === 'vote') return g.hasVoted ? `Vote en cours… ${g.votedCount}/${g.seats.length}` : 'Approuves-tu cette équipe ?';
-    if (g.phase === 'mission') return g.amOnTeam ? 'Mission : joue ta carte en secret' : `Mission en cours… ${g.submittedCount}/${g.team.length} cartes jouées`;
+    if (g.phase === 'mission') return g.amOnTeam ? 'Mission : choisis en secret' : 'Mission en cours…';
     return '';
   }
+
+  // Icône de vote affichée sur chaque siège après un dépouillement.
+  const voteIconFor = (id) => {
+    if (g.phase === 'vote' && g.votes && g.votes[id] != null) return g.votes[id] ? 'up' : 'down';
+    if (g.lastVote && (g.phase === 'team' || g.phase === 'mission' || g.phase === 'reveal')) {
+      return g.lastVote.approve.includes(id) ? 'up' : g.lastVote.reject.includes(id) ? 'down' : null;
+    }
+    return null;
+  };
+
+  const n = g.players.length;
 
   return (
     <div className="csp2 fade-up">
@@ -83,20 +100,21 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
         {(g.teamSizes || [2, 3, 3, 4, 4]).map((sz, i) => {
           const res = g.results[i];
           const current = i === g.missionNo - 1 && g.phase !== 'over';
-          const dbl = i === 3 && g.seats.length >= 7;
           return (
             <div key={i} className="csp2-step">
               {i > 0 && <span className="csp2-link" />}
-              <motion.div
+              <motion.button
+                type="button"
                 className={`csp2-medal ${res || ''} ${current ? 'current' : ''}`}
+                disabled={!res}
+                onClick={() => res && setSelectedMission(i)}
                 initial={false}
                 animate={res ? { scale: [1.35, 1], rotate: [8, 0] } : {}}
                 transition={{ type: 'spring', stiffness: 260, damping: 14 }}>
                 {res === 'success' ? <ShieldCheck size={22} />
                   : res === 'fail' ? <Skull size={22} />
                     : <><span className="csp2-medal-no">{i + 1}</span><span className="csp2-medal-sz">{sz} ag.</span></>}
-                {dbl && !res && <span className="csp2-dbl" title="2 sabotages requis">××2</span>}
-              </motion.div>
+              </motion.button>
             </div>
           );
         })}
@@ -125,6 +143,11 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
           {banner()}
         </motion.div>
       </AnimatePresence>
+      {voteLeft != null && (
+        <div className={`csp2-timer ${voteLeft <= 10 ? 'hot' : ''}`}>
+          Vote public · {voteLeft}s
+        </div>
+      )}
 
       {/* Équipes rejetées (tampons) */}
       {g.phase !== 'over' && (
@@ -137,40 +160,47 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
         </div>
       )}
 
-      {/* Agents (joueuses) */}
-      <div className="csp2-players">
-        {g.players.map((p) => {
+      {/* Table ronde : les agents en cercle, le chef au centre */}
+      <div className="csp2-table">
+        {g.players.map((p, i) => {
+          const ang = (i / n) * 2 * Math.PI - Math.PI / 2;
+          const x = 50 + Math.cos(ang) * 41;
+          const y = 50 + Math.sin(ang) * 42;
           const onTeam = g.team.includes(p.id);
           const isPicked = picked.includes(p.id);
-          const voteIcon = g.lastVote && (g.phase === 'team' || g.phase === 'mission' || g.phase === 'reveal')
-            ? (g.lastVote.approve.includes(p.id) ? 'up' : g.lastVote.reject.includes(p.id) ? 'down' : null) : null;
+          const vIcon = voteIconFor(p.id);
           // Règle du Complot : le chef ne peut pas se choisir lui-même.
           const clickable = g.isLeader && g.phase === 'team' && p.id !== me;
           return (
             <motion.button key={p.id} layout
-              className={`csp2-player ${onTeam ? 'team' : ''} ${isPicked ? 'picked' : ''} ${clickable ? 'pick' : ''}`}
+              className={`csp2-seat ${onTeam ? 'team' : ''} ${isPicked ? 'picked' : ''} ${clickable ? 'pick' : ''} ${g.leader === p.id ? 'chief' : ''}`}
+              style={{ left: `${x}%`, top: `${y}%` }}
               disabled={!clickable} onClick={() => clickable && togglePick(p.id)}
-              whileTap={clickable ? { scale: 0.94 } : {}}>
-              {g.leader === p.id && <span className="csp2-chief"><Crown size={11} /> CHEF</span>}
-              <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={38} />
-              <span className="csp2-player-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
+              whileTap={clickable ? { scale: 0.92 } : {}}>
+              {g.leader === p.id && <span className="csp2-chief-badge"><Crown size={11} /></span>}
+              <div className="csp2-seat-av">
+                <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={40} />
+                {(onTeam || isPicked) && <span className="csp2-seat-team"><Users size={11} /></span>}
+              </div>
+              <span className="csp2-seat-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
               <AnimatePresence>
-                {voteIcon && (
-                  <motion.span key={voteIcon} className={`csp2-stamp ${voteIcon}`}
+                {vIcon && (
+                  <motion.span key={vIcon} className={`csp2-stamp ${vIcon}`}
                     initial={{ scale: 2.2, opacity: 0, rotate: -18 }} animate={{ scale: 1, opacity: 1, rotate: -12 }}
                     exit={{ opacity: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 16 }}>
-                    {voteIcon === 'up' ? 'POUR' : 'CONTRE'}
+                    {vIcon === 'up' ? 'POUR' : 'CONTRE'}
                   </motion.span>
                 )}
               </AnimatePresence>
-              {(onTeam || isPicked) && (
-                <motion.span className="csp2-onteam" initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                  <Users size={11} /> mission
-                </motion.span>
-              )}
             </motion.button>
           );
         })}
+        {/* Centre de la table : dossier de mission */}
+        <div className="csp2-table-center">
+          <FaUserSecret />
+          <span className="csp2-table-mission">Mission {g.missionNo}</span>
+          <span className="csp2-table-size">{g.teamSize} agents</span>
+        </div>
       </div>
 
       {/* Contrôles selon la phase */}
@@ -181,7 +211,7 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
             sx={{ background: 'linear-gradient(120deg,#c8a24a,#9d7a2a)', fontWeight: 700 }}>
             Envoyer cette équipe en mission ({picked.length}/{g.teamSize})
           </Button>
-          <span className="csp2-hint">Touche tes agents ci-dessus — tu ne peux pas te choisir toi-même.</span>
+          <span className="csp2-hint">Touche tes agents autour de la table — tu ne peux pas te choisir toi-même.</span>
         </div>
       )}
 
@@ -213,23 +243,16 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
           )}
         </div>
       )}
-      {g.phase === 'mission' && g.amOnTeam && g.hasSubmitted && <p className="csp2-wait">🂠 Carte jouée — on attend les autres…</p>}
+      {g.phase === 'mission' && g.amOnTeam && g.hasSubmitted && <p className="csp2-wait">En attente des autres…</p>}
 
-      {/* Dépouillement : cartes anonymes retournées une à une */}
+      {/* Dépouillement : verdict SANS le nombre de sabotages */}
       {g.phase === 'reveal' && !g.lastReveal?.rejected && (
-        <div className="csp2-reveal">
-          {Array.from({ length: (g.team.length || 0) }, (_, i) => {
-            const isFail = i < (g.lastReveal?.fails || 0);
-            return (
-              <motion.div key={i} className={`csp2-reveal-card ${isFail ? 'fail' : 'success'}`}
-                initial={{ rotateY: 180, opacity: 0, y: 14 }} animate={{ rotateY: 0, opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.45, type: 'spring', stiffness: 160, damping: 15 }}>
-                {isFail ? <Skull size={26} /> : <ShieldCheck size={26} />}
-                <span>{isFail ? 'SABOTAGE' : 'SUCCÈS'}</span>
-              </motion.div>
-            );
-          })}
-        </div>
+        <motion.div className={`csp2-verdict ${g.lastReveal?.outcome === 'fail' ? 'fail' : 'success'}`}
+          initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 14 }}>
+          {g.lastReveal?.outcome === 'fail' ? <Skull size={34} /> : <ShieldCheck size={34} />}
+          <b>{g.lastReveal?.outcome === 'fail' ? 'MISSION SABOTÉE' : 'MISSION RÉUSSIE'}</b>
+          <span>quelqu'un a-t-il trahi ? mystère…</span>
+        </motion.div>
       )}
 
       {g.phase === 'reveal' && isHost && (
@@ -244,6 +267,30 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
           <Button variant="contained" startIcon={<Sparkles size={18} />} onClick={onNewGame}>Rejouer</Button>
         </div>
       )}
+
+      <AnimatePresence>
+        {missionDetails && (
+          <motion.div className="csp2-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSelectedMission(null)}>
+            <motion.div className="csp2-modal" initial={{ scale: 0.92, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 10 }}
+              onClick={(e) => e.stopPropagation()}>
+              <b>Mission {missionDetails.missionNo}</b>
+              <span className={`csp2-modal-result ${missionDetails.outcome}`}>
+                {missionDetails.outcome === 'success' ? 'Succès' : 'Échec'}
+              </span>
+              <div className="csp2-modal-team">
+                {missionDetails.team.map((id) => (
+                  <span key={id} className="csp2-modal-agent">
+                    <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} size={26} />
+                    {nameById[id] || '?'}
+                  </span>
+                ))}
+              </div>
+              <Button size="small" onClick={() => setSelectedMission(null)}>Fermer</Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

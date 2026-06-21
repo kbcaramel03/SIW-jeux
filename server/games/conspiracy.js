@@ -11,6 +11,7 @@
 
 const SPIES_BY_COUNT = { 4: 1, 5: 2, 6: 2, 7: 3, 8: 3 };
 const MAX_REJECTS = 4;
+const VOTE_MS = 60000;
 
 function shuffle(a) {
   a = [...a];
@@ -20,9 +21,12 @@ function shuffle(a) {
 
 // Tailles d'équipe par mission selon le nombre de joueurs (tables officielles
 // de The Resistance pour 5-8 ; variante maison équilibrée pour 4).
+// À 4 joueuses : 1 espionne, missions de 2 — le chef est exclu, donc une mission
+// de 3 forcerait les 3 autres (l'espionne toujours dedans) et la Société perdrait
+// systématiquement. Des équipes de 2 laissent toujours une paire « propre ».
 function pickTeamSizes(n) {
-  if (n === 4) return [2, 2, 2, 3, 3];
-  if (n === 5) return [2, 3, 2, 3, 3];
+  if (n === 4) return [2, 2, 2, 2, 2];
+  if (n === 5) return [2, 2, 2, 3, 3]; // 3 missions de 2 agents : la Société a sa chance
   if (n === 6) return [2, 3, 4, 3, 4];
   if (n === 7) return [2, 3, 3, 4, 4];
   return [3, 4, 4, 5, 5]; // 8
@@ -38,9 +42,11 @@ export function createConspiracy() {
     teamSizes: null,
     mission: 0,       // index 0..4
     results: [],      // 'success' | 'fail' (missions terminées, public)
+    missionLog: [],   // par mission : { team:[ids], outcome } — sans le nb de sabotages
     leaderIdx: 0,
     team: [],
-    votes: {},        // id -> bool (secret jusqu'au dépouillement)
+    votes: {},        // id -> bool (public en direct pendant le vote)
+    voteDeadline: null,
     lastVote: null,   // { approve:[], reject:[], approved }
     rejectStreak: 0,
     missionCards: {}, // id -> 'success'|'fail' (secret)
@@ -71,15 +77,22 @@ export function startConspiracy(state, userId) {
   state.teamSizes = pickTeamSizes(n);
   state.mission = 0;
   state.results = [];
+  state.missionLog = [];
   state.leaderIdx = Math.floor(Math.random() * n);
-  state.team = []; state.votes = {}; state.lastVote = null; state.rejectStreak = 0;
+  state.team = []; state.votes = {}; state.voteDeadline = null; state.lastVote = null; state.rejectStreak = 0;
   state.missionCards = {}; state.lastReveal = null; state.winner = null;
   state.phase = 'team';
   state.log = ['La partie commence !'];
 }
 
 function recordOutcome(state, outcome, info) {
+  state.missionLog ||= [];
   state.results.push(outcome);
+  state.missionLog.push({
+    missionNo: state.mission + 1,
+    team: state.team.slice(),
+    outcome,
+  });
   state.lastReveal = info;
   const succ = state.results.filter((r) => r === 'success').length;
   const fail = state.results.filter((r) => r === 'fail').length;
@@ -90,6 +103,9 @@ function recordOutcome(state, outcome, info) {
 
 function tallyVotes(state) {
   const n = state.seats.length;
+  for (const id of state.seats) {
+    if (state.votes[id] == null) state.votes[id] = false;
+  }
   const approves = state.seats.filter((id) => state.votes[id]).length;
   const approved = approves * 2 > n; // majorité stricte (égalité = refus)
   state.lastVote = {
@@ -97,6 +113,7 @@ function tallyVotes(state) {
     reject: state.seats.filter((id) => state.votes[id] === false),
     approved,
   };
+  state.voteDeadline = null;
   state.leaderIdx = (state.leaderIdx + 1) % n; // la chefferie passe après chaque vote
   if (approved) {
     state.rejectStreak = 0;
@@ -110,7 +127,7 @@ function tallyVotes(state) {
       state.phase = 'over';
       state.lastReveal = { rejected: true };
     } else {
-      state.team = []; state.votes = {};
+      state.team = []; state.votes = {}; state.voteDeadline = null;
       state.phase = 'team';
     }
   }
@@ -126,6 +143,7 @@ export function proposeTeam(state, userId, team) {
   if (team.includes(userId)) throw new Error('Le chef ne peut pas se choisir lui-même (règle du Complot).');
   state.team = [...team];
   state.votes = {};
+  state.voteDeadline = Date.now() + VOTE_MS;
   state.lastVote = null;
   state.phase = 'vote';
 }
@@ -136,6 +154,13 @@ export function voteTeam(state, userId, approve) {
   if (state.votes[userId] != null) throw new Error('Tu as déjà voté.');
   state.votes[userId] = !!approve;
   if (state.seats.every((id) => state.votes[id] != null)) tallyVotes(state);
+}
+
+export function tickConspiracy(state) {
+  if (state.phase !== 'vote' || !state.voteDeadline) return false;
+  if (Date.now() < state.voteDeadline) return false;
+  tallyVotes(state);
+  return true;
 }
 
 export function playMissionCard(state, userId, value) {
@@ -157,7 +182,7 @@ export function nextMission(state, userId) {
   if (state.phase !== 'reveal') throw new Error('Pas en fin de mission.');
   if (!state.seats.includes(userId)) throw new Error('Tu n\'es pas dans la partie.');
   state.mission += 1;
-  state.team = []; state.votes = {}; state.lastVote = null; state.lastReveal = null;
+  state.team = []; state.votes = {}; state.voteDeadline = null; state.lastVote = null; state.lastReveal = null;
   state.missionCards = {}; state.rejectStreak = 0;
   state.phase = 'team'; // la chefferie a déjà tourné au dépouillement
 }
@@ -186,11 +211,18 @@ export function viewFor(state, userId) {
     team: state.team.slice(),
     hasVoted: state.votes[userId] != null,
     votedCount: state.seats.filter((id) => state.votes[id] != null).length,
+    votes: Object.fromEntries(Object.entries(state.votes).filter(([, v]) => v != null)),
+    voteDeadline: state.phase === 'vote' ? state.voteDeadline : null,
     lastVote: state.lastVote,
     amOnTeam: state.team.includes(userId),
     hasSubmitted: state.missionCards[userId] != null,
     submittedCount: Object.keys(state.missionCards).length,
-    lastReveal: state.lastReveal,
+    missionLog: (state.missionLog || []).slice(),
+    // On masque le NOMBRE de sabotages : on ne révèle que réussite/échec
+    // (le suspense « combien ont trahi ? » fait partie du jeu).
+    lastReveal: state.lastReveal
+      ? (state.lastReveal.rejected ? { rejected: true } : { outcome: state.lastReveal.outcome })
+      : null,
     rejectStreak: state.rejectStreak,
     winner: state.winner,
   };

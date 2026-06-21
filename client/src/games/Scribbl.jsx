@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, IconButton, TextField } from '@mui/material';
-import { Play, Sparkles, Send, Eraser, Trash2, Pencil } from 'lucide-react';
+import { Play, Sparkles, Send, Eraser, Trash2, Pencil, Undo2, Redo2, PaintBucket } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti } from '../effects.js';
@@ -21,6 +21,8 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
   const ctxRef = useRef(null);
   const drawingRef = useRef(false);
   const lastRef = useRef(null);
+  const historyRef = useRef([]);
+  const redoRef = useRef([]);
   const [color, setColor] = useState('#2a2230');
   const [size, setSize] = useState(5);
   const [eraser, setEraser] = useState(false);
@@ -47,16 +49,36 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
     ctx.strokeStyle = s.color; ctx.lineWidth = s.size;
     ctx.beginPath(); ctx.moveTo(s.x0 * W, s.y0 * H); ctx.lineTo(s.x1 * W, s.y1 * H); ctx.stroke();
   }
+  function applyFill(item) {
+    const ctx = ctxRef.current; if (!ctx) return;
+    ctx.fillStyle = item.color;
+    ctx.fillRect(0, 0, W, H);
+  }
+  function redraw(items = historyRef.current) {
+    clearCanvas();
+    for (const item of items) {
+      if (item.kind === 'fill') applyFill(item);
+      else drawSeg(item);
+    }
+  }
+  function syncHistory() {
+    getSocket().emit('scribbl:draw', { history: historyRef.current });
+  }
 
   // Réception des traits + effacement (chez les non-dessinateurs)
   useEffect(() => {
     const s = getSocket();
-    const onDraw = (d) => { if (d?.clear) clearCanvas(); else drawSeg(d); };
+    const onDraw = (d) => {
+      if (d?.clear) { historyRef.current = []; redoRef.current = []; clearCanvas(); }
+      else if (d?.history) { historyRef.current = d.history; redoRef.current = []; redraw(d.history); }
+      else if (d?.kind === 'fill') { historyRef.current.push(d); redoRef.current = []; applyFill(d); }
+      else { historyRef.current.push(d); redoRef.current = []; drawSeg(d); }
+    };
     s.on('scribbl:draw', onDraw);
     return () => s.off('scribbl:draw', onDraw);
   }, []);
   // Nouveau tour -> on efface le tableau
-  useEffect(() => { clearCanvas(); }, [g.drawer, g.round]);
+  useEffect(() => { historyRef.current = []; redoRef.current = []; clearCanvas(); }, [g.drawer, g.round]);
 
   // Minuterie
   useEffect(() => {
@@ -79,11 +101,28 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
     if (!canDraw || !drawingRef.current) return;
     const p = pos(e); const last = lastRef.current;
     const seg = { x0: last.x, y0: last.y, x1: p.x, y1: p.y, color: eraser ? '#ffffff' : color, size: eraser ? size * 3 : size };
+    historyRef.current.push(seg); redoRef.current = [];
     drawSeg(seg); getSocket().emit('scribbl:draw', seg);
     lastRef.current = p;
   }
   function up() { drawingRef.current = false; }
-  function clearAll() { clearCanvas(); getSocket().emit('scribbl:draw', { clear: true }); }
+  function clearAll() { historyRef.current = []; redoRef.current = []; clearCanvas(); getSocket().emit('scribbl:draw', { clear: true }); }
+  function fillAll() {
+    if (!canDraw) return;
+    const item = { kind: 'fill', color };
+    historyRef.current.push(item); redoRef.current = [];
+    applyFill(item); getSocket().emit('scribbl:draw', item);
+  }
+  function undo() {
+    if (!canDraw || historyRef.current.length === 0) return;
+    redoRef.current.push(historyRef.current.pop());
+    redraw(); syncHistory();
+  }
+  function redo() {
+    if (!canDraw || redoRef.current.length === 0) return;
+    historyRef.current.push(redoRef.current.pop());
+    redraw(); syncHistory();
+  }
   function sendGuess() { const t = guess.trim(); if (!t) return; onAction({ kind: 'guess', text: t }); setGuess(''); }
 
   // ----- Salle d'attente -----
@@ -139,6 +178,9 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
             <div className="scr-tools">
               {COLORS.map((c) => <button key={c} className={`scr-color ${color === c && !eraser ? 'on' : ''}`} style={{ background: c }} onClick={() => { setColor(c); setEraser(false); }} />)}
               <IconButton size="small" className={eraser ? 'on' : ''} onClick={() => setEraser((e) => !e)} title="Gomme"><Eraser size={18} /></IconButton>
+              <IconButton size="small" onClick={fillAll} title="Remplir"><PaintBucket size={18} /></IconButton>
+              <IconButton size="small" onClick={undo} title="Annuler"><Undo2 size={18} /></IconButton>
+              <IconButton size="small" onClick={redo} title="Rétablir"><Redo2 size={18} /></IconButton>
               <input type="range" min="2" max="24" value={size} onChange={(e) => setSize(Number(e.target.value))} className="scr-size" />
               <IconButton size="small" onClick={clearAll} title="Tout effacer"><Trash2 size={18} /></IconButton>
             </div>
