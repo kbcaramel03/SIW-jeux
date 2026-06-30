@@ -18,6 +18,7 @@ const Scribbl = lazy(() => import('../games/Scribbl.jsx'));
 const Ludo = lazy(() => import('../games/Ludo.jsx'));
 const Echecs = lazy(() => import('../games/Echecs.jsx'));
 const GoFish = lazy(() => import('../games/GoFish.jsx'));
+const Pouilleux = lazy(() => import('../games/Pouilleux.jsx'));
 
 export default function Room() {
   const { id } = useParams();
@@ -152,6 +153,9 @@ export default function Room() {
           )}
           {room.gameKey === 'gofish' && (
             <GoFish room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'pouilleux' && (
+            <Pouilleux room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
           </Suspense>
         </div>

@@ -11,6 +11,7 @@ import * as scribbl from './scribbl.js';
 import * as ludo from './ludo.js';
 import * as echecs from './echecs.js';
 import * as gofish from './gofish.js';
+import * as pouilleux from './pouilleux.js';
 
 export const GAMES = {
   codenames: {
@@ -91,6 +92,13 @@ export const GAMES = {
     view: gofish.viewFor,
     action: applyGoFishAction,
     tick: gofish.tickGoFish,
+  },
+  pouilleux: {
+    key: 'pouilleux', label: 'Le Pouilleux', emoji: '🧟', minPlayers: 2, maxPlayers: 6, ready: true,
+    create: pouilleux.createPouilleux,
+    view: pouilleux.viewFor,
+    action: applyPouilleuxAction,
+    tick: pouilleux.tickPouilleux,
   },
 };
 
@@ -220,6 +228,15 @@ function applyGoFishAction(state, userId, payload) {
     case 'join': return gofish.joinGoFish(state, userId);
     case 'start': return gofish.startGoFish(state, userId);
     case 'ask': return gofish.askGoFish(state, userId, payload.targetId, payload.rank);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyPouilleuxAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return pouilleux.joinPouilleux(state, userId);
+    case 'start': return pouilleux.startPouilleux(state, userId);
+    case 'draw': return pouilleux.drawPouilleux(state, userId, payload.index);
     default: throw new Error('Action inconnue.');
   }
 }

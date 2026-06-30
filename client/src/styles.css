@@ -829,6 +829,35 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .gfc.dim { opacity: 0.5; }
 .gfc-back { background: repeating-linear-gradient(45deg, #2b7fd4 0 8px, #2470bd 8px 16px); }
 .gfc-back .gfc-back-deco { font-size: 1.6rem; filter: grayscale(0.2) drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+
+/* ===== Le Pouilleux : cartes monstres + table ===== */
+.mc { position: relative; width: 52px; height: 74px; border-radius: 10px; border: 2px solid #fff; overflow: hidden;
+  background: linear-gradient(155deg, var(--c1, #cfd8ec), var(--c2, #9aa6c4)); box-shadow: var(--shadow-sm); flex: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.mc::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 26% 24%, rgba(255,255,255,0.4) 2px, transparent 3px),
+    radial-gradient(circle at 70% 64%, rgba(0,0,0,0.08) 3px, transparent 4px); }
+.mc.zombie { border-color: #2e6b1f; box-shadow: 0 0 0 2px #6fb24a, var(--shadow-sm); }
+.mc-emoji { font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); z-index: 1; }
+.mc-name { font-size: 0.46rem; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.45); text-align: center; z-index: 1; line-height: 1; padding: 0 2px; }
+.mc.clickable { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+.mc.clickable:hover { transform: translateY(-4px); }
+.mc.selected { transform: translateY(-10px); box-shadow: 0 0 0 3px #f0b400, 0 8px 16px rgba(0,0,0,0.25); }
+.mc.dim { opacity: 0.5; }
+.mc-back { background: repeating-linear-gradient(45deg, #4a3a5c 0 8px, #3d2f4d 8px 16px); border: 2px solid #fff;
+  display: flex; align-items: center; justify-content: center; }
+.mc-back .mc-back-deco { font-size: 1.5rem; opacity: 0.55; }
+
+.pou-table { background: radial-gradient(circle at 50% 42%, #e6dcf0, #b9a6d4 80%) !important; }
+.pou-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px;
+  border-radius: 50%; background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; color: #5a4673; box-shadow: var(--shadow-sm); }
+.gf-seat.target { border-color: #f0b400; box-shadow: 0 0 0 3px rgba(240,180,0,0.3); }
+.gf-seat.safe { opacity: 0.6; }
+.pou-draw { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pou-target-hand { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; max-width: 460px; }
+.pou-pick { cursor: pointer; }
+.pou-result { display: flex; flex-direction: column; align-items: center; gap: 8px; font-family: var(--font-head); font-weight: 700; text-align: center; }
+.pou-result.lose { color: #b42337; } .pou-result.win { color: #2e8c47; }
 .gf-hint { font-size: 0.86rem; font-weight: 600; color: #b8902f; text-align: center; margin: 0; }
 .gf-mybooks { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: 0.8rem; color: var(--ink-soft); }
 .gf-mybooks-label { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
