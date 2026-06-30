@@ -10,6 +10,7 @@ import * as loupgarou from './loupgarou.js';
 import * as scribbl from './scribbl.js';
 import * as ludo from './ludo.js';
 import * as echecs from './echecs.js';
+import * as gofish from './gofish.js';
 
 export const GAMES = {
   codenames: {
@@ -83,6 +84,13 @@ export const GAMES = {
     create: echecs.createEchecs,
     view: echecs.viewFor,
     action: applyEchecsAction,
+  },
+  gofish: {
+    key: 'gofish', label: 'Go Fish', emoji: '🐠', minPlayers: 2, maxPlayers: 6, ready: true,
+    create: gofish.createGoFish,
+    view: gofish.viewFor,
+    action: applyGoFishAction,
+    tick: gofish.tickGoFish,
   },
 };
 
@@ -203,6 +211,15 @@ function applyEchecsAction(state, userId, payload) {
     case 'move': return echecs.moveEchecs(state, userId, payload);
     case 'resign': return echecs.resignEchecs(state, userId);
     case 'draw': return echecs.drawEchecs(state, userId);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyGoFishAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return gofish.joinGoFish(state, userId);
+    case 'start': return gofish.startGoFish(state, userId);
+    case 'ask': return gofish.askGoFish(state, userId, payload.targetId, payload.rank);
     default: throw new Error('Action inconnue.');
   }
 }

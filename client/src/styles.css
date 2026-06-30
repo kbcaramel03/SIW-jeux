@@ -646,7 +646,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   background:
     repeating-linear-gradient(45deg, rgba(255,255,255,0.12) 0 5px, transparent 5px 10px),
     repeating-linear-gradient(-45deg, rgba(255,255,255,0.12) 0 5px, transparent 5px 10px); }
-.pc-back::after { content: 'â™¥'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+.pc-back::after { content: '\2665'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   color: rgba(255,255,255,0.9); font-size: 1.3rem; text-shadow: 0 1px 4px rgba(0,0,0,0.35); }
 .pc.size-md.pc-back::after { font-size: 1.5rem; }
 .pc.size-mini.pc-back::after { display: none; }
@@ -786,6 +786,59 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .csp2-verdict span { font-size: 0.72rem; opacity: 0.75; font-style: italic; }
 .csp2-verdict.success { border-color: #4cd08c; color: #c9f5dd; box-shadow: 0 6px 24px rgba(76,208,140,0.3); }
 .csp2-verdict.fail { border-color: #ff7488; color: #ffd9de; box-shadow: 0 6px 24px rgba(255,116,136,0.35); }
+
+/* ===== Go Fish ===== */
+.gf { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.gf-banner { font-family: var(--font-head); font-weight: 600; padding: 8px 16px; border-radius: 14px; background: #eef4fb; color: #2b6aa0; text-align: center; min-width: 220px; }
+.gf-banner.mine { background: #d7f0e2; color: #1f7a52; }
+/* Table ronde : tapis océan, joueuses en cercle */
+.gf-table { position: relative; width: min(92vw, 480px); aspect-ratio: 1.12; margin: 0 auto;
+  background: radial-gradient(circle at 50% 42%, #bfe6f2, #7cc4dd 78%); border-radius: 50%/46%;
+  box-shadow: inset 0 0 40px rgba(20,80,110,0.25), var(--shadow); }
+.gf-seat { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 1px;
+  width: 84px; padding: 6px 4px; border-radius: 13px; background: rgba(255,255,255,0.92); border: 2px solid transparent;
+  box-shadow: var(--shadow-sm); font: inherit; cursor: default; }
+.gf-seat.active { border-color: #2b7fd4; box-shadow: 0 0 0 3px rgba(43,127,212,0.25), 0 0 14px rgba(43,127,212,0.4); }
+.gf-seat.askable { cursor: pointer; border-color: #f0b400; animation: gfPulse 1.4s ease-in-out infinite; }
+.gf-seat.askable:hover { background: #fff7e0; }
+@keyframes gfPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(240,180,0,0.5); } 50% { box-shadow: 0 0 0 7px rgba(240,180,0,0); } }
+.gf-seat-name { font-weight: 700; font-size: 0.76rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.gf-seat-meta { font-size: 0.64rem; color: var(--ink-soft); font-weight: 700; }
+.gf-seat-meta b { color: #2e8c47; }
+.gf-pool { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.gf-pool-count { font-size: 0.78rem; font-weight: 800; color: #1f5a73; background: rgba(255,255,255,0.85); border-radius: 999px; padding: 1px 9px; }
+
+/* Cartes poissons illustrées */
+.gfc { position: relative; width: 52px; height: 74px; border-radius: 10px; border: 2px solid #fff; overflow: hidden;
+  background: linear-gradient(155deg, var(--c1, #86d3ea), var(--c2, #3aa7c8)); box-shadow: var(--shadow-sm); flex: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.gfc::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 22% 22%, rgba(255,255,255,0.5) 2px, transparent 3px),
+    radial-gradient(circle at 64% 38%, rgba(255,255,255,0.4) 3px, transparent 4px),
+    radial-gradient(circle at 40% 72%, rgba(255,255,255,0.35) 2px, transparent 3px),
+    radial-gradient(circle at 78% 78%, rgba(255,255,255,0.3) 2px, transparent 3px); background-size: 100% 100%; }
+.gfc.size-sm { width: 38px; height: 54px; }
+.gfc-emoji { font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); z-index: 1; }
+.gfc.size-sm .gfc-emoji { font-size: 1.3rem; }
+.gfc-name { font-size: 0.46rem; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4); text-align: center;
+  z-index: 1; line-height: 1; padding: 0 2px; }
+.gfc.size-sm .gfc-name { display: none; }
+.gfc.clickable { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+.gfc.clickable:hover { transform: translateY(-4px); }
+.gfc.selected { transform: translateY(-10px); box-shadow: 0 0 0 3px #f0b400, 0 8px 16px rgba(0,0,0,0.25); }
+.gfc.dim { opacity: 0.5; }
+.gfc-back { background: repeating-linear-gradient(45deg, #2b7fd4 0 8px, #2470bd 8px 16px); }
+.gfc-back .gfc-back-deco { font-size: 1.6rem; filter: grayscale(0.2) drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+.gf-hint { font-size: 0.86rem; font-weight: 600; color: #b8902f; text-align: center; margin: 0; }
+.gf-mybooks { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: 0.8rem; color: var(--ink-soft); }
+.gf-mybooks-label { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.gf-book-chip { background: #e3f4ea; color: #2e8c47; font-weight: 800; border-radius: 8px; padding: 2px 8px; font-size: 0.8rem; }
+.gf-hand { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; min-height: 80px; padding-top: 6px; }
+.gf-over { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px; background: #fff; border-radius: 16px; box-shadow: var(--shadow-sm); }
+.gf-ranking { display: flex; flex-direction: column; gap: 6px; }
+.gf-rank-row { display: flex; align-items: center; gap: 9px; font-size: 0.95rem; padding: 4px 10px; border-radius: 10px; }
+.gf-rank-row.win { background: #fff6da; font-weight: 800; }
+.gf-rank-row span { margin-left: auto; color: var(--ink-soft); font-size: 0.82rem; }
 
 /* ===== Loup Garou ===== */
 .lg { display: flex; flex-direction: column; gap: 12px; }
@@ -936,7 +989,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 
 /* Ambiance nuit : un voile sombre + une lune qui veille */
 .lg-table.night { box-shadow: inset 0 0 60px rgba(0,0,0,0.55); }
-.lg-table.night::before { content: 'ðŸŒ™'; position: absolute; top: 8%; right: 10%; font-size: 1.6rem; opacity: 0.8;
+.lg-table.night::before { content: '\1F319'; position: absolute; top: 8%; right: 10%; font-size: 1.6rem; opacity: 0.8;
   filter: drop-shadow(0 0 8px rgba(180,160,255,0.7)); animation: lg-mj-breathe 5s ease-in-out infinite; }
 .lg-table.day::before { content: ''; position: absolute; top: 6%; right: 8%; width: 34px; height: 34px; border-radius: 50%;
   background: radial-gradient(circle, #ffe39a, #ffb84d); box-shadow: 0 0 24px 6px rgba(255,196,77,0.6); }
