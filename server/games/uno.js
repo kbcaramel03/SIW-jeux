@@ -4,6 +4,8 @@
 // immédiatement ou on passe). Premier à vider sa main gagne.
 
 const COLORS = ['red', 'yellow', 'green', 'blue'];
+const OFFLINE_SKIP_MS = 10000; // une joueuse absente joue automatiquement après 10 s
+const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 
 function shuffle(a) {
   a = [...a];
@@ -38,6 +40,7 @@ export function createUno() {
     currentColor: null,
     direction: 1,
     turn: null,
+    turnSince: null,   // début du tour courant (pour l'auto-play des absents)
     drawnCardId: null, // carte piochée jouable ce tour (par le joueur actif)
     lastPenalty: null, // { targetId, count, by, nonce } pour l'animation +2/+4
     winner: null,
@@ -86,6 +89,7 @@ export function startUno(state, userId) {
   state.currentColor = first.color;
   state.direction = 1;
   state.turn = state.seats[0];
+  state.turnSince = Date.now();
   state.phase = 'playing';
   state.drawnCardId = null;
   state.lastPenalty = null;
@@ -97,7 +101,7 @@ function seatAt(state, fromIdx, steps) {
   const n = state.seats.length;
   return state.seats[(((fromIdx + state.direction * steps) % n) + n) % n];
 }
-function advance(state, steps) { state.turn = seatAt(state, idxOf(state, state.turn), steps); }
+function advance(state, steps) { state.turn = seatAt(state, idxOf(state, state.turn), steps); state.turnSince = Date.now(); }
 function nextPlayer(state) { return seatAt(state, idxOf(state, state.turn), 1); }
 
 export function isPlayable(card, currentColor, topType) {
@@ -183,6 +187,43 @@ export function passUno(state, userId) {
   if (state.drawnCardId === null) throw new Error('Tu dois d\'abord piocher.');
   state.drawnCardId = null;
   advance(state, 1);
+}
+
+// Couleur choisie automatiquement pour un joker : la plus présente en main.
+function pickColor(hand) {
+  const counts = {};
+  for (const c of hand) if (c.color !== 'wild') counts[c.color] = (counts[c.color] || 0) + 1;
+  let best = 'red'; let max = -1;
+  for (const col of COLORS) if ((counts[col] || 0) > max) { max = counts[col] || 0; best = col; }
+  return best;
+}
+
+// Joue automatiquement pour la joueuse dont c'est le tour (absente).
+function autoPlay(state, userId) {
+  const hand = state.hands[userId] || [];
+  const top = state.discard[state.discard.length - 1];
+  if (state.drawnCardId !== null) {
+    const drawn = hand.find((c) => c.id === state.drawnCardId);
+    if (drawn && isPlayable(drawn, state.currentColor, top.type)) playCard(state, userId, drawn.id, pickColor(hand));
+    else passUno(state, userId);
+    return;
+  }
+  const playable = hand.find((c) => isPlayable(c, state.currentColor, top.type));
+  if (playable) { playCard(state, userId, playable.id, pickColor(hand)); return; }
+  drawUno(state, userId); // pioche : devient jouable (drawnCardId) ou passe le tour
+  if (state.turn === userId && state.drawnCardId !== null) {
+    const drawn = state.hands[userId].find((c) => c.id === state.drawnCardId);
+    if (drawn) playCard(state, userId, drawn.id, pickColor(state.hands[userId]));
+  }
+}
+
+// Horloge serveur : auto-play après 10 s si la joueuse active est déconnectée.
+export function tickUno(state) {
+  if (state.phase !== 'playing' || !state.turn) return false;
+  if (!isOffline(state, state.turn)) return false;
+  if (!state.turnSince || Date.now() - state.turnSince < OFFLINE_SKIP_MS) return false;
+  autoPlay(state, state.turn);
+  return true;
 }
 
 export function viewFor(state, userId) {

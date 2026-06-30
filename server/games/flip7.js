@@ -10,6 +10,8 @@
 
 const TARGET = 200;
 const ROUNDOVER_MS = 5000;
+const OFFLINE_SKIP_MS = 10000; // une joueuse absente joue automatiquement après 10 s
+const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 
 function shuffle(a) {
   a = [...a];
@@ -62,6 +64,7 @@ function beginRound(state) {
     // File d'actions interactives à résoudre (Freeze / Flip Three / Second Chance à donner).
     // Chaque entrée : { type, by }. C'est `by` qui choisit la cible.
     pending: [],
+    since: Date.now(), // début de l'attente courante (tour ou action à résoudre)
     flip7Ended: false,
     results: null,
   };
@@ -148,7 +151,7 @@ export function hitFlip7(state, userId) {
   applyCard(state, userId, drawCard(state));
   if (state.round.flip7Ended) { endRound(state); return; }
   dropDeadPending(state);
-  if (state.round.pending.length) return; // on attend la résolution d'une action
+  if (state.round.pending.length) { state.round.since = Date.now(); return; } // on attend la résolution d'une action
   advance(state);
 }
 
@@ -188,7 +191,7 @@ export function resolveAction(state, userId, targetId) {
 
   if (state.round.flip7Ended) { endRound(state); return; }
   dropDeadPending(state);
-  if (state.round.pending.length) return; // d'autres actions restent à résoudre
+  if (state.round.pending.length) { state.round.since = Date.now(); return; } // d'autres actions restent à résoudre
   advance(state);
 }
 
@@ -197,6 +200,7 @@ function advance(state) {
   const nxt = nextActive(state, state.round.turn);
   if (!nxt) { endRound(state); return; }
   state.round.turn = nxt;
+  state.round.since = Date.now();
 }
 
 function scoreLine(line) {
@@ -236,14 +240,27 @@ export function nextRound(state, userId) {
 }
 
 export function tickFlip7(state) {
-  if (state.phase !== 'roundover') return false;
-  if (!state.nextRoundAt) {
-    state.nextRoundAt = Date.now() + ROUNDOVER_MS;
+  if (state.phase === 'roundover') {
+    if (!state.nextRoundAt) { state.nextRoundAt = Date.now() + ROUNDOVER_MS; return true; }
+    if (Date.now() < state.nextRoundAt) return false;
+    beginRound(state);
     return true;
   }
-  if (Date.now() < state.nextRoundAt) return false;
-  beginRound(state);
-  return true;
+  // En manche : auto-play après 10 s si la personne attendue est absente.
+  if (state.phase !== 'playing' || !state.round) return false;
+  const r = state.round;
+  if (!r.since || Date.now() - r.since < OFFLINE_SKIP_MS) return false;
+  if (r.pending.length) {
+    const pa = r.pending[0];
+    if (!isOffline(state, pa.by)) return false;
+    resolveAction(state, pa.by, pa.by); // l'absente se cible elle-même (toujours valide)
+    return true;
+  }
+  if (r.turn && isOffline(state, r.turn)) {
+    stayFlip7(state, r.turn); // choix sûr : on banque les points et on sort de la manche
+    return true;
+  }
+  return false;
 }
 
 export function viewFor(state, userId) {

@@ -10,6 +10,8 @@
 
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const SUITS = ['S', 'H', 'D', 'C']; // pique, cœur, carreau, trèfle
+const OFFLINE_SKIP_MS = 10000; // une joueuse absente joue automatiquement après 10 s
+const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 
 function shuffle(a) {
   a = [...a];
@@ -36,6 +38,7 @@ export function createBullshit() {
     lastPlay: null, // { by, cardIds, claim, count }
     lastResult: null, // { challenger, by, claim, wasBluff, revealed:[{rank,suit}], loser, picked }
     pendingWinner: null, // joueur ayant vidé sa main, en attente de la fenêtre de contestation
+    since: null, // début de l'attente courante (pour l'auto-play des absentes)
     winner: null,
     log: [],
   };
@@ -66,6 +69,7 @@ export function startBullshit(state, userId) {
   state.pendingWinner = null;
   state.winner = null;
   state.phase = 'playing';
+  state.since = Date.now();
   state.log = ['La partie commence !'];
 }
 
@@ -89,6 +93,7 @@ export function playBullshit(state, userId, cardIds) {
   state.pendingWinner = state.hands[userId].length === 0 ? userId : null;
   state.turn = nextSeat(state, userId); // la suivante peut accepter ou contester
   state.phase = 'challenge';
+  state.since = Date.now();
   state.log.push(`${chosen.length} carte(s) annoncée(s) comme des ${claim}.`);
 }
 
@@ -105,6 +110,7 @@ export function passBullshit(state, userId) {
   state.rankIndex = (state.rankIndex + 1) % RANKS.length;
   state.lastResult = null;
   state.phase = 'playing'; // c'est maintenant à userId de jouer
+  state.since = Date.now();
   state.log.push(`Personne ne conteste. Rang : ${RANKS[state.rankIndex]}.`);
 }
 
@@ -146,11 +152,31 @@ export function challengeBullshit(state, userId) {
   state.turn = loser;  // la perdante ramasse et relance
   state.lastPlay = null;
   state.phase = 'playing';
+  state.since = Date.now();
   state.log.push(wasBluff ? `Bluff démasqué ! ${picked} carte(s) ramassée(s).` : `Fausse accusation ! ${picked} carte(s) ramassée(s).`);
 }
 
 function sortHand(cards) {
   return [...cards].sort((a, b) => (RANKS.indexOf(a.rank) - RANKS.indexOf(b.rank)) || (SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit)));
+}
+
+// Auto-play d'une joueuse absente : honnête si elle a le rang demandé, sinon
+// elle pose discrètement une seule carte (bluff minimal).
+function autoPlayBullshit(state, userId) {
+  const hand = state.hands[userId] || [];
+  if (!hand.length) return;
+  const claim = RANKS[state.rankIndex];
+  const honest = hand.filter((c) => c.rank === claim).slice(0, 4).map((c) => c.id);
+  if (honest.length) { playBullshit(state, userId, honest); return; }
+  playBullshit(state, userId, [sortHand(hand)[0].id]);
+}
+
+// Horloge serveur : après 10 s d'absence, on joue/accepte pour la joueuse attendue.
+export function tickBullshit(state) {
+  if (!state.since || Date.now() - state.since < OFFLINE_SKIP_MS) return false;
+  if (state.phase === 'playing' && state.turn && isOffline(state, state.turn)) { autoPlayBullshit(state, state.turn); return true; }
+  if (state.phase === 'challenge' && state.turn && isOffline(state, state.turn)) { passBullshit(state, state.turn); return true; }
+  return false;
 }
 
 export function viewFor(state, userId) {

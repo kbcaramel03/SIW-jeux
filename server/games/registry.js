@@ -34,6 +34,7 @@ export const GAMES = {
     create: uno.createUno,
     view: uno.viewFor,
     action: applyUnoAction,
+    tick: uno.tickUno,
   },
   flip7: {
     key: 'flip7', label: 'Flip 7', emoji: '🔢', minPlayers: 2, maxPlayers: 8, ready: true,
@@ -47,6 +48,7 @@ export const GAMES = {
     create: bullshit.createBullshit,
     view: bullshit.viewFor,
     action: applyBullshitAction,
+    tick: bullshit.tickBullshit,
   },
   conspiracy: {
     key: 'conspiracy', label: 'Conspiracy', emoji: '🕯️', minPlayers: 4, maxPlayers: 8, ready: true,
