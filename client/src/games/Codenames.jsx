@@ -31,6 +31,7 @@ export default function Codenames({ room, isHost, onAction, onNewGame }) {
 
   return (
     <div className="cn fade-up">
+      <MyTeamBar game={game} me={me} />
       <TopBar game={game} me={me} nameById={nameById} />
       <Board game={game} me={me} nameById={nameById} onAction={onAction} />
       <Controls game={game} me={me} onAction={onAction} />
@@ -38,6 +39,35 @@ export default function Codenames({ room, isHost, onAction, onNewGame }) {
       <div className="cn-log">
         {game.log.map((line, i) => <div key={i} className="cn-log-line">{line}</div>)}
       </div>
+    </div>
+  );
+}
+
+// À quelle équipe/couleur j'appartiens, et quel rôle ? Affiché en permanence
+// pendant la partie (les gens ne savaient pas leur équipe/couleur), et mis en
+// évidence quand c'est le tour de mon équipe.
+function myTeamOf(game, me) {
+  for (const side of ['red', 'blue']) {
+    const t = game.teams[side];
+    const sm = [...(t.spymasters || []), t.spymaster].filter(Boolean);
+    if (sm.includes(me)) return { side, role: 'spymaster' };
+    if ((t.operatives || []).includes(me)) return { side, role: 'operative' };
+  }
+  return null;
+}
+
+function MyTeamBar({ game, me }) {
+  if (game.phase === 'over') return null;
+  const mine = myTeamOf(game, me);
+  if (!mine) return <div className="cn-myteam spectator">Tu observes la partie</div>;
+  const colorLabel = mine.side === 'red' ? 'Rose' : 'Bleu';
+  const roleLabel = game.mode === 'duet' ? 'Joueur' : (mine.role === 'spymaster' ? 'Maître-espion' : 'Agent');
+  const myTurn = game.turn === mine.side;
+  return (
+    <div className={`cn-myteam ${mine.side} ${myTurn ? 'active' : ''}`}>
+      <span className="cn-myteam-dot" />
+      <span>Ton équipe : <strong>{colorLabel}</strong> · {roleLabel}</span>
+      {myTurn && game.phase === 'playing' && <span className="cn-myteam-turn">à vous de jouer</span>}
     </div>
   );
 }
@@ -176,12 +206,12 @@ function TopBar({ game, me, nameById }) {
   }
   return (
     <div className="cn-topbar">
-      <span className="cn-count cn-count-red">{game.counts.red}</span>
+      <span className={`cn-count cn-count-red ${game.turn === 'red' ? 'active' : ''}`}>{game.counts.red}</span>
       <div className="cn-turn">
-        {game.phase === 'playing' && <>Au tour de l'équipe {game.turn === 'red' ? 'rose' : 'bleue'}</>}
+        {game.phase === 'playing' && <>Au tour de l'équipe <strong>{game.turn === 'red' ? 'rose' : 'bleue'}</strong></>}
         <div>{cluePill}</div>
       </div>
-      <span className="cn-count cn-count-blue">{game.counts.blue}</span>
+      <span className={`cn-count cn-count-blue ${game.turn === 'blue' ? 'active' : ''}`}>{game.counts.blue}</span>
     </div>
   );
 }

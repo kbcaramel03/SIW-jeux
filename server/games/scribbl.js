@@ -262,6 +262,8 @@ export function viewFor(state, userId) {
     choices: isDrawer && state.phase === 'choose' ? state.choices : null,
     word: isDrawer ? state.word : null,
     hint: state.hint,
+    // Nombre de lettres du mot (sans compter espaces/tirets/apostrophes) — visible par tous.
+    letters: state.word ? state.word.split('').filter((c) => isLetter(c)).length : null,
     deadline: state.phase === 'draw' ? state.deadline : null,
     canGuess: state.phase === 'draw' && !isDrawer && state.seats.includes(userId) && !state.guessed[userId],
     iGuessed: !!state.guessed[userId],

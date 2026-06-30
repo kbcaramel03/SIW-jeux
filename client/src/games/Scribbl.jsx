@@ -130,7 +130,7 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title">Scribbl — salle d'attente</h3>
-        <p className="cn-hint-text">À tour de rôle, une personne dessine un mot, les autres devinent au plus vite ! (2 à 10 joueurs)</p>
+        <p className="cn-hint-text">Un jeu de dessin et de devinettes. Chacune son tour, une joueuse illustre un mot tiré au sort pendant que les autres tentent de le reconnaître. Plus vous devinez tôt, plus vous marquez de points — et la dessinatrice en gagne à chaque bonne réponse. De 2 à 10 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat"><Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} /><span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span></div>
@@ -151,7 +151,8 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
     if (g.phase === 'choose') return g.isDrawer ? 'Choisis un mot à dessiner' : `${nameById[g.drawer] || '?'} choisit un mot…`;
     // draw
     if (g.isDrawer) return `Dessine : ${g.word}`;
-    return g.iGuessed ? '✅ Trouvé ! Attends les autres…' : `Devine : ${g.hint}`;
+    const nb = g.letters != null ? ` · ${g.letters} lettre${g.letters > 1 ? 's' : ''}` : '';
+    return g.iGuessed ? '✅ Trouvé ! Attends les autres…' : `Devine : ${g.hint}${nb}`;
   }
 
   return (

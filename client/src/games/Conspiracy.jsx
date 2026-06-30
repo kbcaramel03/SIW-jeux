@@ -37,8 +37,7 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title"><FaUserSecret style={{ color: '#b42337' }} /> Le Complot — salle d'attente</h3>
-        <p className="cn-hint-text">La Société veut réussir 3 missions ; les Espions infiltrés veulent en saboter 3 sans se faire griller.
-          Le chef propose une équipe (jamais lui-même), tout le monde vote — 4 équipes rejetées et les Espions gagnent ! (4 à 8 joueuses)</p>
+        <p className="cn-hint-text">Deux camps s'affrontent en secret. La Société doit mener à bien trois missions ; les Espions infiltrés cherchent à en saboter trois sans se faire démasquer. À chaque tour, un chef propose une équipe — jamais lui-même — que tout le monde approuve ou rejette ; les membres envoyés décident ensuite, en secret, de faire réussir ou échouer la mission. Quatre équipes rejetées d'affilée et les Espions l'emportent. De 4 à 8 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">

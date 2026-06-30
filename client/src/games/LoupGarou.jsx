@@ -98,7 +98,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title">Loup Garou — composition du village</h3>
-        <p className="cn-hint-text">Choisis les cartes présentes dans la partie, puis lancez. Un maître du jeu (voix) anime les nuits. (4 à 18 joueurs)</p>
+        <p className="cn-hint-text">Un jeu d'enquête et de bluff. La nuit, les Loups-Garous dévorent un villageois en secret ; le jour, le village débat puis vote pour éliminer un suspect. Les rôles spéciaux — Voyante, Sorcière, Chasseur, Cupidon et d'autres — bouleversent la partie. Le village l'emporte en démasquant tous les loups, les loups en prenant le dessus. Un maître du jeu vocal mène chaque nuit. De 4 à 18 joueuses. Choisissez la composition ci-dessous, puis lancez.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat"><Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} /><span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span></div>

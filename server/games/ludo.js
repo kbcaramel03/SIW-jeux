@@ -25,7 +25,7 @@ const STARS = new Set([9, 22, 35, 48]);
 // Cases départ : protègent uniquement leur propre couleur (règle Plato).
 const START_CELL = { 1: 'red', 14: 'green', 27: 'yellow', 40: 'blue' };
 const FR = { red: 'Rouge', green: 'Vert', yellow: 'Jaune', blue: 'Bleu' };
-const OFFLINE_SKIP_MS = 45000;
+const OFFLINE_SKIP_MS = 10000;
 
 const absCell = (color, p) => (START[color] + p) % RING;
 const isOffline = (s, id) => !!(s.offline && s.offline[id]);

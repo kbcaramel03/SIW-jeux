@@ -23,7 +23,7 @@ const DAY_MS = 180000;
 const VOTE_MS = 75000;
 // Si tous les joueurs attendus à une étape sont déconnectés depuis ce délai,
 // on passe l'étape automatiquement (la partie ne reste plus jamais figée).
-const OFFLINE_SKIP_MS = 45000;
+const OFFLINE_SKIP_MS = 10000;
 
 export function createLoupGarou() {
   return {
@@ -357,12 +357,14 @@ function resolveNight(state) {
   state.lastDeaths = deaths;
   state.nightStep = null;
   if (checkAnge(state)) return;
-  if (checkWin(state)) return;
+  // Le Chasseur tire AVANT de vérifier la victoire : même si sa mort scelle
+  // la fin de partie, il a droit à son dernier coup de feu (qui peut tout changer).
   if (state.hunterPending) {
     state.phase = 'hunter'; state.resumeTo = 'day'; state.stepSince = Date.now();
     narrate(state, 'Dans un dernier souffle, le Chasseur empoigne son fusil… qui va-t-il emporter ?');
     return;
   }
+  if (checkWin(state)) return;
   enterReveal(state, 'day', morningText(state, deaths));
 }
 
@@ -433,12 +435,13 @@ function tallyAndResolveDay(state) {
   state.lastDeaths = deaths;
   state.voteDeadline = null;
   if (checkAnge(state)) return;
-  if (checkWin(state)) return;
+  // Le Chasseur tire AVANT la vérification de victoire (cf. resolveNight).
   if (state.hunterPending) {
     state.phase = 'hunter'; state.resumeTo = 'night'; state.stepSince = Date.now();
     narrate(state, 'Touché à mort, le Chasseur lève une dernière fois son fusil…');
     return;
   }
+  if (checkWin(state)) return;
   enterReveal(state, 'night', verdictText(state, deaths, executed));
 }
 

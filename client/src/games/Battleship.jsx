@@ -59,7 +59,8 @@ function Placing({ game, onAction }) {
     <div className="card bs-placing" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
       <h3 className="section-title"><Anchor size={20} /> Place ta flotte</h3>
       <p className="cn-hint-text">
-        Ta flotte est posée au hasard. <strong>Mélange</strong> jusqu'à ce qu'elle te plaise, puis clique <strong>Prêt</strong>.
+        Bataille navale. Chaque joueuse dispose sa flotte en secret, puis on tire à tour de rôle pour repérer et couler les navires adverses : la première à envoyer toute la flotte ennemie par le fond gagne.
+        Votre flotte est placée au hasard — <strong>mélangez</strong> jusqu'à ce qu'elle vous convienne, puis cliquez <strong>Prêt</strong>.
       </p>
       <Grid board={game.myBoard} kind="my" />
       <div className="cn-controls">

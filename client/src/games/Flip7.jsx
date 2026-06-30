@@ -38,7 +38,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title">Flip 7 — salle d'attente</h3>
-        <p className="cn-hint-text">Tire des cartes, ne fais pas de doublon, et premier à 200 points gagne ! (2 à 8 joueurs)</p>
+        <p className="cn-hint-text">Un jeu de stop ou encore. À votre tour, vous piochez une carte chiffre : continuez pour accumuler des points, mais un doublon vous fait tout perdre pour la manche. Réunissez sept chiffres différents pour réaliser un Flip 7 et empocher un bonus. La première joueuse à 200 points l'emporte. De 2 à 8 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">

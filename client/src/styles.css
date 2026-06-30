@@ -19,9 +19,13 @@
   --radius-sm: 14px;
   --shadow: 0 12px 34px rgba(110, 80, 120, 0.13);
   --shadow-sm: 0 5px 16px rgba(110, 80, 120, 0.10);
-  --font-head: 'Fredoka', 'Segoe UI', sans-serif;
-  --font-body: 'Quicksand', 'Segoe UI', sans-serif;
-  --font-brand: 'Pacifico', cursive;
+  /* On ajoute des polices emoji/symboles APRÈS les polices texte : ainsi les
+     symboles (♠♥♦♣, ⚖, 🌙…) résolvent vers une police adaptée au lieu de
+     tomber sur une police chinoise (glyphes « chinois » bizarres). */
+  --emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', 'Noto Sans Symbols2', 'Android Emoji';
+  --font-head: 'Fredoka', 'Segoe UI', var(--emoji), sans-serif;
+  --font-body: 'Quicksand', 'Segoe UI', var(--emoji), sans-serif;
+  --font-brand: 'Pacifico', var(--emoji), cursive;
 }
 
 * { box-sizing: border-box; }
@@ -204,9 +208,28 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 
 .cn-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px;
   background: #fff; border-radius: 16px; padding: 12px 16px; box-shadow: var(--shadow-sm); flex-wrap: wrap; }
-.cn-count { font-family: var(--font-head); font-size: 1.7rem; font-weight: 700; min-width: 42px; text-align: center; }
+.cn-count { font-family: var(--font-head); font-size: 1.7rem; font-weight: 700; min-width: 42px; text-align: center; border-radius: 12px; padding: 2px 6px; transition: box-shadow .2s, transform .2s; }
 .cn-count-red { color: #ef4444; }
 .cn-count-blue { color: #3b82f6; }
+.cn-count.active { transform: scale(1.12); }
+.cn-count-red.active { box-shadow: 0 0 0 3px #ef4444, 0 0 14px rgba(239,68,68,0.5); }
+.cn-count-blue.active { box-shadow: 0 0 0 3px #3b82f6, 0 0 14px rgba(59,130,246,0.5); }
+
+/* Barre « mon équipe » (couleur + rôle, toujours visible pendant la partie) */
+.cn-myteam { display: flex; align-items: center; gap: 9px; padding: 8px 15px; border-radius: 14px; margin-bottom: 11px;
+  font-weight: 700; font-size: 0.92rem; border: 2px solid transparent; }
+.cn-myteam.spectator { background: #efeaf4; color: var(--ink-soft); }
+.cn-myteam.red { background: #fdecef; color: #c0344c; }
+.cn-myteam.blue { background: #e7f0fd; color: #2456a6; }
+.cn-myteam-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+.cn-myteam.red .cn-myteam-dot { background: #ef4444; }
+.cn-myteam.blue .cn-myteam-dot { background: #3b82f6; }
+.cn-myteam.active { border-color: currentColor; box-shadow: 0 0 0 3px rgba(0,0,0,0.04); animation: cnTeamPulse 1.6s ease-in-out infinite; }
+.cn-myteam-turn { margin-left: auto; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.5px;
+  background: currentColor; color: #fff; padding: 3px 10px; border-radius: 999px; }
+.cn-myteam.red .cn-myteam-turn { color: #fff; background: #ef4444; }
+.cn-myteam.blue .cn-myteam-turn { color: #fff; background: #3b82f6; }
+@keyframes cnTeamPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0.12); } 50% { box-shadow: 0 0 0 6px rgba(0,0,0,0); } }
 .cn-turn { text-align: center; font-weight: 700; flex: 1; }
 .cn-clue-pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; background: linear-gradient(120deg, #fff0f6, #f1e8ff); padding: 5px 13px; border-radius: 16px; font-family: var(--font-head); font-size: 1.05rem; }
 /* Duo : barre agents + tours */
@@ -604,6 +627,9 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .pc.size-sm { width: 38px; height: 54px; }
 .pc.size-md { width: 52px; height: 74px; }
 .pc.red { color: #d23047; } .pc.black { color: #2a2230; }
+/* Police de symboles explicite pour les enseignes (sinon certains appareils
+   remplacent ♠♥♦♣ par une police chinoise → glyphes « chinois » bizarres). */
+.pc-pip, .pc-corner i { font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols2', 'Noto Sans Symbols', 'DejaVu Sans', sans-serif; font-variant-emoji: text; }
 .pc-pip { font-size: 1.6rem; line-height: 1; }
 .pc.size-sm .pc-pip { font-size: 1.15rem; }
 .pc-corner { position: absolute; font-weight: 800; line-height: 0.85; display: flex; flex-direction: column; align-items: center; }

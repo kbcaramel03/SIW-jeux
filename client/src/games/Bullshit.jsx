@@ -30,7 +30,7 @@ export default function Bullshit({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title">Bullshit — salle d'attente</h3>
-        <p className="cn-hint-text">Pose tes cartes face cachée en annonçant le rang imposé… mais tu peux mentir ! Quelqu'un te démasque ? Il ramasse, ou toi. Premier à vider sa main gagne. (2 à 8 joueurs)</p>
+        <p className="cn-hint-text">Un jeu de bluff et de sang-froid. À votre tour, posez une ou plusieurs cartes face cachée en annonçant le rang demandé : libre à vous de dire la vérité ou de mentir. Si quelqu'un doute, il vous conteste — le menteur démasqué ramasse toute la pile, mais une accusation à tort se paie aussi. La première à se débarrasser de toutes ses cartes gagne. De 2 à 8 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">

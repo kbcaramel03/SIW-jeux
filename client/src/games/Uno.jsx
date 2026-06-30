@@ -33,7 +33,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card uno-waiting" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title">Uno — salle d'attente</h3>
-        <p className="cn-hint-text">Tout le monde rejoint, puis on lance la partie (2 à 8 joueurs).</p>
+        <p className="cn-hint-text">Le grand classique des jeux de cartes. Défaussez-vous en posant une carte de même couleur ou de même valeur que celle du dessus. Les cartes spéciales (Plus 2, Plus 4, Joker, Passe et Inversion) renversent le cours de la partie. La première personne à vider sa main remporte la manche. De 2 à 8 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
