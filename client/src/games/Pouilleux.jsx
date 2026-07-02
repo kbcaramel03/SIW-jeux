@@ -30,7 +30,7 @@ export default function Pouilleux({ room, isHost, onAction, onNewGame }) {
   if (g.phase === 'waiting') {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
-        <h3 className="section-title"><Skull size={20} color="#5a8c3a" /> Le Pouilleux — salle d'attente</h3>
+        <h3 className="section-title"><Skull size={20} color="#5a8c3a" /> Zombie - salle d'attente</h3>
         <p className="cn-hint-text">Un jeu de hasard et de bluff. Le paquet contient des paires de créatures et une seule carte Zombie. Débarrassez-vous de vos paires, puis, à votre tour, piochez une carte au hasard chez votre voisine ; chaque paire formée est écartée. La joueuse qui se retrouve seule avec le Zombie a perdu. De 2 à 6 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (

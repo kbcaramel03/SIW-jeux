@@ -34,7 +34,7 @@ export default function GuessMe({ room, isHost, onAction, onNewGame }) {
   if (g.phase === 'waiting') {
     return (
       <div className="card gm-wait">
-        <h3 className="section-title"><Sparkles size={20} color="#8a55bf" /> Devine-Moi - salle d'attente</h3>
+        <h3 className="section-title"><span className="gm-logo-mark">??</span> GuessMe - salle d'attente</h3>
         <p className="cn-hint-text">Choisis ta reponse en secret, puis devine ce que les autres ont choisi. Chaque bonne devinette donne 1 point.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (

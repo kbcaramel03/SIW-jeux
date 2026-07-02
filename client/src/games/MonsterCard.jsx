@@ -1,5 +1,5 @@
-// Cartes « monstres » illustrées pour Le Pouilleux. 13 créatures se pairent ;
-// le Zombie est seul (le pouilleux). Fond dégradé + motif, en CSS.
+// Cartes « monstres » illustrées pour Zombie. 13 créatures se pairent ;
+// le Zombie est seul. Fond dégradé + motif, en CSS.
 export const MONSTERS = {
   fantome: { emoji: '👻', name: 'Fantôme', c1: '#cfd8ec', c2: '#9aa6c4' },
   citrouille: { emoji: '🎃', name: 'Citrouille', c1: '#ffb866', c2: '#ef7e2e' },

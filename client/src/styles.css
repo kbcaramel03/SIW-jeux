@@ -152,6 +152,9 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .tile-uno i:nth-child(3) { transform: rotate(18deg) translateX(6px); }
 .tile-uno.sm { width: 24px; height: 26px; }
 .tile-uno.sm i { width: 12px; height: 18px; top: 4px; left: 6px; }
+.tile-mark { font-family: var(--font-head); font-weight: 900; font-size: 1.1rem; line-height: 1; letter-spacing: 0;
+  color: currentColor; text-shadow: 0 1px 0 rgba(255,255,255,0.8); }
+.tile-mark.sm { font-size: 0.92rem; }
 .game-label { font-family: var(--font-head); font-weight: 600; }
 .game-meta { font-size: 0.74rem; color: var(--ink-soft); font-weight: 600; }
 .soon-tag { position: absolute; top: 8px; right: 8px; font-size: 0.62rem; background: var(--ink-soft); color: #fff; padding: 2px 7px; border-radius: 8px; font-weight: 700; }
@@ -842,7 +845,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   repeating-linear-gradient(135deg, #216fae 0 7px, #185b95 7px 14px); }
 .gfc-back .gfc-back-deco { font-family: var(--font-head); font-size: 0.65rem; line-height: 0.9; font-weight: 900; color: #fff; text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.35); }
 
-/* ===== Le Pouilleux : cartes monstres + table ===== */
+/* ===== Zombie : cartes monstres + table ===== */
 .mc { position: relative; width: 52px; height: 74px; border-radius: 10px; border: 2px solid #fff; overflow: hidden;
   background: linear-gradient(155deg, var(--c1, #cfd8ec), var(--c2, #9aa6c4)); box-shadow: var(--shadow-sm); flex: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
@@ -881,7 +884,10 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .gf-rank-row.win { background: #fff6da; font-weight: 800; }
 .gf-rank-row span { margin-left: auto; color: var(--ink-soft); font-size: 0.82rem; }
 
-/* ===== Devine-Moi ===== */
+/* ===== GuessMe ===== */
+.gm-logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%;
+  background: #f4e7fb; color: #8a55bf; font-family: var(--font-head); font-weight: 900; font-size: 0.9rem; letter-spacing: 0;
+  box-shadow: inset 0 0 0 2px rgba(138,85,191,0.14); flex: none; }
 .gm { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 12px; align-items: start; }
 .gm-top, .gm-panel, .gm-reveal, .gm-ranking { background: #fff; border-radius: 16px; box-shadow: var(--shadow-sm); }
 .gm-top { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; }

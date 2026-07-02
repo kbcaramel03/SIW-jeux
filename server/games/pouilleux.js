@@ -1,6 +1,6 @@
-// Moteur du Pouilleux (« Old Maid » / « Zombie » sur Plato), logique pure.
+// Moteur de Zombie (« Old Maid » / « Zombie » sur Plato), logique pure.
 // 2 à 6 joueuses. Le paquet = 13 paires de créatures + 1 carte Zombie unique
-// (le « pouilleux »). On distribue tout, chacune jette ses paires. À son tour,
+// (la carte Zombie). On distribue tout, chacune jette ses paires. À son tour,
 // on pioche une carte (face cachée) dans la main de la voisine de gauche ; si
 // elle complète une paire, on la jette. Une main vide = sauvée. À la fin, la
 // seule qui reste tient le Zombie : elle perd.
@@ -17,7 +17,7 @@ function shuffle(a) {
 function buildDeck() {
   const deck = []; let id = 0;
   for (const m of MONSTERS) { deck.push({ id: id++, kind: m }); deck.push({ id: id++, kind: m }); }
-  deck.push({ id: id++, kind: 'zombie' }); // le pouilleux, sans paire
+  deck.push({ id: id++, kind: 'zombie' }); // la carte Zombie, sans paire
   return deck;
 }
 function nm(state, id) { return (state.names && state.names[id]) || 'quelqu\'un'; }

@@ -95,14 +95,14 @@ export const GAMES = {
     tick: gofish.tickGoFish,
   },
   pouilleux: {
-    key: 'pouilleux', label: 'Le Pouilleux', emoji: '🧟', minPlayers: 2, maxPlayers: 6, ready: true,
+    key: 'pouilleux', label: 'Zombie', emoji: '🧟', minPlayers: 2, maxPlayers: 6, ready: true,
     create: pouilleux.createPouilleux,
     view: pouilleux.viewFor,
     action: applyPouilleuxAction,
     tick: pouilleux.tickPouilleux,
   },
   guessme: {
-    key: 'guessme', label: 'Devine-Moi', emoji: '🔮', minPlayers: 2, maxPlayers: 10, ready: true,
+    key: 'guessme', label: 'GuessMe', emoji: '❓', minPlayers: 2, maxPlayers: 10, ready: true,
     create: guessme.createGuessMe,
     view: guessme.viewFor,
     action: applyGuessMeAction,

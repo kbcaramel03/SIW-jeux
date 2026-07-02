@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Paper, Button, TextField, Typography, Stack, ToggleButtonGroup, ToggleButton, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords, Fish, Skull, Sparkles } from 'lucide-react';
+import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords, Fish, Skull } from 'lucide-react';
 import { GiChessPawn, GiCardRandom } from 'react-icons/gi';
 import { getSocket } from '../socket.js';
 
@@ -19,7 +19,7 @@ const GAME_STYLE = {
   ludo: { Icon: Dices, bg: '#e6f2e8', fg: '#3a8c5a' },
   gofish: { Icon: Fish, bg: '#dbeef7', fg: '#2b7fd4' },
   pouilleux: { Icon: Skull, bg: '#e3f0d9', fg: '#5a8c3a' },
-  guessme: { Icon: Sparkles, bg: '#f4e7fb', fg: '#8a55bf' },
+  guessme: { mark: '??', bg: '#f4e7fb', fg: '#8a55bf' },
 };
 const DEFAULT_STYLE = { Icon: Gamepad2, bg: '#eee', fg: '#888' };
 
@@ -90,7 +90,7 @@ export default function Lobby() {
               >
                 {!g.ready && <span className="soon-tag">bientôt</span>}
                 <span className="tile-icon" style={{ background: st.bg, color: st.fg }}>
-                  {st.uno ? <UnoMini /> : <st.Icon size={26} />}
+                  {st.uno ? <UnoMini /> : st.mark ? <span className="tile-mark">{st.mark}</span> : <st.Icon size={26} />}
                 </span>
                 <span className="game-label">{g.label}</span>
                 <span className="game-meta">{g.minPlayers === g.maxPlayers ? `${g.minPlayers} joueurs` : `${g.minPlayers}–${g.maxPlayers} joueurs`}</span>
@@ -113,7 +113,7 @@ export default function Lobby() {
               return (
                 <Paper key={r.id} variant="outlined" className="room-card" sx={{ p: 1.5 }}>
                   <div className="room-main">
-                    <span className="ic" style={{ color: st.fg }}>{st.uno ? <UnoMini small /> : <st.Icon size={22} />}</span>
+                    <span className="ic" style={{ color: st.fg }}>{st.uno ? <UnoMini small /> : st.mark ? <span className="tile-mark sm">{st.mark}</span> : <st.Icon size={22} />}</span>
                     <div>
                       <strong>{r.name}</strong>
                       <div className="room-sub">{r.gameLabel} · {r.players}/{r.maxPlayers}{r.inProgress ? ' · en cours' : ''}</div>
@@ -131,7 +131,7 @@ export default function Lobby() {
       <Dialog open={!!selected} onClose={() => setSelected(null)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {(() => { const st = GAME_STYLE[selected] || DEFAULT_STYLE; return (
-            <span className="ic" style={{ color: st.fg }}>{st.uno ? <UnoMini small /> : <st.Icon size={20} />}</span>
+            <span className="ic" style={{ color: st.fg }}>{st.uno ? <UnoMini small /> : st.mark ? <span className="tile-mark sm">{st.mark}</span> : <st.Icon size={20} />}</span>
           ); })()}
           Créer un salon — {games.find((g) => g.key === selected)?.label}
         </DialogTitle>

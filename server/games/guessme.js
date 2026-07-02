@@ -1,4 +1,4 @@
-// Moteur de « Devine-Moi » (inspiré de GuessMe!), logique pure. 2 à 10 joueuses.
+// Moteur de GuessMe, logique pure. 2 à 10 joueuses.
 // Chaque manche : une question « ceci ou cela ». 1) tout le monde répond pour
 // soi (secret) ; 2) chacune devine la réponse des autres ; 3) révélation et
 // points (+1 par bonne devinette). La joueuse avec le plus de points gagne.
