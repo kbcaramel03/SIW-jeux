@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Paper, Button, TextField, Typography, Stack, ToggleButtonGroup, ToggleButton, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords, Fish, Skull } from 'lucide-react';
+import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords, Fish, Skull, Sparkles } from 'lucide-react';
 import { GiChessPawn, GiCardRandom } from 'react-icons/gi';
 import { getSocket } from '../socket.js';
 
@@ -19,6 +19,7 @@ const GAME_STYLE = {
   ludo: { Icon: Dices, bg: '#e6f2e8', fg: '#3a8c5a' },
   gofish: { Icon: Fish, bg: '#dbeef7', fg: '#2b7fd4' },
   pouilleux: { Icon: Skull, bg: '#e3f0d9', fg: '#5a8c3a' },
+  guessme: { Icon: Sparkles, bg: '#f4e7fb', fg: '#8a55bf' },
 };
 const DEFAULT_STYLE = { Icon: Gamepad2, bg: '#eee', fg: '#888' };
 

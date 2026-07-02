@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@mui/material';
-import { Play, Sparkles, Fish, Trophy } from 'lucide-react';
+import { Play, Sparkles, Fish, Trophy, MessageCircleQuestion } from 'lucide-react';
 import GoFishCard, { SPECIES } from './GoFishCard.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti, popSound, boomSound } from '../effects.js';
@@ -71,10 +71,18 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
 
   const n = g.players.length;
   const myBooks = g.players.find((p) => p.id === me)?.books || [];
+  const asked = g.lastAction && ['got', 'fish'].includes(g.lastAction.kind) ? g.lastAction : null;
 
   return (
     <div className="gf fade-up">
       <div className={`gf-banner ${g.isMyTurn ? 'mine' : ''}`}>{banner()}</div>
+      {asked && (
+        <div className="gf-asked">
+          <MessageCircleQuestion size={16} />
+          <span><b>{asked.by === me ? 'Tu' : nameById[asked.by]}</b> a demande <b>{SPECIES[asked.rank]?.name}</b> a <b>{asked.target === me ? 'toi' : nameById[asked.target]}</b></span>
+          <GoFishCard rank={asked.rank} size="sm" />
+        </div>
+      )}
 
       {/* Table ronde : toutes les joueuses en cercle, le tour suit le cercle */}
       <div className="gf-table">

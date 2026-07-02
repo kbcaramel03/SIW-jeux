@@ -788,9 +788,12 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .csp2-verdict.fail { border-color: #ff7488; color: #ffd9de; box-shadow: 0 6px 24px rgba(255,116,136,0.35); }
 
 /* ===== Go Fish ===== */
-.gf { display: flex; flex-direction: column; gap: 12px; align-items: center; }
-.gf-banner { font-family: var(--font-head); font-weight: 600; padding: 8px 16px; border-radius: 14px; background: #eef4fb; color: #2b6aa0; text-align: center; min-width: 220px; }
+.gf { display: flex; flex-direction: column; gap: 12px; align-items: center; width: 100%; overflow-x: hidden; }
+.gf-banner { font-family: var(--font-head); font-weight: 600; padding: 8px 16px; border-radius: 14px; background: #eef4fb; color: #2b6aa0; text-align: center; min-width: 0; max-width: 100%; }
 .gf-banner.mine { background: #d7f0e2; color: #1f7a52; }
+.gf-asked { display: flex; align-items: center; gap: 8px; max-width: min(100%, 520px); padding: 7px 10px; border-radius: 14px;
+  background: #fff; box-shadow: var(--shadow-sm); font-size: 0.82rem; font-weight: 700; color: #31556d; }
+.gf-asked span { min-width: 0; overflow-wrap: anywhere; }
 /* Table ronde : tapis océan, joueuses en cercle */
 .gf-table { position: relative; width: min(92vw, 480px); aspect-ratio: 1.12; margin: 0 auto;
   background: radial-gradient(circle at 50% 42%, #bfe6f2, #7cc4dd 78%); border-radius: 50%/46%;
@@ -809,8 +812,8 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .gf-pool-count { font-size: 0.78rem; font-weight: 800; color: #1f5a73; background: rgba(255,255,255,0.85); border-radius: 999px; padding: 1px 9px; }
 
 /* Cartes poissons illustrées */
-.gfc { position: relative; width: 52px; height: 74px; border-radius: 10px; border: 2px solid #fff; overflow: hidden;
-  background: linear-gradient(155deg, var(--c1, #86d3ea), var(--c2, #3aa7c8)); box-shadow: var(--shadow-sm); flex: none;
+.gfc { position: relative; width: 58px; height: 82px; border-radius: 8px; border: 2px solid #fffaf3; overflow: hidden;
+  background: linear-gradient(155deg, var(--c1, #86d3ea), var(--c2, #3aa7c8)); box-shadow: 0 7px 16px rgba(40,80,110,0.18); flex: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .gfc::before { content: ''; position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(circle at 22% 22%, rgba(255,255,255,0.5) 2px, transparent 3px),
@@ -818,17 +821,26 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
     radial-gradient(circle at 40% 72%, rgba(255,255,255,0.35) 2px, transparent 3px),
     radial-gradient(circle at 78% 78%, rgba(255,255,255,0.3) 2px, transparent 3px); background-size: 100% 100%; }
 .gfc.size-sm { width: 38px; height: 54px; }
-.gfc-emoji { font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); z-index: 1; }
-.gfc.size-sm .gfc-emoji { font-size: 1.3rem; }
-.gfc-name { font-size: 0.46rem; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4); text-align: center;
-  z-index: 1; line-height: 1; padding: 0 2px; }
+.gfc-rank { position: absolute; top: 4px; left: 5px; z-index: 2; min-width: 13px; text-align: center; font-family: var(--font-head);
+  font-size: 0.7rem; font-weight: 900; color: rgba(37,54,72,0.78); background: rgba(255,255,255,0.72); border-radius: 6px; padding: 1px 3px; }
+.gfc-fish { position: relative; z-index: 1; width: 39px; height: 27px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.22)); }
+.gfc-fish .body { position: absolute; left: 9px; top: 4px; width: 25px; height: 18px; border-radius: 55% 45% 45% 55%; background: var(--fish); }
+.gfc-fish .tail { position: absolute; left: 1px; top: 6px; width: 16px; height: 16px; background: var(--fin); clip-path: polygon(100% 50%, 0 0, 18% 50%, 0 100%); }
+.gfc-fish .fin { position: absolute; left: 19px; top: 16px; width: 11px; height: 8px; background: var(--fin); clip-path: polygon(0 0, 100% 0, 42% 100%); opacity: 0.92; }
+.gfc-fish .eye { position: absolute; right: 7px; top: 9px; width: 4px; height: 4px; border-radius: 50%; background: #192536; box-shadow: 0 0 0 1px rgba(255,255,255,0.55); }
+.gfc.size-sm .gfc-fish { width: 25px; height: 18px; transform: scale(0.78); }
+.gfc.size-sm .gfc-rank { font-size: 0.55rem; top: 3px; left: 3px; }
+.gfc-name { font-size: 0.5rem; font-weight: 900; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.42); text-align: center;
+  z-index: 1; line-height: 1; padding: 0 4px; text-transform: uppercase; letter-spacing: 0; }
 .gfc.size-sm .gfc-name { display: none; }
 .gfc.clickable { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
 .gfc.clickable:hover { transform: translateY(-4px); }
 .gfc.selected { transform: translateY(-10px); box-shadow: 0 0 0 3px #f0b400, 0 8px 16px rgba(0,0,0,0.25); }
 .gfc.dim { opacity: 0.5; }
-.gfc-back { background: repeating-linear-gradient(45deg, #2b7fd4 0 8px, #2470bd 8px 16px); }
-.gfc-back .gfc-back-deco { font-size: 1.6rem; filter: grayscale(0.2) drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+.gfc-back { background:
+  radial-gradient(circle at 28% 24%, rgba(255,255,255,0.45) 0 3px, transparent 4px),
+  repeating-linear-gradient(135deg, #216fae 0 7px, #185b95 7px 14px); }
+.gfc-back .gfc-back-deco { font-family: var(--font-head); font-size: 0.65rem; line-height: 0.9; font-weight: 900; color: #fff; text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.35); }
 
 /* ===== Le Pouilleux : cartes monstres + table ===== */
 .mc { position: relative; width: 52px; height: 74px; border-radius: 10px; border: 2px solid #fff; overflow: hidden;
@@ -868,6 +880,58 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .gf-rank-row { display: flex; align-items: center; gap: 9px; font-size: 0.95rem; padding: 4px 10px; border-radius: 10px; }
 .gf-rank-row.win { background: #fff6da; font-weight: 800; }
 .gf-rank-row span { margin-left: auto; color: var(--ink-soft); font-size: 0.82rem; }
+
+/* ===== Devine-Moi ===== */
+.gm { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 12px; align-items: start; }
+.gm-top, .gm-panel, .gm-reveal, .gm-ranking { background: #fff; border-radius: 16px; box-shadow: var(--shadow-sm); }
+.gm-top { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; }
+.gm-top h3 { margin: 2px 0 0; font-size: 1.45rem; line-height: 1.1; overflow-wrap: anywhere; }
+.gm-top h3 span { color: var(--ink-soft); font-size: 0.9rem; }
+.gm-kicker { font-size: 0.75rem; font-weight: 900; color: #8a55bf; text-transform: uppercase; }
+.gm-scorechip { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 7px 10px; border-radius: 999px; background: #f4e7fb; color: #7c3db0; font-weight: 900; }
+.gm-panel { padding: 14px; display: flex; flex-direction: column; gap: 11px; }
+.gm-status { display: flex; align-items: center; justify-content: center; gap: 7px; font-family: var(--font-head); font-weight: 800; color: var(--ink); }
+.gm-choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gm-choice, .gm-mini-choices button { border: 2px solid #eadcf3; background: #fff; color: var(--ink); font-family: var(--font-head); font-weight: 800; cursor: pointer; }
+.gm-choice { min-height: 96px; border-radius: 14px; font-size: 1.05rem; padding: 10px; overflow-wrap: anywhere; }
+.gm-choice.on, .gm-mini-choices button.on { border-color: #8a55bf; background: #f4e7fb; color: #7235a5; box-shadow: 0 0 0 3px rgba(138,85,191,0.12); }
+.gm-choice:disabled { cursor: default; opacity: 0.78; }
+.gm-guess-list { display: flex; flex-direction: column; gap: 8px; }
+.gm-guess-row { display: grid; grid-template-columns: auto minmax(74px, 1fr) minmax(0, 260px); gap: 8px; align-items: center; padding: 8px; border-radius: 13px; background: #faf6fd; }
+.gm-guess-row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-mini-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; min-width: 0; }
+.gm-mini-choices button { min-height: 36px; border-radius: 10px; padding: 5px 7px; overflow-wrap: anywhere; }
+.gm-reveal { padding: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 9px; }
+.gm-reveal-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; border-radius: 13px; background: #faf6fd; text-align: center; min-width: 0; }
+.gm-reveal-card b, .gm-answer { max-width: 100%; overflow-wrap: anywhere; }
+.gm-answer { font-family: var(--font-head); font-weight: 900; color: #7c3db0; }
+.gm-gain { position: absolute; right: 7px; top: 7px; border-radius: 999px; background: #d7f0e2; color: #1f7a52; padding: 2px 7px; font-weight: 900; font-size: 0.75rem; }
+.gm-ranking { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.gm-rank { display: grid; grid-template-columns: 22px auto minmax(0, 1fr) auto; gap: 7px; align-items: center; padding: 6px; border-radius: 11px; background: #faf6fd; }
+.gm-rank b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-rank.win { background: #fff6da; }
+
+@media (max-width: 520px) {
+  .gf { gap: 9px; }
+  .gf-table { width: min(100%, 340px); aspect-ratio: 1; border-radius: 22px; margin-top: 0; }
+  .gf-seat { width: 72px; padding: 5px 3px; }
+  .gf-seat .avatar { width: 32px !important; height: 32px !important; }
+  .gf-seat-name { font-size: 0.66rem; }
+  .gf-seat-meta { font-size: 0.58rem; }
+  .gf-pool { transform: translate(-50%, -50%) scale(0.84); }
+  .gf-hand { width: 100%; max-height: 42vh; overflow-y: auto; padding: 6px 2px 72px; align-content: flex-start; }
+  .gfc { width: 48px; height: 68px; }
+  .gfc-name { font-size: 0.42rem; }
+  .gfc-fish { transform: scale(0.86); }
+  .pou-target-hand { max-height: 36vh; overflow-y: auto; padding-bottom: 8px; }
+  .gm { grid-template-columns: 1fr; }
+  .gm-top { align-items: flex-start; }
+  .gm-top h3 { font-size: 1.15rem; }
+  .gm-choice-row, .gm-mini-choices { grid-template-columns: 1fr; }
+  .gm-choice { min-height: 68px; }
+  .gm-guess-row { grid-template-columns: auto minmax(0, 1fr); }
+  .gm-mini-choices { grid-column: 1 / -1; }
+}
 
 /* ===== Loup Garou ===== */
 .lg { display: flex; flex-direction: column; gap: 12px; }

@@ -12,6 +12,7 @@ import * as ludo from './ludo.js';
 import * as echecs from './echecs.js';
 import * as gofish from './gofish.js';
 import * as pouilleux from './pouilleux.js';
+import * as guessme from './guessme.js';
 
 export const GAMES = {
   codenames: {
@@ -99,6 +100,13 @@ export const GAMES = {
     view: pouilleux.viewFor,
     action: applyPouilleuxAction,
     tick: pouilleux.tickPouilleux,
+  },
+  guessme: {
+    key: 'guessme', label: 'Devine-Moi', emoji: '🔮', minPlayers: 2, maxPlayers: 10, ready: true,
+    create: guessme.createGuessMe,
+    view: guessme.viewFor,
+    action: applyGuessMeAction,
+    tick: guessme.tickGuessMe,
   },
 };
 
@@ -237,6 +245,17 @@ function applyPouilleuxAction(state, userId, payload) {
     case 'join': return pouilleux.joinPouilleux(state, userId);
     case 'start': return pouilleux.startPouilleux(state, userId);
     case 'draw': return pouilleux.drawPouilleux(state, userId, payload.index);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyGuessMeAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return guessme.joinGuessMe(state, userId);
+    case 'start': return guessme.startGuessMe(state, userId);
+    case 'answer': return guessme.answerGuessMe(state, userId, payload.choice);
+    case 'guess': return guessme.guessGuessMe(state, userId, payload.guesses);
+    case 'next': return guessme.nextGuessMe(state, userId);
     default: throw new Error('Action inconnue.');
   }
 }

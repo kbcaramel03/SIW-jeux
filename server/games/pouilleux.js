@@ -71,7 +71,11 @@ export function startPouilleux(state, userId) {
   for (const id of state.seats) state.hands[id] = [];
   let i = 0;
   while (deck.length) { state.hands[state.seats[i % state.seats.length]].push(deck.pop()); i++; }
-  for (const id of state.seats) { state.hands[id] = shuffle(state.hands[id]); discardPairs(state, id); }
+  const keepFullHands = state.seats.length === 2;
+  for (const id of state.seats) {
+    state.hands[id] = shuffle(state.hands[id]);
+    if (!keepFullHands) discardPairs(state, id);
+  }
   state.safe = state.seats.filter((id) => state.hands[id].length === 0);
   state.turn = activePlayers(state)[0] || state.seats[0];
   state.turnSince = Date.now();

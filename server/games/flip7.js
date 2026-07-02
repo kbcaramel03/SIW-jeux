@@ -49,11 +49,13 @@ export function joinFlip7(state, userId) {
   if (!state.seats.includes(userId) && state.seats.length < 8) { state.seats.push(userId); state.scores[userId] = 0; }
 }
 
-function newLine() { return { numbers: [], mods: [], actions: [], second: false, busted: false, bustCard: null, stayed: false, frozen: false, flip7: false }; }
+function newLine() { return { numbers: [], mods: [], actions: [], drawn: [], second: false, busted: false, bustCard: null, stayed: false, frozen: false, flip7: false }; }
 
+// La pile est PERSISTANTE entre les manches : on ne remélange pas à chaque
+// manche, on continue de piocher dans le même paquet. Quand il est épuisé,
+// la défausse est remélangée automatiquement (dans drawCard).
 function beginRound(state) {
-  state.deck = shuffle(buildDeck());
-  state.discard = [];
+  if (state.deck.length === 0 && state.discard.length === 0) state.deck = shuffle(buildDeck());
   state.nextRoundAt = null;
   const lines = {};
   for (const id of state.seats) lines[id] = newLine();
@@ -109,6 +111,7 @@ function applyCard(state, owner, card) {
       }
     } else {
       line.numbers.push(card.value);
+      line.drawn.push(card); // carte gardée en ligne : ira à la défausse en fin de manche
       if (line.numbers.length === 7) {
         line.flip7 = true; state.round.flip7Ended = true;
         state.log.push('FLIP 7 ! +15 et fin de manche.');
@@ -116,11 +119,13 @@ function applyCard(state, owner, card) {
     }
   } else if (card.kind === 'mod') {
     line.mods.push(card);
+    line.drawn.push(card);
   } else if (card.kind === 'action') {
+    // Les cartes action sont consommées : elles partent tout de suite à la défausse
+    // (l'effet est mémorisé dans la ligne / la file pending).
+    state.discard.push(card);
     if (card.action === 'second') {
-      // La Second Chance ne va qu'à soi-même ; un second exemplaire est défaussé.
-      if (!line.second) line.second = true;
-      else state.discard.push(card);
+      if (!line.second) line.second = true; // un second exemplaire est simplement défaussé
     } else if (card.action === 'freeze') {
       state.round.pending.push({ type: 'freeze', by: owner });
     } else if (card.action === 'flip3') {
@@ -214,9 +219,11 @@ function scoreLine(line) {
 function endRound(state) {
   const results = {};
   for (const id of state.seats) {
-    const pts = scoreLine(state.round.lines[id]);
+    const line = state.round.lines[id];
+    const pts = scoreLine(line);
     results[id] = pts;
     state.scores[id] += pts;
+    state.discard.push(...line.drawn);
   }
   state.round.results = results;
   state.starter = (state.starter + 1) % state.seats.length;
