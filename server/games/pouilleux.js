@@ -1,9 +1,10 @@
 // Moteur de Zombie (« Old Maid » / « Zombie » sur Plato), logique pure.
-// 2 à 6 joueuses. Le paquet = 13 paires de créatures + 1 carte Zombie unique
-// (la carte Zombie). On distribue tout, chacune jette ses paires. À son tour,
-// on pioche une carte (face cachée) dans la main de la voisine de gauche ; si
-// elle complète une paire, on la jette. Une main vide = sauvée. À la fin, la
-// seule qui reste tient le Zombie : elle perd.
+// 2 à 6 joueuses. Paquet ENTIER : chaque créature en 4 exemplaires
+// (13 × 4 = 52 cartes, comme un vrai jeu) + 1 carte Zombie unique.
+// On distribue tout, chacune jette ses paires (2 par 2). À son tour, on pioche
+// une carte (face cachée) dans la main de la voisine de gauche ; chaque paire
+// formée est écartée. Une main vide = sauvée. À la fin, la seule qui reste
+// tient le Zombie : elle perd.
 
 const MONSTERS = ['fantome', 'citrouille', 'chauvesouris', 'araignee', 'serpent', 'scorpion', 'rat', 'hibou', 'crapaud', 'raton', 'loup', 'crane', 'toile'];
 const OFFLINE_SKIP_MS = 10000;
@@ -16,7 +17,7 @@ function shuffle(a) {
 }
 function buildDeck() {
   const deck = []; let id = 0;
-  for (const m of MONSTERS) { deck.push({ id: id++, kind: m }); deck.push({ id: id++, kind: m }); }
+  for (const m of MONSTERS) for (let k = 0; k < 4; k++) deck.push({ id: id++, kind: m });
   deck.push({ id: id++, kind: 'zombie' }); // la carte Zombie, sans paire
   return deck;
 }
@@ -47,16 +48,19 @@ export function joinPouilleux(state, userId) {
 function event(state, kind, data) { state.actionSeq += 1; state.lastAction = { seq: state.actionSeq, kind, ...data }; }
 function pushLog(state, text) { state.log.push(text); if (state.log.length > 40) state.log = state.log.slice(-40); }
 
-// Jette toutes les paires présentes dans une main (deux cartes d'une créature).
+// Jette les paires présentes dans une main, 2 par 2 : avec 4 exemplaires par
+// créature, 3 cartes identiques = 1 paire jetée + 1 carte gardée.
 function discardPairs(state, id) {
   const byKind = {};
   for (const c of state.hands[id]) (byKind[c.kind] ||= []).push(c);
   for (const kind of Object.keys(byKind)) {
-    if (kind !== 'zombie' && byKind[kind].length === 2) {
-      state.hands[id] = state.hands[id].filter((c) => c.kind !== kind);
-      event(state, 'pair', { by: id, monster: kind });
-      pushLog(state, `${nm(state, id)} jette une paire de ${kind}.`);
-    }
+    if (kind === 'zombie') continue;
+    const pairs = Math.floor(byKind[kind].length / 2);
+    if (pairs === 0) continue;
+    const toRemove = new Set(byKind[kind].slice(0, pairs * 2).map((c) => c.id));
+    state.hands[id] = state.hands[id].filter((c) => !toRemove.has(c.id));
+    event(state, 'pair', { by: id, monster: kind });
+    pushLog(state, `${nm(state, id)} jette ${pairs > 1 ? `${pairs} paires` : 'une paire'} de ${kind}.`);
   }
 }
 
@@ -71,10 +75,9 @@ export function startPouilleux(state, userId) {
   for (const id of state.seats) state.hands[id] = [];
   let i = 0;
   while (deck.length) { state.hands[state.seats[i % state.seats.length]].push(deck.pop()); i++; }
-  const keepFullHands = state.seats.length === 2;
   for (const id of state.seats) {
     state.hands[id] = shuffle(state.hands[id]);
-    if (!keepFullHands) discardPairs(state, id);
+    discardPairs(state, id);
   }
   state.safe = state.seats.filter((id) => state.hands[id].length === 0);
   state.turn = activePlayers(state)[0] || state.seats[0];

@@ -139,6 +139,20 @@ function movablePawns(state, userId, die) {
   return [0, 1, 2, 3].filter((i) => canMove(state, userId, i, die));
 }
 
+// Une destination précise est-elle posable pour ce pion ? (mêmes règles que
+// canMove : pas sur soi-même, pions adverses protégés intouchables)
+function canLandOn(state, userId, pawnIdx, np) {
+  const color = state.colors[userId];
+  if (np > GOAL) return false;
+  if (np <= TRACK_MAX) {
+    const cell = absCell(color, np);
+    const occ = occupantAt(state, cell);
+    return !occ || (occ.id !== userId && !isProtected(cell, occ.color));
+  }
+  if (np < GOAL && state.pawns[userId].some((q, j) => j !== pawnIdx && q === np)) return false;
+  return true;
+}
+
 export function rollLudo(state, userId) {
   if (state.phase !== 'playing') throw new Error('La partie est finie.');
   if (state.turn !== userId) throw new Error('Ce n\'est pas ton tour.');
@@ -188,6 +202,8 @@ export function moveLudo(state, userId, pawnIdx) {
   }
 
   // Capture : un pion adverse non protégé sur la case d'arrivée du coup.
+  // Bonus façon Plato : manger un pion fait avancer de 10 cases supplémentaires
+  // (si la case d'arrivée du bonus est libre et sans dépasser le centre).
   if (np <= TRACK_MAX) {
     const cell = absCell(color, np);
     const occ = occupantAt(state, cell);
@@ -196,6 +212,21 @@ export function moveLudo(state, userId, pawnIdx) {
       bonus = true;
       event(state, 'capture', userId);
       pushLog(state, `${nm(state, userId)} mange un pion de ${nm(state, occ.id)} ! Oups…`);
+      const jump = np + 10;
+      if (jump <= GOAL && canLandOn(state, userId, idx, jump)) {
+        np = jump;
+        // Le bonus peut lui aussi manger un pion (sans redéclencher de +10).
+        if (np <= TRACK_MAX) {
+          const c2 = absCell(color, np);
+          const occ2 = occupantAt(state, c2);
+          if (occ2 && occ2.id !== userId) {
+            state.pawns[occ2.id][occ2.idx] = -1;
+            event(state, 'capture', userId);
+            pushLog(state, `${nm(state, userId)} en mange un deuxième sur sa lancée !`);
+          }
+        }
+        pushLog(state, `${nm(state, userId)} bondit de 10 cases !`);
+      }
     }
   }
   pawns[idx] = np;

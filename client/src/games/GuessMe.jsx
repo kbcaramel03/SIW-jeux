@@ -58,7 +58,7 @@ export default function GuessMe({ room, isHost, onAction, onNewGame }) {
       <div className="gm-top">
         <div>
           <span className="gm-kicker">Manche {Math.min(g.round, g.totalRounds)} / {g.totalRounds}</span>
-          <h3>{q.a} <span>ou</span> {q.b}</h3>
+          <h3>{q.q || <>{q.a} <span>ou</span> {q.b}</>}</h3>
         </div>
         <div className="gm-scorechip"><Trophy size={16} /> {myPlayer?.score || 0} pts</div>
       </div>

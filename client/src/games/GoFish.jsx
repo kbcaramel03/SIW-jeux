@@ -71,7 +71,7 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
 
   const n = g.players.length;
   const myBooks = g.players.find((p) => p.id === me)?.books || [];
-  const asked = g.lastAction && ['got', 'fish'].includes(g.lastAction.kind) ? g.lastAction : null;
+  const asked = g.lastAsk || null;
 
   return (
     <div className="gf fade-up">
@@ -79,7 +79,7 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
       {asked && (
         <div className="gf-asked">
           <MessageCircleQuestion size={16} />
-          <span><b>{asked.by === me ? 'Tu' : nameById[asked.by]}</b> a demande <b>{SPECIES[asked.rank]?.name}</b> a <b>{asked.target === me ? 'toi' : nameById[asked.target]}</b></span>
+          <span><b>{asked.by === me ? 'Tu as' : `${nameById[asked.by]} a`}</b> demandé des <b>{SPECIES[asked.rank]?.name}</b> à <b>{asked.target === me ? 'toi' : nameById[asked.target]}</b></span>
           <GoFishCard rank={asked.rank} size="sm" />
         </div>
       )}
@@ -97,7 +97,7 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
               style={{ left: `${x}%`, top: `${y}%` }} disabled={!askable} onClick={() => ask(p.id)}>
               <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={42} />
               <span className="gf-seat-name">{nameById[p.id] || '?'}{isMe ? ' (toi)' : ''}</span>
-              <span className="gf-seat-meta">{p.count} 🂠{p.books.length > 0 && <b> · {p.books.length} 👑</b>}</span>
+              <span className="gf-seat-meta">{p.count} carte{p.count > 1 ? 's' : ''}{p.books.length > 0 && <b> · {p.books.length} 👑</b>}</span>
             </button>
           );
         })}
@@ -114,7 +114,7 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
       {myBooks.length > 0 && (
         <div className="gf-mybooks">
           <span className="gf-mybooks-label"><Trophy size={14} /> Tes familles :</span>
-          {myBooks.map((r) => <span key={r} className="gf-book-chip">{SPECIES[r]?.emoji} {SPECIES[r]?.name}</span>)}
+          {myBooks.map((r) => <span key={r} className="gf-book-chip"><img src={SPECIES[r]?.img} alt="" style={{ width: 15, verticalAlign: '-3px' }} /> {SPECIES[r]?.name}</span>)}
         </div>
       )}
 

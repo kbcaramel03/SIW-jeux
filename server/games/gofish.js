@@ -35,6 +35,7 @@ export function createGoFish() {
     turn: null,
     turnSince: null,
     lastAction: null, // { seq, kind:'got'|'fish'|'book', by, target, rank, count }
+    lastAsk: null,    // { seq, by, target, rank } : la demande, visible par toutes
     actionSeq: 0,
     names: {},
     winner: null,     // id ou 'tie'
@@ -147,6 +148,10 @@ export function askGoFish(state, userId, targetId, rank) {
   const hand = state.hands[userId];
   if (!hand.some((c) => c.rank === rank)) throw new Error('Tu dois posséder une carte de ce rang pour le demander.');
 
+  // La demande est publique : tout le monde voit qui demande quoi à qui.
+  state.actionSeq += 1;
+  state.lastAsk = { seq: state.actionSeq, by: userId, target: targetId, rank };
+
   const targetHand = state.hands[targetId];
   const matches = targetHand.filter((c) => c.rank === rank);
   if (matches.length > 0) {
@@ -211,6 +216,7 @@ export function viewFor(state, userId) {
     turn: state.turn,
     isMyTurn: state.phase === 'playing' && state.turn === userId,
     lastAction: state.lastAction,
+    lastAsk: state.lastAsk,
     winner: state.winner,
     log: state.log.slice(-10),
   };

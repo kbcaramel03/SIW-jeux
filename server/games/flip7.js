@@ -223,7 +223,7 @@ function endRound(state) {
     const pts = scoreLine(line);
     results[id] = pts;
     state.scores[id] += pts;
-    state.discard.push(...line.drawn);
+    state.discard.push(...line.drawn, ...line.mods);
   }
   state.round.results = results;
   state.starter = (state.starter + 1) % state.seats.length;

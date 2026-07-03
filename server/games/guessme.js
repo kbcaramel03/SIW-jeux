@@ -8,68 +8,10 @@ const GUESS_MS = 30000;
 const REVEAL_MS = 9000;  // pause de révélation avant la manche suivante
 const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 
-// Grosse banque de questions « A ou B ? » (le max possible).
-const QUESTIONS = [
-  // Nourriture & boissons
-  ['Coca', 'Pepsi'], ['Sucré', 'Salé'], ['Pizza', 'Burger'], ['Thé', 'Café'],
-  ['Chocolat noir', 'Chocolat au lait'], ['Frites', 'Purée'], ['Ketchup', 'Mayo'],
-  ['Crêpe', 'Gaufre'], ['Pain au chocolat', 'Croissant'], ['Tacos', 'Kebab'],
-  ['Sushi', 'Pâtes'], ['Eau plate', 'Eau gazeuse'], ['Tisane', 'Jus de fruit'],
-  ['Glace', 'Gâteau'], ['Fromage', 'Dessert'], ['Épicé', 'Doux'], ['Fraise', 'Framboise'],
-  ['Pomme', 'Banane'], ['Cornet', 'Pot de glace'], ['Bonbon', 'Chips'],
-  ['Petit-déj sucré', 'Petit-déj salé'], ['Cuisson à point', 'Bien cuit'],
-  // Voyage & lieux
-  ['Plage', 'Montagne'], ['Ville', 'Campagne'], ['Mer', 'Piscine'], ['Été', 'Hiver'],
-  ['Avion', 'Train'], ['Road trip', 'Tout compris'], ['Nord', 'Sud'], ['Désert', 'Forêt'],
-  ['Camping', 'Hôtel'], ['Voyage organisé', 'À l\'aventure'], ['Lever de soleil', 'Coucher de soleil'],
-  ['Île déserte', 'Grande ville'], ['Randonnée', 'Farniente'], ['Visite culturelle', 'Détente'],
-  // Mode de vie
-  ['Matinale', 'Couche-tard'], ['Ordre', 'Désordre'], ['Douche', 'Bain'],
-  ['Sport', 'Canapé'], ['Lecture', 'Série'], ['Musique forte', 'Silence'],
-  ['Économe', 'Dépensière'], ['Planifier', 'Improviser'], ['Solo', 'En groupe'],
-  ['Appeler', 'Texter'], ['Photo', 'Vidéo'], ['Chien', 'Chat'],
-  ['Maison rangée', 'Maison vivante'], ['Réveil tôt le week-end', 'Grasse matinée'],
-  ['Travailler en musique', 'Travailler au calme'], ['Liste de tâches', 'De tête'],
-  // Écrans & loisirs
-  ['Netflix', 'YouTube'], ['Film', 'Série'], ['Cinéma', 'Maison'], ['Comédie', 'Action'],
-  ['Horreur', 'Romance'], ['Manga', 'BD'], ['Jeu vidéo', 'Jeu de société'],
-  ['TikTok', 'Instagram'], ['Podcast', 'Radio'], ['Livre papier', 'Livre numérique'],
-  ['Documentaire', 'Téléréalité'], ['Concert', 'Festival'], ['Karaoké', 'Soirée dansante'],
-  // Personnalité
-  ['Timide', 'Extravertie'], ['Logique', 'Émotive'], ['Optimiste', 'Réaliste'],
-  ['Tête en l\'air', 'Organisée'], ['Suiveuse', 'Meneuse'], ['Prudente', 'Casse-cou'],
-  ['Bavarde', 'Discrète'], ['Patiente', 'Impatiente'], ['Sensible', 'Cool'],
-  ['Compétitive', 'Tranquille'], ['Spontanée', 'Réfléchie'], ['Romantique', 'Pragmatique'],
-  // Petits dilemmes
-  ['Pouvoir voler', 'Être invisible'], ['Lire les pensées', 'Voir le futur'],
-  ['Trop chaud', 'Trop froid'], ['Plus de temps', 'Plus d\'argent'],
-  ['Célèbre', 'Riche'], ['Passé', 'Futur'], ['Super-force', 'Super-vitesse'],
-  ['Toujours en retard', 'Toujours en avance'], ['Perdre la voix', 'Perdre le goût'],
-  ['Vivre à la mer', 'Vivre à la montagne'], ['Ne plus jamais voyager', 'Ne plus jamais manger ton plat préféré'],
-  ['Gagner au loto', 'Trouver l\'amour'], ['Sans téléphone une semaine', 'Sans dessert un mois'],
-  ['Pieds nus', 'En chaussettes'], ['Connaître toutes les langues', 'Jouer de tous les instruments'],
-  // Beauté & style
-  ['Cheveux lâchés', 'Cheveux attachés'], ['Maquillée', 'Au naturel'],
-  ['Talons', 'Baskets'], ['Robe', 'Pantalon'], ['Couleurs vives', 'Tons neutres'],
-  ['Bijoux', 'Sobre'], ['Parfum sucré', 'Parfum frais'], ['Vernis', 'Ongles nus'],
-  ['Lunettes', 'Lentilles'], ['Chic', 'Décontractée'],
-  // Émotions & soirées
-  ['Soirée tranquille', 'Soirée folle'], ['Rester', 'Partir tôt'],
-  ['Danser', 'Discuter'], ['Surprise', 'Prévenue'], ['Cadeau utile', 'Cadeau fun'],
-  ['Fêter en petit comité', 'Grande fête'], ['Rire', 'Pleurer devant un film'],
-  // Études & travail
-  ['Réviser tôt', 'Réviser à la dernière minute'], ['Travailler seule', 'En équipe'],
-  ['Maths', 'Français'], ['Théorie', 'Pratique'], ['Présentiel', 'À distance'],
-  ['Bureau rangé', 'Bureau créatif'], ['Email', 'Appel'], ['Note manuscrite', 'Note sur téléphone'],
-  // Saisons & ambiance
-  ['Printemps', 'Automne'], ['Pluie', 'Canicule'], ['Bougie', 'Guirlande'],
-  ['Cosy', 'Minimaliste'], ['Plaid', 'Climatisation'], ['Feu de cheminée', 'Ventilateur'],
-  // Divers fun
-  ['Salé au ciné', 'Sucré au ciné'], ['Emoji', 'Mots'], ['Vouvoyer', 'Tutoyer'],
-  ['Marcher', 'Vélo'], ['Sieste', 'Café'], ['Montre', 'Téléphone pour l\'heure'],
-  ['Papier cadeau', 'Sac cadeau'], ['Sapin naturel', 'Sapin artificiel'],
-  ['Mer chaude', 'Mer fraîche'], ['Citadine', 'Aventurière'], ['Étoiles', 'Vagues'],
-];
+// Banque de questions au format [question, choix A, choix B] — chaque question
+// est une vraie phrase (style GuessMe) : on répond pour soi, puis on devine
+// la réponse des autres. Import depuis un fichier dédié (très grosse banque).
+import { QUESTIONS } from './guessmeQuestions.js';
 
 function shuffle(a) {
   a = [...a];
@@ -105,7 +47,8 @@ export function joinGuessMe(state, userId) {
 
 function beginRound(state) {
   const qi = state.order[state.round];
-  state.question = { a: QUESTIONS[qi][0], b: QUESTIONS[qi][1] };
+  const [q, a, b] = QUESTIONS[qi];
+  state.question = { q, a, b };
   state.answers = {};
   state.guesses = {};
   state.roundGain = {};

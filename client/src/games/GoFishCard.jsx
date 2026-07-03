@@ -1,34 +1,53 @@
-// Illustrated fish cards for Go Fish. The ranks stay standard internally, but
-// the table shows a readable sea-creature skin with CSS-drawn fish.
+// Cartes « poissons » illustrées pour Go Fish. Illustrations : Fluent Emoji
+// (Microsoft, licence MIT) — vectorielles, identiques sur tous les appareils.
+// Chaque carte : dégradé propre à l'espèce + motif d'écailles + vague en pied.
+import clownfish from '../assets/sea/clownfish.svg';
+import fish from '../assets/sea/fish.svg';
+import blowfish from '../assets/sea/blowfish.svg';
+import shark from '../assets/sea/shark.svg';
+import octopus from '../assets/sea/octopus.svg';
+import crab from '../assets/sea/crab.svg';
+import lobster from '../assets/sea/lobster.svg';
+import squid from '../assets/sea/squid.svg';
+import dolphin from '../assets/sea/dolphin.svg';
+import whale from '../assets/sea/whale.svg';
+import seal from '../assets/sea/seal.svg';
+import turtle from '../assets/sea/turtle.svg';
+import jellyfish from '../assets/sea/jellyfish.svg';
+import shell from '../assets/sea/shell.svg';
+
 export const SPECIES = {
-  A: { emoji: 'A', name: 'Clown', c1: '#ffd69b', c2: '#ff7b4a', fish: '#ff6a3d', fin: '#ffd15a' },
-  2: { emoji: '2', name: 'Sardine', c1: '#b9edf5', c2: '#45b7cf', fish: '#5cc6dd', fin: '#d8f6ff' },
-  3: { emoji: '3', name: 'Globe', c1: '#ffe889', c2: '#f4b43a', fish: '#f7cc4f', fin: '#ff7e6b' },
-  4: { emoji: '4', name: 'Requin', c1: '#c9d9e2', c2: '#6c879a', fish: '#7f9bad', fin: '#d8e7ee' },
-  5: { emoji: '5', name: 'Pieuvre', c1: '#ffc1da', c2: '#ce5b91', fish: '#d95691', fin: '#ffd2e5' },
-  6: { emoji: '6', name: 'Crabe', c1: '#ffbaa7', c2: '#e4583f', fish: '#f05a44', fin: '#ffc66d' },
-  7: { emoji: '7', name: 'Homard', c1: '#ffa79b', c2: '#d43d33', fish: '#dd3f34', fin: '#ffbf79' },
-  8: { emoji: '8', name: 'Calmar', c1: '#e1c0ff', c2: '#9b62cb', fish: '#9f63ce', fin: '#f1dcff' },
-  9: { emoji: '9', name: 'Dauphin', c1: '#b6edf7', c2: '#46a8d8', fish: '#4caedd', fin: '#d9f6ff' },
-  10: { emoji: '10', name: 'Baleine', c1: '#bad5fb', c2: '#557fc8', fish: '#537ec8', fin: '#e2edff' },
-  J: { emoji: 'J', name: 'Phoque', c1: '#e4d6c7', c2: '#917d69', fish: '#9b8774', fin: '#f5eadf' },
-  Q: { emoji: 'Q', name: 'Tortue', c1: '#c4efbd', c2: '#55aa61', fish: '#58ad63', fin: '#f2df86' },
-  K: { emoji: 'K', name: 'Meduse', c1: '#edceff', c2: '#ac72e3', fish: '#af75e7', fin: '#fde8ff' },
+  A: { img: clownfish, name: 'Poisson-clown', c1: '#ffd9a8', c2: '#f28c3c' },
+  2: { img: fish, name: 'Sardine', c1: '#c3ecfa', c2: '#4aa8d8' },
+  3: { img: blowfish, name: 'Poisson-globe', c1: '#ffedb3', c2: '#eda92f' },
+  4: { img: shark, name: 'Requin', c1: '#d3e1ee', c2: '#6c8aa8' },
+  5: { img: octopus, name: 'Pieuvre', c1: '#ffd3e8', c2: '#d8659c' },
+  6: { img: crab, name: 'Crabe', c1: '#ffd0c2', c2: '#e2583c' },
+  7: { img: lobster, name: 'Homard', c1: '#ffc9be', c2: '#c93b2c' },
+  8: { img: squid, name: 'Calamar', c1: '#e9d4fb', c2: '#9c60cf' },
+  9: { img: dolphin, name: 'Dauphin', c1: '#c8ecf7', c2: '#3f9fd0' },
+  10: { img: whale, name: 'Baleine', c1: '#cfe0f8', c2: '#4a7fc4' },
+  J: { img: seal, name: 'Phoque', c1: '#e8ddd0', c2: '#8f7c66' },
+  Q: { img: turtle, name: 'Tortue', c1: '#d2f0d5', c2: '#4fa85e' },
+  K: { img: jellyfish, name: 'Méduse', c1: '#eddcff', c2: '#a86fe0' },
 };
 
 export default function GoFishCard({ rank, faceDown, size = 'md', selected, dim, onClick }) {
   if (faceDown || !rank) {
-    return <div className={`gfc gfc-back size-${size}`}><span className="gfc-back-deco">GO<br />FISH</span></div>;
+    return (
+      <div className={`gfc gfc-back size-${size}${onClick ? ' clickable' : ''}`} onClick={onClick}>
+        <img src={shell} alt="" className="gfc-back-img" draggable={false} />
+      </div>
+    );
   }
   const s = SPECIES[rank] || SPECIES.A;
   const cls = `gfc size-${size}${selected ? ' selected' : ''}${dim ? ' dim' : ''}${onClick ? ' clickable' : ''}`;
   return (
-    <div className={cls} style={{ '--c1': s.c1, '--c2': s.c2, '--fish': s.fish, '--fin': s.fin }} onClick={onClick} title={s.name}>
-      <span className="gfc-rank">{s.emoji}</span>
-      <span className="gfc-fish" aria-hidden="true">
-        <i className="body" /><i className="tail" /><i className="fin" /><i className="eye" />
-      </span>
+    <div className={cls} style={{ '--c1': s.c1, '--c2': s.c2 }} onClick={onClick} title={s.name}>
+      <span className="gfc-scales" aria-hidden />
+      <img src={s.img} alt={s.name} className="gfc-img" draggable={false} />
       <span className="gfc-name">{s.name}</span>
+      <span className="gfc-wave" aria-hidden />
     </div>
   );
 }
