@@ -7,6 +7,11 @@ import theme from './theme.js';
 import App from './App.jsx';
 import './styles.css';
 
+// App installable : enregistre le service worker (en production seulement).
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>

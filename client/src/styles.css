@@ -1347,3 +1347,21 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 .ludo-token.movable::before { content: ""; position: absolute; inset: -11px; }
 .ludo-dice.can-roll::after { content: ""; position: absolute; inset: -8px; }
 .ludo-dice { position: relative; }
+
+/* ===== Billard ===== */
+.pool { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.pool-players { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.pool-chip { display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 999px;
+  background: #fff; border: 2px solid transparent; box-shadow: var(--shadow-sm); font-size: 0.85rem; font-weight: 700; }
+.pool-chip b { color: #20714a; font-size: 0.76rem; }
+.pool-chip.active { border-color: #2e8f5b; box-shadow: 0 0 0 3px rgba(46,143,91,0.2), var(--shadow-sm); }
+.pool-table-wrap { width: min(96vw, 760px); }
+.pool-canvas { width: 100%; height: auto; display: block; border-radius: 22px; box-shadow: 0 14px 34px rgba(20,60,40,0.35);
+  touch-action: manipulation; }
+.pool-canvas.aiming { cursor: crosshair; }
+.pool-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; width: 100%; }
+.pool-power-label { font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); }
+@media (max-width: 480px) {
+  .pool-chip { font-size: 0.74rem; }
+  .pool-controls { gap: 8px; }
+}

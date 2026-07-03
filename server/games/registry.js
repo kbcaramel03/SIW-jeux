@@ -13,6 +13,7 @@ import * as echecs from './echecs.js';
 import * as gofish from './gofish.js';
 import * as pouilleux from './pouilleux.js';
 import * as guessme from './guessme.js';
+import * as pool from './pool.js';
 
 export const GAMES = {
   codenames: {
@@ -107,6 +108,13 @@ export const GAMES = {
     view: guessme.viewFor,
     action: applyGuessMeAction,
     tick: guessme.tickGuessMe,
+  },
+  pool: {
+    key: 'pool', label: 'Billard', emoji: '🎱', minPlayers: 2, maxPlayers: 2, ready: true,
+    create: pool.createPool,
+    view: pool.viewFor,
+    action: applyPoolAction,
+    tick: pool.tickPool,
   },
 };
 
@@ -245,6 +253,15 @@ function applyPouilleuxAction(state, userId, payload) {
     case 'join': return pouilleux.joinPouilleux(state, userId);
     case 'start': return pouilleux.startPouilleux(state, userId);
     case 'draw': return pouilleux.drawPouilleux(state, userId, payload.index);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyPoolAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return pool.joinPool(state, userId);
+    case 'start': return pool.startPool(state, userId);
+    case 'shoot': return pool.shootPool(state, userId, payload);
     default: throw new Error('Action inconnue.');
   }
 }
