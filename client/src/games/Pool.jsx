@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Slider } from '@mui/material';
+import { Button } from '@mui/material';
 import { Play, Sparkles, Target } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti, popSound, boomSound } from '../effects.js';
@@ -63,43 +63,61 @@ const BALL_COLORS = { 1: '#f2c11f', 2: '#2b5fd4', 3: '#e0392e', 4: '#7a3fbf', 5:
 const colorOf = (id) => (id === 0 ? '#f6f2ea' : id === 8 ? BALL_COLORS[8] : BALL_COLORS[((id - 1) % 8) + 1] || BALL_COLORS[id - 8]);
 const isStripe = (id) => id >= 9 && id <= 15;
 
-const CW = 880, CH = 440, PAD = 26; // canvas interne + cadre bois
-const sx = (x) => PAD + (x / TABLE.W) * (CW - 2 * PAD);
-const sy = (y) => PAD + (y / TABLE.H) * (CH - 2 * PAD);
-const sr = (r) => (r / TABLE.W) * (CW - 2 * PAD);
+// Espace « logique » : table horizontale 880×440 + cadre. En mode vertical
+// (téléphone), le canvas est pivoté de 90° au dessin, les nombres restent droits.
+const CW = 880, CH = 440, PAD = 26;
+const lx = (x) => PAD + (x / TABLE.W) * (CW - 2 * PAD);
+const ly = (y) => PAD + (y / TABLE.H) * (CH - 2 * PAD);
+const lr = (r) => (r / TABLE.W) * (CW - 2 * PAD);
 
-function drawTable(ctx, balls, aim, cue) {
-  ctx.clearRect(0, 0, CW, CH);
-  // cadre bois
+function drawScene(ctx, balls, aim, vertical) {
+  const w = vertical ? CH : CW, h = vertical ? CW : CH;
+  ctx.clearRect(0, 0, w, h);
+  ctx.save();
+  if (vertical) { ctx.translate(CH, 0); ctx.rotate(Math.PI / 2); }
+
+  // cadre bois + tapis
   ctx.fillStyle = '#6d4326';
   roundRect(ctx, 0, 0, CW, CH, 22); ctx.fill();
-  // tapis
   const felt = ctx.createRadialGradient(CW / 2, CH / 2, 60, CW / 2, CH / 2, CW / 1.6);
   felt.addColorStop(0, '#2e8f5b'); felt.addColorStop(1, '#20714a');
   ctx.fillStyle = felt;
   roundRect(ctx, PAD - 8, PAD - 8, CW - 2 * (PAD - 8), CH - 2 * (PAD - 8), 12); ctx.fill();
-  // poches
   for (const [px, py] of POCKETS) {
-    ctx.beginPath(); ctx.arc(sx(px), sy(py), sr(TABLE.POCKET_R) * 0.92, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(lx(px), ly(py), lr(TABLE.POCKET_R) * 0.92, 0, Math.PI * 2);
     ctx.fillStyle = '#101216'; ctx.fill();
   }
-  // ligne de visée
-  if (aim && cue && !cue.pocketed) {
+
+  const cue = balls.find((b) => b.id === 0);
+
+  // Visée « lance-pierre » : ligne de tir + queue en arrière + jauge.
+  if (aim && cue && !cue.pocketed && aim.power > 0.02) {
     const len = Math.sqrt(aim.dx * aim.dx + aim.dy * aim.dy) || 1;
     const ux = aim.dx / len, uy = aim.dy / len;
+    // ligne de tir (longueur selon puissance)
     ctx.setLineDash([7, 7]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(sx(cue.x), sy(cue.y));
-    ctx.lineTo(sx(cue.x + ux * 0.8), sy(cue.y + uy * 0.8));
+    ctx.moveTo(lx(cue.x), ly(cue.y));
+    ctx.lineTo(lx(cue.x + ux * (0.22 + aim.power * 0.75)), ly(cue.y + uy * (0.22 + aim.power * 0.75)));
     ctx.stroke();
     ctx.setLineDash([]);
+    // queue de billard tirée en arrière
+    const back = 0.06 + aim.power * 0.16;
+    ctx.strokeStyle = '#caa06a';
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lx(cue.x - ux * (0.045 + back * 0.2)), ly(cue.y - uy * (0.045 + back * 0.2)));
+    ctx.lineTo(lx(cue.x - ux * (0.045 + back)), ly(cue.y - uy * (0.045 + back)));
+    ctx.stroke();
   }
+
   // billes
   for (const b of balls) {
     if (b.pocketed) continue;
-    const X = sx(b.x), Y = sy(b.y), Rp = sr(TABLE.R);
+    const X = lx(b.x), Y = ly(b.y), Rp = lr(TABLE.R);
     const grad = ctx.createRadialGradient(X - Rp * 0.4, Y - Rp * 0.45, Rp * 0.2, X, Y, Rp);
     grad.addColorStop(0, '#ffffff');
     grad.addColorStop(0.25, isStripe(b.id) ? '#f6f2ea' : colorOf(b.id));
@@ -113,16 +131,21 @@ function drawTable(ctx, balls, aim, cue) {
       ctx.restore();
     }
     if (b.id > 0) {
-      ctx.beginPath(); ctx.arc(X, Y, Rp * 0.44, 0, Math.PI * 2);
+      ctx.save();
+      ctx.translate(X, Y);
+      if (vertical) ctx.rotate(-Math.PI / 2); // les numéros restent lisibles
+      ctx.beginPath(); ctx.arc(0, 0, Rp * 0.44, 0, Math.PI * 2);
       ctx.fillStyle = '#fff'; ctx.fill();
       ctx.fillStyle = '#222';
       ctx.font = `bold ${Math.round(Rp * 0.62)}px sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(b.id), X, Y + 0.5);
+      ctx.fillText(String(b.id), 0, 0.5);
+      ctx.restore();
     }
     ctx.beginPath(); ctx.arc(X - Rp * 0.35, Y - Rp * 0.4, Rp * 0.18, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill();
   }
+  ctx.restore();
 }
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -144,30 +167,34 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
 
   const canvasRef = useRef(null);
-  const prevBallsRef = useRef(null);   // positions avant le dernier tir (pour animer)
-  const animRef = useRef(null);        // rAF en cours
-  const [aim, setAim] = useState(null);
-  const [power, setPower] = useState(0.6);
+  const prevBallsRef = useRef(null);
+  const animRef = useRef(null);
+  const dragRef = useRef(null); // { x, y } point de départ du glisser (coords table)
+  const [aim, setAim] = useState(null); // { dx, dy, power }
   const [animating, setAnimating] = useState(false);
+  const [vertical, setVertical] = useState(typeof window !== 'undefined' && window.innerWidth < 700);
   const lastShotSeq = useRef(g.lastShot?.seq || 0);
   const pottedCount = useRef(g.balls?.filter((b) => b.pocketed).length || 0);
 
   useEffect(() => { if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' }); }, [g.phase, g.amSeated]);
   useEffect(() => { if (g.phase === 'over' && g.winner === me) { winConfetti(); boomSound(true); } }, [g.phase]);
+  // Table verticale sur écran étroit (téléphone), horizontale sinon.
+  useEffect(() => {
+    const onResize = () => setVertical(window.innerWidth < 700);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
-  // Rendu (statique ou pendant l'animation)
   const render = (balls, aimLine) => {
     const ctx = canvasRef.current?.getContext('2d');
-    if (!ctx) return;
-    const cue = balls.find((b) => b.id === 0);
-    drawTable(ctx, balls, aimLine, cue);
+    if (ctx) drawScene(ctx, balls, aimLine, vertical);
   };
 
-  // Nouveau tir reçu : on rejoue la simulation localement pour l'animation.
+  // Nouveau tir : rejoue la simulation localement pour l'animation.
   useEffect(() => {
     const shot = g.lastShot;
     if (!shot || shot.seq === lastShotSeq.current) {
-      if (!animating) render(g.balls, aimFor());
+      if (!animating) render(g.balls, aim);
       prevBallsRef.current = g.balls.map((b) => ({ ...b, vx: 0, vy: 0 }));
       return;
     }
@@ -176,7 +203,6 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     prevBallsRef.current = g.balls.map((b) => ({ ...b, vx: 0, vy: 0 }));
     if (!start) { render(g.balls, null); return; }
 
-    // vitesse initiale identique au serveur
     const balls = start.map((b) => ({ ...b }));
     const cue = balls.find((b) => b.id === 0);
     const len = Math.sqrt(shot.dx * shot.dx + shot.dy * shot.dy) || 1;
@@ -193,7 +219,7 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
       if (moving && steps < 4200) { animRef.current = requestAnimationFrame(loop); }
       else {
         setAnimating(false);
-        render(g.balls, null); // on se cale sur la vérité serveur
+        render(g.balls, null);
         const potted = g.balls.filter((b) => b.pocketed).length;
         if (potted > pottedCount.current) boomSound();
         pottedCount.current = potted;
@@ -203,25 +229,44 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     return () => cancelAnimationFrame(animRef.current);
   }, [g.lastShot?.seq, g.balls]);
 
-  // Redessine quand la visée change (hors animation).
-  const aimFor = () => (g.isMyTurn && aim ? aim : null);
-  useEffect(() => { if (!animating) render(g.balls, aimFor()); }, [aim, g.isMyTurn, animating, g.phase]);
+  useEffect(() => { if (!animating) render(g.balls, aim); }, [aim, g.isMyTurn, animating, g.phase, vertical]);
 
-  function pointerAim(e) {
-    if (!g.isMyTurn || animating) return;
+  // Écran (px canvas) -> coordonnées table, selon l'orientation.
+  function tablePoint(e) {
     const rect = canvasRef.current.getBoundingClientRect();
-    const px = ((e.clientX - rect.left) / rect.width) * CW;
-    const py = ((e.clientY - rect.top) / rect.height) * CH;
-    const x = ((px - PAD) / (CW - 2 * PAD)) * TABLE.W;
-    const y = ((py - PAD) / (CH - 2 * PAD)) * TABLE.H;
-    const cue = g.balls.find((b) => b.id === 0);
-    if (!cue) return;
-    setAim({ dx: x - cue.x, dy: y - cue.y });
+    const w = vertical ? CH : CW, h = vertical ? CW : CH;
+    const px = ((e.clientX - rect.left) / rect.width) * w;
+    const py = ((e.clientY - rect.top) / rect.height) * h;
+    const hx = vertical ? py : px;            // inverse de la rotation 90°
+    const hy = vertical ? CH - px : py;
+    return {
+      x: ((hx - PAD) / (CW - 2 * PAD)) * TABLE.W,
+      y: ((hy - PAD) / (CH - 2 * PAD)) * TABLE.H,
+    };
   }
 
-  function shoot() {
-    if (!aim || !g.isMyTurn || animating) return;
-    onAction({ kind: 'shoot', dx: aim.dx, dy: aim.dy, power });
+  // Tir « lance-pierre » : on pose le doigt, on tire EN ARRIÈRE pour doser la
+  // puissance (la queue se bande), on relâche pour tirer.
+  function onDown(e) {
+    if (!g.isMyTurn || animating || g.phase !== 'playing') return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    dragRef.current = tablePoint(e);
+    setAim({ dx: 0, dy: 0, power: 0 });
+  }
+  function onMove(e) {
+    if (!dragRef.current) return;
+    const p = tablePoint(e);
+    const dx = dragRef.current.x - p.x;   // direction opposée au glisser
+    const dy = dragRef.current.y - p.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    setAim({ dx, dy, power: Math.min(1, dist / 0.5) });
+  }
+  function onUp() {
+    const a = aim;
+    dragRef.current = null;
+    if (a && a.power > 0.06) {
+      onAction({ kind: 'shoot', dx: a.dx, dy: a.dy, power: a.power });
+    }
     setAim(null);
   }
 
@@ -229,7 +274,7 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title"><Target size={20} color="#2e8f5b" /> Billard — salle d'attente</h3>
-        <p className="cn-hint-text">Le 8-ball classique en face à face. Le premier empochage attribue votre groupe — billes pleines ou rayées. Videz votre groupe, puis empochez la noire pour gagner ; la faire tomber trop tôt, c'est perdre. Visez en touchant la table, réglez la puissance, et jouez la bande quand il le faut. 2 joueuses.</p>
+        <p className="cn-hint-text">Le 8-ball classique en face à face. Le premier empochage attribue votre groupe — billes pleines ou rayées. Videz votre groupe, puis empochez la noire pour gagner ; la faire tomber trop tôt, c'est perdre. Posez le doigt sur la table, tirez vers l'arrière pour doser la puissance, relâchez pour jouer. 2 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
@@ -251,14 +296,14 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
   const banner = g.phase === 'over'
     ? (g.winner === me ? 'Tu gagnes la partie !' : `${nameById[g.winner] || '?'} gagne la partie !`)
     : animating ? 'Les billes roulent…'
-      : g.isMyTurn ? (aim ? 'Règle la puissance et tire !' : 'Touche la table pour viser')
+      : g.isMyTurn
+        ? (aim && aim.power > 0.02 ? `Puissance ${Math.round(aim.power * 100)} % — relâche pour tirer` : 'Pose le doigt et tire vers l\'arrière pour viser')
         : `Au tour de ${nameById[g.turn] || '?'}…`;
 
   return (
     <div className="pool fade-up">
       <div className={`gf-banner ${g.isMyTurn ? 'mine' : ''}`}>{banner}</div>
 
-      {/* Joueuses + groupes */}
       <div className="pool-players">
         {g.seats.map((id) => (
           <div key={id} className={`pool-chip ${g.turn === id && g.phase === 'playing' ? 'active' : ''}`}>
@@ -269,21 +314,12 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
         ))}
       </div>
 
-      <div className="pool-table-wrap">
-        <canvas ref={canvasRef} width={CW} height={CH} className={`pool-canvas ${g.isMyTurn && !animating ? 'aiming' : ''}`}
-          onPointerDown={pointerAim} onPointerMove={(e) => { if (e.buttons || e.pointerType === 'mouse') pointerAim(e); }} />
+      <div className={`pool-table-wrap ${vertical ? 'vertical' : ''}`}>
+        <canvas ref={canvasRef}
+          width={vertical ? CH : CW} height={vertical ? CW : CH}
+          className={`pool-canvas ${g.isMyTurn && !animating ? 'aiming' : ''}`}
+          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
       </div>
-
-      {g.isMyTurn && !animating && g.phase === 'playing' && (
-        <div className="pool-controls">
-          <span className="pool-power-label">Puissance</span>
-          <Slider value={power} min={0.1} max={1} step={0.01} onChange={(_, v) => setPower(v)} sx={{ maxWidth: 260 }} />
-          <Button variant="contained" disabled={!aim} onClick={shoot}
-            sx={{ background: 'linear-gradient(120deg,#2e8f5b,#20714a)', fontWeight: 700 }}>
-            Tirer
-          </Button>
-        </div>
-      )}
 
       {g.phase === 'over' && isHost && (
         <div className="cn-over"><Button variant="contained" startIcon={<Sparkles size={18} />} onClick={onNewGame}>Rejouer</Button></div>

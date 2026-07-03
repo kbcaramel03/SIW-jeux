@@ -1355,13 +1355,12 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
   background: #fff; border: 2px solid transparent; box-shadow: var(--shadow-sm); font-size: 0.85rem; font-weight: 700; }
 .pool-chip b { color: #20714a; font-size: 0.76rem; }
 .pool-chip.active { border-color: #2e8f5b; box-shadow: 0 0 0 3px rgba(46,143,91,0.2), var(--shadow-sm); }
-.pool-table-wrap { width: min(96vw, 760px); }
+.pool-table-wrap { width: min(96vw, 740px); }
+.pool-table-wrap.vertical { width: min(92vw, 400px); }
 .pool-canvas { width: 100%; height: auto; display: block; border-radius: 22px; box-shadow: 0 14px 34px rgba(20,60,40,0.35);
-  touch-action: manipulation; }
+  touch-action: none; /* le glisser de visée ne doit jamais faire défiler la page */
+  user-select: none; -webkit-user-select: none; }
 .pool-canvas.aiming { cursor: crosshair; }
-.pool-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; width: 100%; }
-.pool-power-label { font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); }
 @media (max-width: 480px) {
   .pool-chip { font-size: 0.74rem; }
-  .pool-controls { gap: 8px; }
 }
