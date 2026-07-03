@@ -1356,11 +1356,19 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 .pool-chip b { color: #20714a; font-size: 0.76rem; }
 .pool-chip.active { border-color: #2e8f5b; box-shadow: 0 0 0 3px rgba(46,143,91,0.2), var(--shadow-sm); }
 .pool-table-wrap { width: min(96vw, 740px); }
-.pool-table-wrap.vertical { width: min(92vw, 400px); }
+/* Verticale : dimensionnée pour tenir dans l'écran (38vh de large = 76vh de haut) */
+.pool-table-wrap.vertical { width: min(88vw, 38vh); }
 .pool-canvas { width: 100%; height: auto; display: block; border-radius: 22px; box-shadow: 0 14px 34px rgba(20,60,40,0.35);
-  touch-action: none; /* le glisser de visée ne doit jamais faire défiler la page */
+  touch-action: pan-y; /* on peut faire défiler la page quand ce n'est pas son tour */
   user-select: none; -webkit-user-select: none; }
-.pool-canvas.aiming { cursor: crosshair; }
+.pool-canvas.aiming { cursor: crosshair; touch-action: none; /* pendant MA visée seulement */ }
+/* Billes restantes par joueuse */
+.pool-mini { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--bc, #999); color: #fff; font-size: 0.56rem; font-weight: 800;
+  border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); text-shadow: 0 1px 1px rgba(0,0,0,0.45); }
+.pool-mini.stripe { background: linear-gradient(180deg, #f6f2ea 0 22%, var(--bc) 22% 78%, #f6f2ea 78% 100%); color: #223; text-shadow: none; }
+.pool-mini.eight { background: #1c1c22; }
+.pool-chip-balls { display: inline-flex; gap: 3px; flex-wrap: wrap; max-width: 180px; }
 @media (max-width: 480px) {
   .pool-chip { font-size: 0.74rem; }
 }

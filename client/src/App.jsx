@@ -1,7 +1,7 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { AppBar, Toolbar, Button, Box, IconButton, Badge, Menu, MenuItem, ListItemIcon } from '@mui/material';
-import { Crown, Settings, LogOut, Heart, MessageCircle, Menu as MenuIcon } from 'lucide-react';
+import { AppBar, Toolbar, Button, Box, IconButton, Badge, Menu, MenuItem, ListItemIcon, Dialog, DialogTitle, DialogContent } from '@mui/material';
+import { Crown, Settings, LogOut, Heart, MessageCircle, Menu as MenuIcon, Download, Share } from 'lucide-react';
 import { useAuth } from './auth.jsx';
 import OnlineRail, { Avatar } from './components/OnlineRail.jsx';
 import MessagesDrawer, { useUnread } from './components/Messages.jsx';
@@ -15,12 +15,30 @@ const Room = lazy(() => import('./pages/Room.jsx'));
 const Admin = lazy(() => import('./pages/Admin.jsx'));
 const Account = lazy(() => import('./pages/Account.jsx'));
 
+// Installation de l'app : Android déclenche `beforeinstallprompt` (bouton natif) ;
+// iOS n'a pas d'API, on affiche la marche à suivre (Partager → écran d'accueil).
+function useInstall() {
+  const [evt, setEvt] = useState(null);
+  const [iosHelp, setIosHelp] = useState(false);
+  useEffect(() => {
+    const h = (e) => { e.preventDefault(); setEvt(e); };
+    window.addEventListener('beforeinstallprompt', h);
+    return () => window.removeEventListener('beforeinstallprompt', h);
+  }, []);
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const canInstall = !standalone && (!!evt || isIos);
+  const install = () => { if (evt) evt.prompt(); else setIosHelp(true); };
+  return { canInstall, install, iosHelp, setIosHelp };
+}
+
 function NavBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const unread = useUnread();
   const [chatOpen, setChatOpen] = useState(false);
   const [menuEl, setMenuEl] = useState(null);
+  const { canInstall, install, iosHelp, setIosHelp } = useInstall();
   if (!user) return null;
   const staff = user.role === 'admin' || user.role === 'moderator';
   const go = (to) => { setMenuEl(null); navigate(to); };
@@ -32,6 +50,13 @@ function NavBar() {
         <Toolbar sx={{ gap: 0.5, maxWidth: 1240, mx: 'auto', width: '100%', minHeight: { xs: 54, sm: 64 } }}>
           <Link to="/" className="brand" style={{ flexShrink: 0 }}><Heart size={18} fill="#cf7b97" stroke="#cf7b97" /> Soirée Jeux</Link>
           <Box sx={{ flexGrow: 1 }} />
+
+          {/* Installer l'app (Android : installation directe ; iOS : mode d'emploi) */}
+          {canInstall && (
+            <IconButton color="inherit" onClick={install} aria-label="Installer l'application" title="Installer l'application">
+              <Download size={21} />
+            </IconButton>
+          )}
 
           {/* Bulle Messages (toutes tailles) */}
           <IconButton color="inherit" onClick={() => setChatOpen(true)} aria-label="Messages">
@@ -58,6 +83,18 @@ function NavBar() {
       </AppBar>
 
       <MessagesDrawer open={chatOpen} onClose={() => setChatOpen(false)} meId={user.id} />
+
+      {/* iPhone/iPad : pas d'installation automatique possible, on guide pas à pas */}
+      <Dialog open={iosHelp} onClose={() => setIosHelp(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Installer Soirée Jeux</DialogTitle>
+        <DialogContent>
+          <ol style={{ margin: 0, paddingLeft: 20, lineHeight: 2 }}>
+            <li>Touche le bouton <b>Partager</b> <Share size={15} style={{ verticalAlign: '-2px' }} /> en bas de Safari</li>
+            <li>Choisis <b>« Sur l'écran d'accueil »</b></li>
+            <li>Touche <b>Ajouter</b> — l'app apparaît avec son icône</li>
+          </ol>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

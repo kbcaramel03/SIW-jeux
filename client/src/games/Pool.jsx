@@ -292,7 +292,14 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     );
   }
 
-  const groupLabel = (grp) => (grp === 'solid' ? 'Pleines (1-7)' : grp === 'stripe' ? 'Rayées (9-15)' : '—');
+  const groupLabel = (grp) => (grp === 'solid' ? 'Pleines' : grp === 'stripe' ? 'Rayées' : 'À définir');
+  // Les billes qu'il reste à empocher pour une joueuse (puis la 8 quand le groupe est vidé).
+  const ballsFor = (id) => {
+    const grp = g.groups[id];
+    if (!grp) return null;
+    const rest = g.remaining[grp];
+    return rest.length ? rest : (g.remaining.eight ? [8] : []);
+  };
   const banner = g.phase === 'over'
     ? (g.winner === me ? 'Tu gagnes la partie !' : `${nameById[g.winner] || '?'} gagne la partie !`)
     : animating ? 'Les billes roulent…'
@@ -305,13 +312,23 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
       <div className={`gf-banner ${g.isMyTurn ? 'mine' : ''}`}>{banner}</div>
 
       <div className="pool-players">
-        {g.seats.map((id) => (
-          <div key={id} className={`pool-chip ${g.turn === id && g.phase === 'playing' ? 'active' : ''}`}>
-            <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} size={26} />
-            <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
-            <b>{groupLabel(g.groups[id])}</b>
-          </div>
-        ))}
+        {g.seats.map((id) => {
+          const rest = ballsFor(id);
+          return (
+            <div key={id} className={`pool-chip ${g.turn === id && g.phase === 'playing' ? 'active' : ''}`}>
+              <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} size={26} />
+              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              {rest === null
+                ? <b>{groupLabel(null)}</b>
+                : <span className="pool-chip-balls">
+                    {rest.map((bid) => (
+                      <span key={bid} className={`pool-mini ${isStripe(bid) ? 'stripe' : ''} ${bid === 8 ? 'eight' : ''}`}
+                        style={{ '--bc': colorOf(bid) }}>{bid}</span>
+                    ))}
+                  </span>}
+            </div>
+          );
+        })}
       </div>
 
       <div className={`pool-table-wrap ${vertical ? 'vertical' : ''}`}>
