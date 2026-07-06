@@ -70,6 +70,34 @@ const lx = (x) => PAD + (x / TABLE.W) * (CW - 2 * PAD);
 const ly = (y) => PAD + (y / TABLE.H) * (CH - 2 * PAD);
 const lr = (r) => (r / TABLE.W) * (CW - 2 * PAD);
 
+// Lancer de rayon pour la visée : premier contact de la blanche sur son chemin
+// (une bille = distance au choc centre à centre 2R, ou une bande = mur à R).
+function castAim(balls, ox, oy, ux, uy) {
+  const { R, W, H } = TABLE;
+  let t = 3, type = 'none', vert = false;
+  const walls = [
+    ux < 0 && [(R - ox) / ux, true],
+    ux > 0 && [(W - R - ox) / ux, true],
+    uy < 0 && [(R - oy) / uy, false],
+    uy > 0 && [(H - R - oy) / uy, false],
+  ];
+  for (const w of walls) {
+    if (w && w[0] > 1e-6 && w[0] < t) { t = w[0]; type = 'cushion'; vert = w[1]; }
+  }
+  const rr = (2 * R) * (2 * R);
+  for (const b of balls) {
+    if (b.id === 0 || b.pocketed) continue;
+    const cx = b.x - ox, cy = b.y - oy;
+    const proj = cx * ux + cy * uy;
+    if (proj <= 0) continue;
+    const d2 = cx * cx + cy * cy - proj * proj;
+    if (d2 >= rr) continue;
+    const tt = proj - Math.sqrt(rr - d2);
+    if (tt > 1e-6 && tt < t) { t = tt; type = 'ball'; }
+  }
+  return { t, type, vert };
+}
+
 function drawScene(ctx, balls, aim, vertical) {
   const w = vertical ? CH : CW, h = vertical ? CW : CH;
   ctx.clearRect(0, 0, w, h);
@@ -90,18 +118,36 @@ function drawScene(ctx, balls, aim, vertical) {
 
   const cue = balls.find((b) => b.id === 0);
 
-  // Visée « lance-pierre » : ligne de tir + queue en arrière + jauge.
+  // Visée « lance-pierre » : trajectoire complète de la blanche (jusqu'au
+  // premier contact, avec le rebond sur la bande) + queue en arrière.
   if (aim && cue && !cue.pocketed && aim.power > 0.02) {
     const len = Math.sqrt(aim.dx * aim.dx + aim.dy * aim.dy) || 1;
     const ux = aim.dx / len, uy = aim.dy / len;
-    // ligne de tir (longueur selon puissance)
-    ctx.setLineDash([7, 7]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(lx(cue.x), ly(cue.y));
-    ctx.lineTo(lx(cue.x + ux * (0.22 + aim.power * 0.75)), ly(cue.y + uy * (0.22 + aim.power * 0.75)));
-    ctx.stroke();
+    ctx.setLineDash([14, 11]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    let px = cue.x, py = cue.y, dx = ux, dy = uy;
+    for (let seg = 0; seg < 2; seg++) {
+      const hit = castAim(balls, px, py, dx, dy);
+      const ex = px + dx * hit.t, ey = py + dy * hit.t;
+      ctx.beginPath();
+      ctx.moveTo(lx(px), ly(py));
+      ctx.lineTo(lx(ex), ly(ey));
+      ctx.stroke();
+      if (hit.type === 'ball') {
+        // bille fantôme : là où la blanche frappera
+        ctx.setLineDash([]);
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(lx(ex), ly(ey), lr(TABLE.R), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 4;
+        break;
+      }
+      if (hit.type !== 'cushion') break;
+      if (hit.vert) dx = -dx; else dy = -dy; // rebond miroir sur la bande
+      px = ex; py = ey;
+    }
     ctx.setLineDash([]);
     // queue de billard tirée en arrière
     const back = 0.06 + aim.power * 0.16;
@@ -259,7 +305,8 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     const dx = dragRef.current.x - p.x;   // direction opposée au glisser
     const dy = dragRef.current.y - p.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    setAim({ dx, dy, power: Math.min(1, dist / 0.5) });
+    // Sensibilité douce : il faut tirer loin en arrière pour la pleine puissance.
+    setAim({ dx, dy, power: Math.min(1, dist / 0.9) });
   }
   function onUp() {
     const a = aim;

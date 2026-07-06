@@ -21,6 +21,7 @@ const GoFish = lazy(() => import('../games/GoFish.jsx'));
 const Pouilleux = lazy(() => import('../games/Pouilleux.jsx'));
 const GuessMe = lazy(() => import('../games/GuessMe.jsx'));
 const Pool = lazy(() => import('../games/Pool.jsx'));
+const Archery = lazy(() => import('../games/Archery.jsx'));
 
 export default function Room() {
   const { id } = useParams();
@@ -85,6 +86,9 @@ export default function Room() {
   if (!room) return <div className="center-screen">Connexion au salon…</div>;
 
   const isHost = room.hostId === room.me.id;
+  // Billard & tir à l'arc : on vise en glissant le doigt sur tout l'écran,
+  // la bulle flottante gênait — le chat passe dans la barre du salon.
+  const dragGame = room.gameKey === 'pool' || room.gameKey === 'archery';
 
   const sidePanel = (
     <>
@@ -115,6 +119,11 @@ export default function Room() {
         <Button variant="outlined" size="small" onClick={() => navigate('/')} startIcon={<ChevronLeft size={16} />}>Lobby</Button>
         <Typography variant="h5" sx={{ flex: 1 }}>{room.name}</Typography>
         <Chip color="primary" label={room.gameLabel} />
+        {dragGame && (
+          <IconButton className="room-chat-btn" size="small" color="primary" onClick={() => setChatOpen(true)} aria-label="Chat du salon">
+            <MessageCircle size={20} />
+          </IconButton>
+        )}
       </div>
 
       {offline && <Alert severity="warning" icon={<WifiOff size={18} />} sx={{ mb: 1.5 }}>Connexion perdue — reconnexion en cours…</Alert>}
@@ -165,6 +174,9 @@ export default function Room() {
           {room.gameKey === 'pool' && (
             <Pool room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
+          {room.gameKey === 'archery' && (
+            <Archery room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
           </Suspense>
         </div>
 
@@ -172,10 +184,12 @@ export default function Room() {
       </div>
     </div>
 
-      {/* Mobile : chat du salon en bulle flottante */}
-      <Fab color="primary" className="room-fab" sx={{ position: 'fixed', right: 16, bottom: 16, zIndex: 40 }} onClick={() => setChatOpen(true)} aria-label="Chat du salon">
-        <MessageCircle size={24} />
-      </Fab>
+      {/* Mobile : chat du salon en bulle flottante (sauf jeux où on glisse le doigt) */}
+      {!dragGame && (
+        <Fab color="primary" className="room-fab" sx={{ position: 'fixed', right: 16, bottom: 16, zIndex: 40 }} onClick={() => setChatOpen(true)} aria-label="Chat du salon">
+          <MessageCircle size={24} />
+        </Fab>
+      )}
       <Drawer anchor="right" open={chatOpen} onClose={() => setChatOpen(false)} PaperProps={{ sx: { width: 320, maxWidth: '92vw', p: 1.5 } }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <IconButton size="small" onClick={() => setChatOpen(false)}><X size={18} /></IconButton>

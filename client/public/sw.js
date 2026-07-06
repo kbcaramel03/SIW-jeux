@@ -2,7 +2,7 @@
 // - Jamais de cache pour l'API et les sockets (jeu 100 % temps réel).
 // - Cache définitif pour les fichiers de build (noms hachés par Vite).
 // - Réseau d'abord pour les pages (avec repli cache si hors ligne).
-const CACHE = 'sj-v1';
+const CACHE = 'sj-v2'; // v2 : nouvelles icônes (vrai coeur)
 
 self.addEventListener('install', (e) => { self.skipWaiting(); });
 self.addEventListener('activate', (e) => {

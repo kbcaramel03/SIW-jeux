@@ -1212,6 +1212,9 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 
 /* Bulle flottante du chat de salon (mobile) */
 .room-fab { position: fixed; right: 16px; bottom: 16px; z-index: 40; }
+/* Billard & tir à l'arc : le chat est dans la barre du salon (petit écran) */
+.room-chat-btn { display: none !important; }
+@media (max-width: 860px) { .room-chat-btn { display: inline-flex !important; } }
 
 /* ====== Ludo ====== */
 .ludo { display: flex; flex-direction: column; gap: 12px; }
@@ -1372,3 +1375,18 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 @media (max-width: 480px) {
   .pool-chip { font-size: 0.74rem; }
 }
+
+/* ===== Tir à l'arc ===== */
+.archery { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+/* Terrain portrait : dimensionné pour tenir dans l'écran sans scroller */
+.archery-wrap { width: min(88vw, 44vh); }
+.archery-canvas { width: 100%; height: auto; display: block; border-radius: 22px;
+  box-shadow: 0 14px 34px rgba(25,70,35,0.35);
+  touch-action: pan-y; /* on peut faire défiler la page quand ce n'est pas son tour */
+  user-select: none; -webkit-user-select: none; }
+.archery-canvas.aiming { cursor: crosshair; touch-action: none; /* pendant MA visée seulement */ }
+.archery-wind { display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 999px;
+  padding: 5px 14px; box-shadow: var(--shadow-sm); font-weight: 700; font-size: 0.85rem; }
+.archery-round { color: var(--ink-soft); font-weight: 600; margin-left: 4px; }
+.archery-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25); flex-shrink: 0; }

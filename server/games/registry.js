@@ -14,6 +14,7 @@ import * as gofish from './gofish.js';
 import * as pouilleux from './pouilleux.js';
 import * as guessme from './guessme.js';
 import * as pool from './pool.js';
+import * as archery from './archery.js';
 
 export const GAMES = {
   codenames: {
@@ -115,6 +116,13 @@ export const GAMES = {
     view: pool.viewFor,
     action: applyPoolAction,
     tick: pool.tickPool,
+  },
+  archery: {
+    key: 'archery', label: 'Tir à l\'arc', emoji: '🏹', minPlayers: 2, maxPlayers: 6, ready: true,
+    create: archery.createArchery,
+    view: archery.viewFor,
+    action: applyArcheryAction,
+    tick: archery.tickArchery,
   },
 };
 
@@ -262,6 +270,15 @@ function applyPoolAction(state, userId, payload) {
     case 'join': return pool.joinPool(state, userId);
     case 'start': return pool.startPool(state, userId);
     case 'shoot': return pool.shootPool(state, userId, payload);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyArcheryAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return archery.joinArchery(state, userId);
+    case 'start': return archery.startArchery(state, userId);
+    case 'shoot': return archery.shootArchery(state, userId, payload);
     default: throw new Error('Action inconnue.');
   }
 }
