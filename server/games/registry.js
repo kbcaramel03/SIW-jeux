@@ -15,6 +15,7 @@ import * as pouilleux from './pouilleux.js';
 import * as guessme from './guessme.js';
 import * as pool from './pool.js';
 import * as archery from './archery.js';
+import * as petitbac from './petitbac.js';
 
 export const GAMES = {
   codenames: {
@@ -123,6 +124,13 @@ export const GAMES = {
     view: archery.viewFor,
     action: applyArcheryAction,
     tick: archery.tickArchery,
+  },
+  petitbac: {
+    key: 'petitbac', label: 'Petit Bac', emoji: '✏️', minPlayers: 2, maxPlayers: 10, ready: true,
+    create: petitbac.createPetitBac,
+    view: petitbac.viewFor,
+    action: applyPetitBacAction,
+    tick: petitbac.tickPetitBac,
   },
 };
 
@@ -270,6 +278,17 @@ function applyPoolAction(state, userId, payload) {
     case 'join': return pool.joinPool(state, userId);
     case 'start': return pool.startPool(state, userId);
     case 'shoot': return pool.shootPool(state, userId, payload);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyPetitBacAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return petitbac.joinPetitBac(state, userId);
+    case 'start': return petitbac.startPetitBac(state, userId);
+    case 'submit': return petitbac.submitPetitBac(state, userId, payload);
+    case 'reject': return petitbac.rejectPetitBac(state, userId, payload);
+    case 'next': return petitbac.nextPetitBac(state, userId);
     default: throw new Error('Action inconnue.');
   }
 }

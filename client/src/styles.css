@@ -1390,3 +1390,35 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 .archery-round { color: var(--ink-soft); font-weight: 600; margin-left: 4px; }
 .archery-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.25); flex-shrink: 0; }
+
+/* ===== Petit Bac ===== */
+.pb { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.pb-round { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 999px;
+  padding: 6px 16px; box-shadow: var(--shadow-sm); font-weight: 700; font-size: 0.9rem; }
+.pb-letter { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px;
+  border-radius: 12px; background: linear-gradient(135deg, #c98aa6, #9b83b3); color: #fff;
+  font-size: 1.35rem; font-weight: 800; box-shadow: var(--shadow-sm); }
+.pb-timer { color: #b03d5e; font-variant-numeric: tabular-nums; }
+.pb-form { display: flex; flex-direction: column; gap: 12px; width: min(94vw, 460px);
+  background: #fff; border-radius: 18px; padding: 18px; box-shadow: var(--shadow); }
+.pb-review { display: flex; flex-direction: column; gap: 12px; width: min(94vw, 560px); }
+.pb-cat { background: #fff; border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 7px; }
+.pb-cat-title { font-weight: 800; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+.pb-answer { display: flex; align-items: center; gap: 10px; border: 2px solid transparent; border-radius: 12px;
+  padding: 7px 12px; background: #f7f4fb; font: inherit; font-size: 0.9rem; text-align: left; cursor: pointer; }
+.pb-answer:disabled { cursor: default; }
+.pb-answer.ok { background: #eaf7ef; }
+.pb-answer.dup { background: #fdf3e4; }
+.pb-answer.zero { background: #f3f1f4; opacity: 0.85; }
+.pb-answer.i-rejected { border-color: #d34a6a; }
+.pb-answer-name { font-weight: 700; color: var(--ink-soft); flex-shrink: 0; }
+.pb-answer-text { flex: 1; font-weight: 600; overflow-wrap: anywhere; }
+.pb-answer-rejects { display: inline-flex; align-items: center; gap: 3px; color: #d34a6a; font-weight: 700; font-size: 0.8rem; }
+.pb-answer b { color: #20714a; }
+.pb-answer.zero b { color: #999; }
+.pb-rank { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 14px;
+  padding: 10px 14px; box-shadow: var(--shadow-sm); font-weight: 600; }
+.pb-rank b { margin-left: auto; }
+.pb-rank.winner { border: 2px solid #f2c11f; }
+.pb-rank-pos { width: 24px; text-align: center; font-weight: 800; color: var(--ink-soft); }
