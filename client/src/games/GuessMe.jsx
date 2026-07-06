@@ -12,9 +12,10 @@ export default function GuessMe({ room, isHost, onAction, onNewGame }) {
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const [guesses, setGuesses] = useState(g.myGuesses || {});
+  const [myPick, setMyPick] = useState(null); // choix local, modifiable avant l'envoi
 
   useEffect(() => { if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' }); }, [g.phase, g.amSeated]);
-  useEffect(() => { setGuesses(g.myGuesses || {}); }, [g.phase, g.round]);
+  useEffect(() => { setGuesses(g.myGuesses || {}); setMyPick(null); }, [g.phase, g.round]);
   useEffect(() => { if (g.phase === 'reveal') popSound(); }, [g.phase, g.round]);
   useEffect(() => { if (g.phase === 'over' && g.winner === me) winConfetti(); }, [g.phase]);
 
@@ -67,9 +68,16 @@ export default function GuessMe({ room, isHost, onAction, onNewGame }) {
         <div className="gm-panel">
           <div className="gm-status">{g.myAnswer ? <><CheckCircle2 size={18} /> Reponse envoyee</> : 'Choisis ta reponse secrete'}</div>
           <div className="gm-choice-row">
-            <button className={`gm-choice ${g.myAnswer === 'a' ? 'on' : ''}`} disabled={!!g.myAnswer} onClick={() => onAction({ kind: 'answer', choice: 'a' })}>{q.a}</button>
-            <button className={`gm-choice ${g.myAnswer === 'b' ? 'on' : ''}`} disabled={!!g.myAnswer} onClick={() => onAction({ kind: 'answer', choice: 'b' })}>{q.b}</button>
+            <button className={`gm-choice ${(g.myAnswer || myPick) === 'a' ? 'on' : ''}`} disabled={!!g.myAnswer} onClick={() => setMyPick('a')}>{q.a}</button>
+            <button className={`gm-choice ${(g.myAnswer || myPick) === 'b' ? 'on' : ''}`} disabled={!!g.myAnswer} onClick={() => setMyPick('b')}>{q.b}</button>
           </div>
+          {!g.myAnswer && (
+            <div className="cn-controls">
+              <Button variant="contained" disabled={!myPick} onClick={() => onAction({ kind: 'answer', choice: myPick })}>
+                Valider ma reponse
+              </Button>
+            </div>
+          )}
           <p className="muted">{g.answeredCount}/{g.seats.length} reponses recues</p>
         </div>
       )}
