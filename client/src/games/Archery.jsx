@@ -1,112 +1,101 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@mui/material';
+import * as THREE from 'three';
 import { Play, Sparkles, Target, Wind } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti, popSound, boomSound } from '../effects.js';
 
 // ---- Mêmes constantes que server/games/archery.js (garder synchronisé). ----
-const FIELD = { W: 1, H: 1.5 };
-const BOW = { x: 0.5, y: 1.32 };
-const TARGET = { x: 0.5, y: 0.35 };
-const RING = 0.03;
-const MAX_RANGE = 1.25;
+// Monde en mètres : X = latéral, Y = hauteur, Z = vers la cible.
+const G = 9.81, DT = 1 / 120;
+const BOW = { x: 0, y: 1.5, z: 0 };
+const TARGET = { y: 1.3, z: 20, RING: 0.06, R: 0.6, BOARD: 0.75 };
+const SPEED = { min: 30, max: 70 };
+const WIND_ACCEL = 1.6;
 
-// Espace « logique » du canvas (portrait 1 × 1,5).
-const CW = 460, CH = 690;
-const lx = (x) => (x / FIELD.W) * CW;
-const ly = (y) => (y / FIELD.H) * CH;
-const lr = (r) => (r / FIELD.W) * CW;
+// COPIE de la simulation serveur : même vol, même point d'impact.
+function simulateArrow({ yaw, pitch, power }, wind, onStep) {
+  const v = SPEED.min + Math.max(0, Math.min(1, power)) * (SPEED.max - SPEED.min);
+  const cp = Math.cos(pitch);
+  let x = BOW.x, y = BOW.y, z = BOW.z;
+  let vx = v * Math.sin(yaw) * cp, vy = v * Math.sin(pitch), vz = v * Math.cos(yaw) * cp;
+  let t = 0;
+  for (let i = 0; i < 2000; i++) {
+    const px = x, py = y, pz = z;
+    vx += wind * WIND_ACCEL * (1 + 0.35 * Math.sin(t * 7)) * DT;
+    vy -= G * DT;
+    x += vx * DT; y += vy * DT; z += vz * DT; t += DT;
+    if (onStep) onStep(x, y, z, t);
+    if (z >= TARGET.z) {
+      const k = (TARGET.z - pz) / (z - pz || 1);
+      return { plane: true, x: px + (x - px) * k, y: py + (y - py) * k, t };
+    }
+    if (y <= 0) {
+      const k = (0 - py) / (y - py || 1);
+      return { plane: false, gx: px + (x - px) * k, gz: pz + (z - pz) * k, t };
+    }
+  }
+  return { plane: false, gx: x, gz: z, t };
+}
 
-// Couleur de flèche par siège (ordre d'arrivée dans la partie).
 const SEAT_COLORS = ['#e0392e', '#2b5fd4', '#2e9c5c', '#f2c11f', '#7a3fbf', '#f28322'];
+const BASE_PITCH = Math.atan2(TARGET.y - BOW.y, TARGET.z); // viser « tout droit » = le centre
 
-// Anneaux de la cible, de l'extérieur vers le centre (points 1 → 10).
-const ringColor = (pts) => (pts >= 9 ? '#f2c11f' : pts >= 7 ? '#e0392e' : pts >= 5 ? '#3f74d6' : pts >= 3 ? '#2b2b31' : '#f4f1e8');
-
-function drawScene(ctx, g, aim, colorBySeat, flying) {
-  ctx.clearRect(0, 0, CW, CH);
-
-  // pelouse avec bandes tondues
-  const grass = ctx.createLinearGradient(0, 0, 0, CH);
-  grass.addColorStop(0, '#5aa85f'); grass.addColorStop(1, '#3d8a4a');
-  ctx.fillStyle = grass; ctx.fillRect(0, 0, CW, CH);
-  ctx.fillStyle = 'rgba(255,255,255,0.05)';
-  for (let y = 0; y < CH; y += 92) ctx.fillRect(0, y, CW, 46);
-
-  // cible
-  const TX = lx(TARGET.x), TY = ly(TARGET.y);
-  ctx.beginPath(); ctx.ellipse(TX, TY + lr(RING) * 10.6, lr(RING) * 10.6, lr(RING) * 2.4, 0, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
+// Texture des anneaux (dessinée une fois, nette même de près).
+function ringTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const ctx = c.getContext('2d');
+  const cx = 512, scale = 512 / TARGET.BOARD;
+  const color = (pts) => (pts >= 9 ? '#f6c81f' : pts >= 7 ? '#e23c2e' : pts >= 5 ? '#3f74d6' : pts >= 3 ? '#26262e' : '#f2ecdd');
+  ctx.fillStyle = '#c8a067'; ctx.fillRect(0, 0, 1024, 1024); // bois du panneau
   for (let k = 10; k >= 1; k--) {
-    ctx.beginPath(); ctx.arc(TX, TY, lr(RING) * k, 0, Math.PI * 2);
-    ctx.fillStyle = ringColor(11 - k); ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cx, TARGET.RING * k * scale, 0, Math.PI * 2);
+    ctx.fillStyle = color(11 - k); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; ctx.stroke();
   }
-  ctx.beginPath(); ctx.arc(TX, TY, 2.6, 0, Math.PI * 2); ctx.fillStyle = '#1c1c22'; ctx.fill();
-
-  // flèches plantées (celle en plein vol est dessinée à part)
-  const planted = flying ? g.arrows.slice(0, -1) : g.arrows;
-  for (const a of planted) drawArrow(ctx, lx(a.x), ly(a.y), colorBySeat[a.by] || '#888');
-
-  // visée « lance-pierre » : trajectoire en gros pointillés + arc bandé
-  if (aim && aim.power > 0.02) {
-    const len = Math.sqrt(aim.dx * aim.dx + aim.dy * aim.dy) || 1;
-    const ux = aim.dx / len, uy = aim.dy / len;
-    const range = aim.power * MAX_RANGE;
-    ctx.setLineDash([14, 11]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-    ctx.lineWidth = 4; ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(lx(BOW.x), ly(BOW.y));
-    ctx.lineTo(lx(BOW.x + ux * range), ly(BOW.y + uy * range));
-    ctx.stroke();
-    ctx.setLineDash([]);
-    // point de chute visé (sans le vent : à toi de compenser !)
-    ctx.beginPath(); ctx.arc(lx(BOW.x + ux * range), ly(BOW.y + uy * range), 7, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2.5; ctx.stroke();
-  }
-
-  // arc en bas (corde tendue selon la puissance)
-  drawBow(ctx, aim);
-
-  // flèche en plein vol
-  if (flying) {
-    const { x, y, ux, uy, s } = flying;
-    ctx.save();
-    ctx.translate(lx(x), ly(y));
-    ctx.rotate(Math.atan2(uy, ux));
-    ctx.scale(s, s);
-    ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(12, 0); ctx.stroke();
-    ctx.fillStyle = '#c9cdd4';
-    ctx.beginPath(); ctx.moveTo(17, 0); ctx.lineTo(9, -4); ctx.lineTo(9, 4); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = flying.color;
-    ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(-11, -4.5); ctx.lineTo(-8, 0); ctx.lineTo(-11, 4.5); ctx.closePath(); ctx.fill();
-    ctx.restore();
-  }
+  ctx.beginPath(); ctx.arc(cx, cx, 5, 0, Math.PI * 2); ctx.fillStyle = '#111'; ctx.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
 }
 
-// Petite flèche plantée : point coloré + empennage.
-function drawArrow(ctx, X, Y, color) {
-  ctx.beginPath(); ctx.arc(X + 3, Y + 4, 3.5, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill();
-  ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + 9, Y - 13); ctx.stroke();
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.moveTo(X + 9, Y - 13); ctx.lineTo(X + 14, Y - 17); ctx.lineTo(X + 10, Y - 19); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.arc(X, Y, 2.6, 0, Math.PI * 2);
-  ctx.fillStyle = '#2b2b31'; ctx.fill();
+function reticleTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 7;
+  ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 6;
+  ctx.beginPath(); ctx.arc(64, 64, 40, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(64, 12); ctx.lineTo(64, 34); ctx.moveTo(64, 94); ctx.lineTo(64, 116);
+  ctx.moveTo(12, 64); ctx.lineTo(34, 64); ctx.moveTo(94, 64); ctx.lineTo(116, 64); ctx.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
-function drawBow(ctx, aim) {
-  const BX = lx(BOW.x), BY = ly(BOW.y);
-  const pull = aim ? Math.min(1, aim.power) * 20 : 0;
-  ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.arc(BX, BY, 42, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
-  const ax = BX + 42 * Math.cos(Math.PI * 1.15), ay = BY + 42 * Math.sin(Math.PI * 1.15);
-  const bx = BX + 42 * Math.cos(Math.PI * 1.85), by = BY + 42 * Math.sin(Math.PI * 1.85);
-  ctx.strokeStyle = '#e8e2d4'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(BX, BY - 30 + pull); ctx.lineTo(bx, by); ctx.stroke();
+// Une flèche (pointe vers +Z) : fût, pointe, empennage coloré.
+function makeArrow(color) {
+  const grp = new THREE.Group();
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.015, 0.015, 0.62, 6),
+    new THREE.MeshLambertMaterial({ color: 0x8a5a2b })
+  );
+  shaft.rotation.x = Math.PI / 2; shaft.position.z = -0.31;
+  grp.add(shaft);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.07, 8), new THREE.MeshLambertMaterial({ color: 0xb9bec7 }));
+  tip.rotation.x = Math.PI / 2; tip.position.z = 0.03;
+  grp.add(tip);
+  const finMat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+  for (let i = 0; i < 3; i++) {
+    const fin = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.08), finMat);
+    fin.position.z = -0.56;
+    fin.rotation.z = (i / 3) * Math.PI * 2;
+    fin.rotation.x = 0.12;
+    fin.position.x = Math.cos((i / 3) * Math.PI * 2) * 0.02;
+    fin.position.y = Math.sin((i / 3) * Math.PI * 2) * 0.02;
+    grp.add(fin);
+  }
+  return grp;
 }
 
 export default function Archery({ room, isHost, onAction, onNewGame }) {
@@ -118,96 +107,364 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const colorBySeat = Object.fromEntries(g.seats.map((id, i) => [id, SEAT_COLORS[i % SEAT_COLORS.length]]));
 
-  const canvasRef = useRef(null);
-  const animRef = useRef(null);
-  const dragRef = useRef(null);
-  const [aim, setAim] = useState(null); // { dx, dy, power }
-  const [animating, setAnimating] = useState(false);
+  const mountRef = useRef(null);
+  const powerRef = useRef(null);      // jauge DOM (mise à jour sans re-render)
+  const world = useRef(null);         // { renderer, scene, camera, … }
+  const gRef = useRef(g); gRef.current = g;
+  const aimRef = useRef(null);        // { yaw, pitch, power, holdT, sway:{yaw,pitch}, startX, startY }
+  const flightRef = useRef(null);     // vol en cours { path, dur, t0, arrow, hit }
   const lastShotSeq = useRef(g.lastShot?.seq || 0);
+  const [animating, setAnimating] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const [popup, setPopup] = useState(null);
+  const animatingRef = useRef(false);
 
   useEffect(() => { if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' }); }, [g.phase, g.amSeated]);
   useEffect(() => {
     if (g.phase === 'over' && g.winners?.includes(me)) { winConfetti(); boomSound(true); }
   }, [g.phase]);
 
-  const render = (aimLine, flying) => {
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) drawScene(ctx, g, aimLine, colorBySeat, flying);
-  };
+  const playing = g.phase !== 'waiting';
 
-  // Nouveau tir : anime le vol de la flèche de l'arc au point d'impact.
+  // ---------- Construction de la scène 3D (une fois) ----------
+  useEffect(() => {
+    if (!playing || !mountRef.current || world.current) return undefined;
+    const mount = mountRef.current;
+    const W = mount.clientWidth;
+    const H = Math.min(Math.round(W * 1.25), Math.round(window.innerHeight * 0.72));
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(W, H);
+    mount.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x9ecdef);
+    scene.fog = new THREE.Fog(0xb8daf2, 45, 95);
+    scene.add(new THREE.HemisphereLight(0xdfeeff, 0x3e7a44, 1.15));
+    const sun = new THREE.DirectionalLight(0xfff3d8, 1.4);
+    sun.position.set(-18, 30, -10);
+    scene.add(sun);
+
+    const camera = new THREE.PerspectiveCamera(44, W / H, 0.05, 200);
+    camera.position.set(BOW.x, BOW.y, BOW.z);
+    scene.add(camera);
+
+    // Pelouse + bandes tondues
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.MeshLambertMaterial({ color: 0x4c9a53 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0, 60);
+    scene.add(ground);
+    for (let z = 0; z < 80; z += 10) {
+      const band = new THREE.Mesh(new THREE.PlaneGeometry(240, 5), new THREE.MeshLambertMaterial({ color: 0x55a55d }));
+      band.rotation.x = -Math.PI / 2; band.position.set(0, 0.01, z + 2.5);
+      scene.add(band);
+    }
+    // Arbres low-poly en périphérie
+    const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6d4326 });
+    const leafMat = new THREE.MeshLambertMaterial({ color: 0x2e7a3c });
+    for (let i = 0; i < 16; i++) {
+      const side = i % 2 ? 1 : -1;
+      const tx = side * (7 + Math.random() * 18), tz = 4 + Math.random() * 70;
+      const s = 0.8 + Math.random() * 1.4;
+      const tree = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * s, 0.16 * s, 1.2 * s, 6), trunkMat);
+      trunk.position.y = 0.6 * s; tree.add(trunk);
+      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.9 * s, 2.2 * s, 8), leafMat);
+      crown.position.y = 2.1 * s; tree.add(crown);
+      tree.position.set(tx, 0, tz);
+      scene.add(tree);
+    }
+
+    // Cible : panneau + anneaux + chevalet
+    const board = new THREE.Group();
+    const face = new THREE.Mesh(
+      new THREE.CircleGeometry(TARGET.BOARD, 48),
+      new THREE.MeshBasicMaterial({ map: ringTexture() })
+    );
+    face.rotation.y = Math.PI; // face vers l'archère
+    board.add(face);
+    const back = new THREE.Mesh(new THREE.CylinderGeometry(TARGET.BOARD, TARGET.BOARD, 0.1, 32), new THREE.MeshLambertMaterial({ color: 0xa87f4f }));
+    back.rotation.x = Math.PI / 2; back.position.z = 0.06;
+    board.add(back);
+    const legMat = new THREE.MeshLambertMaterial({ color: 0x7a5a35 });
+    for (const sx of [-1, 1]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 2.4, 0.07), legMat);
+      leg.position.set(sx * 0.45, -0.25, 0.28);
+      leg.rotation.x = -0.22;
+      board.add(leg);
+    }
+    board.position.set(0, TARGET.y, TARGET.z);
+    scene.add(board);
+
+    // Drapeau : il se tend et ondule selon le vent
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 2.6, 8), new THREE.MeshLambertMaterial({ color: 0xd8d3c6 }));
+    pole.position.set(1.9, 1.3, TARGET.z - 1.4);
+    scene.add(pole);
+    const flagGeo = new THREE.PlaneGeometry(0.8, 0.5, 12, 6);
+    flagGeo.translate(0.4, 0, 0); // ancré au mât
+    const flag = new THREE.Mesh(flagGeo, new THREE.MeshLambertMaterial({ color: 0xe23c2e, side: THREE.DoubleSide }));
+    flag.position.set(1.9, 2.35, TARGET.z - 1.4);
+    scene.add(flag);
+
+    // Particules de vent (poussières qui filent dans le sens du vent)
+    const N = 90;
+    const pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 22;
+      pos[i * 3 + 1] = 0.3 + Math.random() * 4.2;
+      pos[i * 3 + 2] = 2 + Math.random() * (TARGET.z - 3);
+    }
+    const dustGeo = new THREE.BufferGeometry();
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.07, transparent: true, opacity: 0.45, sizeAttenuation: true }));
+    scene.add(dust);
+
+    // Arc au premier plan (accroché à la caméra) + corde + flèche encochée
+    const bowGrp = new THREE.Group();
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, -0.34, 0), new THREE.Vector3(0.035, -0.17, -0.02),
+      new THREE.Vector3(0.01, 0, -0.03), new THREE.Vector3(0.035, 0.17, -0.02),
+      new THREE.Vector3(0, 0.34, 0),
+    ]);
+    const limb = new THREE.Mesh(new THREE.TubeGeometry(curve, 24, 0.008, 6), new THREE.MeshLambertMaterial({ color: 0xa3702f }));
+    bowGrp.add(limb);
+    const stringGeo = new THREE.BufferGeometry();
+    const string = new THREE.Line(stringGeo, new THREE.LineBasicMaterial({ color: 0xe8e2d4 }));
+    bowGrp.add(string);
+    const nockArrow = makeArrow('#e0392e');
+    nockArrow.rotation.y = Math.PI; // pointe vers l'avant de la caméra (-Z)
+    bowGrp.add(nockArrow);
+    bowGrp.position.set(0.24, -0.34, -0.85);
+    bowGrp.rotation.z = -0.12;
+    bowGrp.rotation.y = -0.18;
+    bowGrp.scale.setScalar(0.5); // discret dans le coin
+    camera.add(bowGrp);
+
+    // Réticule (sprite au niveau de la cible)
+    const reticle = new THREE.Sprite(new THREE.SpriteMaterial({ map: reticleTexture(), depthTest: false, transparent: true }));
+    reticle.scale.set(0.8, 0.8, 1);
+    reticle.renderOrder = 99;
+    reticle.visible = false;
+    scene.add(reticle);
+
+    const stuck = new THREE.Group(); // flèches plantées
+    scene.add(stuck);
+
+    world.current = {
+      renderer, scene, camera, flag, flagGeo, dust, bowGrp, string, nockArrow, reticle, stuck,
+      lookAt: new THREE.Vector3(0, TARGET.y, TARGET.z), fovTarget: 44,
+      raf: 0, clock: new THREE.Clock(),
+    };
+
+    // ---------- Boucle de rendu ----------
+    const vAim = new THREE.Vector3();
+    const loop = () => {
+      const w = world.current;
+      if (!w) return;
+      const dt = Math.min(0.05, w.clock.getDelta());
+      const t = w.clock.elapsedTime;
+      const wind = gRef.current.wind || 0;
+      const windN = Math.min(1, Math.abs(wind) / 6);
+
+      // Drapeau : sens, tension et ondulation selon le vent
+      w.flag.scale.x = wind >= 0 ? 1 : -1;
+      w.flag.rotation.z = -(1 - windN) * 0.9; // pend quand c'est calme
+      const fp = w.flagGeo.attributes.position;
+      for (let i = 0; i < fp.count; i++) {
+        const x = Math.abs(fp.getX(i));
+        fp.setZ(i, Math.sin(x * 9 - t * (2 + windN * 9)) * 0.07 * x * (0.25 + windN));
+      }
+      fp.needsUpdate = true;
+
+      // Poussières poussées par le vent
+      const dp = w.dust.geometry.attributes.position;
+      for (let i = 0; i < dp.count; i++) {
+        let x = dp.getX(i) + wind * dt * 0.9;
+        if (x > 12) x = -12; if (x < -12) x = 12;
+        dp.setX(i, x);
+      }
+      dp.needsUpdate = true;
+
+      // Visée en cours : bandage progressif, tremblement, réticule
+      const aim = aimRef.current;
+      if (aim) {
+        aim.holdT += dt;
+        aim.power = Math.min(1, aim.holdT / 0.7);
+        const amp = (0.006 + Math.min(0.02, aim.holdT * 0.004)) * (0.4 + aim.power);
+        aim.sway = {
+          yaw: amp * (Math.sin(t * 1.9) + 0.6 * Math.sin(t * 3.3)),
+          pitch: amp * (Math.cos(t * 2.4) + 0.5 * Math.sin(t * 4.1)),
+        };
+        const ya = aim.yaw + aim.sway.yaw, pa = aim.pitch + aim.sway.pitch;
+        vAim.set(Math.sin(ya) * Math.cos(pa), Math.sin(pa), Math.cos(ya) * Math.cos(pa));
+        const rd = TARGET.z - 0.6;
+        w.reticle.position.set(BOW.x + vAim.x * rd, BOW.y + vAim.y * rd, BOW.z + vAim.z * rd);
+        w.reticle.visible = true;
+        w.fovTarget = 44 - aim.power * 10; // léger zoom quand on bande
+        if (powerRef.current) powerRef.current.style.width = `${Math.round(aim.power * 100)}%`;
+      } else if (!flightRef.current) {
+        w.reticle.visible = false;
+        w.fovTarget = 44;
+      }
+
+      // Arc : corde tirée + flèche encochée qui recule
+      const pull = aim ? aim.power * 0.16 : 0;
+      w.string.geometry.setFromPoints([
+        new THREE.Vector3(0, 0.34, 0), new THREE.Vector3(0, 0, pull), new THREE.Vector3(0, -0.34, 0),
+      ]);
+      w.nockArrow.position.z = pull;
+      w.nockArrow.visible = !!aim || (gRef.current.isMyTurn && !animatingRef.current);
+
+      // Vol de flèche : rejoue la simulation en temps réel
+      const fl = flightRef.current;
+      if (fl) {
+        const k = Math.min(1, (performance.now() - fl.t0) / fl.dur);
+        const i = Math.min(fl.path.length - 1, Math.floor(k * (fl.path.length - 1)));
+        const p = fl.path[i], q = fl.path[Math.min(fl.path.length - 1, i + 1)];
+        fl.arrow.position.set(p.x, p.y, p.z);
+        if (q !== p) fl.arrow.lookAt(q.x, q.y, q.z);
+        if (k >= 1) endFlight();
+      }
+
+      // Caméra : suit doucement le point d'intérêt (zoom sur l'impact)
+      camera.fov += (w.fovTarget - camera.fov) * 0.12;
+      camera.updateProjectionMatrix();
+      camera.position.set(BOW.x, BOW.y, BOW.z);
+      camera.lookAt(w.lookAt);
+
+      renderer.render(scene, camera);
+      w.raf = requestAnimationFrame(loop);
+    };
+    world.current.raf = requestAnimationFrame(loop);
+
+    const onResize = () => {
+      const w = world.current; if (!w) return;
+      const nw = mount.clientWidth;
+      const nh = Math.min(Math.round(nw * 1.25), Math.round(window.innerHeight * 0.72));
+      w.renderer.setSize(nw, nh);
+      w.camera.aspect = nw / nh;
+      w.camera.updateProjectionMatrix();
+    };
+    window.addEventListener('resize', onResize);
+
+    rebuildStuck();
+
+    return () => {
+      window.removeEventListener('resize', onResize);
+      const w = world.current;
+      if (w) {
+        cancelAnimationFrame(w.raf);
+        w.renderer.dispose();
+        w.renderer.domElement.remove();
+      }
+      world.current = null;
+    };
+  }, [playing]);
+
+  // Flèches plantées dans le panneau (couleur d'empennage par joueuse).
+  function rebuildStuck() {
+    const w = world.current; if (!w) return;
+    w.stuck.clear();
+    const arrows = gRef.current.arrows || [];
+    const skipLast = animatingRef.current; // celle qui vole encore
+    for (let i = 0; i < arrows.length - (skipLast ? 1 : 0); i++) {
+      const a = arrows[i];
+      const m = makeArrow(colorBySeat[a.by] || '#888');
+      m.position.set(a.x, a.y, TARGET.z - 0.01);
+      // Fichée comme une vraie flèche : queue qui retombe, bien visible de face.
+      m.rotation.x = 0.3 + Math.random() * 0.15;
+      m.rotation.y = (Math.random() - 0.5) * 0.2;
+      m.scale.setScalar(1.5); // un peu exagérée pour rester lisible à 20 m
+      w.stuck.add(m);
+    }
+  }
+  // On ne replante pas la dernière flèche tant que son vol n'a pas été rejoué.
+  useEffect(() => {
+    const flightPending = g.lastShot && g.lastShot.seq !== lastShotSeq.current;
+    if (!animatingRef.current && !flightPending) rebuildStuck();
+  }, [g.arrows.length, playing]);
+
+  function endFlight() {
+    const w = world.current;
+    const fl = flightRef.current;
+    if (!w || !fl) return;
+    flightRef.current = null;
+    w.scene.remove(fl.arrow);
+    animatingRef.current = false;
+    // Zoom bref sur l'impact, retour ensuite
+    if (fl.hit.plane) {
+      w.lookAt.set(fl.hit.x, fl.hit.y, TARGET.z);
+      w.fovTarget = 16;
+      boomSound(fl.pts >= 9);
+    }
+    setPopup({ text: fl.pts > 0 ? `+${fl.pts}` : 'Raté…', good: fl.pts >= 8, key: Date.now() });
+    setTimeout(() => {
+      const ww = world.current;
+      if (ww) { ww.lookAt.set(0, TARGET.y, TARGET.z); ww.fovTarget = 44; }
+      setPopup(null);
+      setAnimating(false);
+      rebuildStuck();
+    }, 1400);
+  }
+
+  // Nouveau tir reçu : on rejoue le même vol en 3D.
   useEffect(() => {
     const shot = g.lastShot;
-    if (!shot || shot.seq === lastShotSeq.current) { if (!animating) render(aim, null); return; }
+    const w = world.current;
+    if (!shot || shot.seq === lastShotSeq.current || !w) return;
     lastShotSeq.current = shot.seq;
-    popSound();
+    const path = [new THREE.Vector3(BOW.x, BOW.y, BOW.z)];
+    const hit = simulateArrow(shot, shot.wind, (x, y, z) => path.push(new THREE.Vector3(x, y, z)));
+    if (hit.plane) path.push(new THREE.Vector3(hit.x, hit.y, TARGET.z));
+    const arrow = makeArrow(colorBySeat[shot.by] || '#888');
+    w.scene.add(arrow);
+    flightRef.current = { path, dur: Math.max(450, hit.t * 1200), t0: performance.now(), arrow, hit, pts: shot.pts };
+    flightRef.current.pts = shot.pts;
+    animatingRef.current = true;
     setAnimating(true);
-    cancelAnimationFrame(animRef.current);
-    const dx = shot.x - BOW.x, dy = shot.y - BOW.y;
-    const len = Math.sqrt(dx * dx + dy * dy) || 1;
-    const dur = 320 + len * 320;
-    const t0 = performance.now();
-    const loop = (now) => {
-      const t = Math.min(1, (now - t0) / dur);
-      render(null, {
-        x: BOW.x + dx * t,
-        y: BOW.y + dy * t,
-        ux: dx / len, uy: dy / len,
-        s: 1 + Math.sin(Math.PI * t) * 0.8, // la flèche « monte » puis retombe
-        color: colorBySeat[shot.by] || '#888',
-      });
-      if (t < 1) { animRef.current = requestAnimationFrame(loop); }
-      else {
-        setAnimating(false);
-        render(null, null);
-        if (shot.pts > 0) boomSound(shot.pts >= 9);
-      }
-    };
-    animRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animRef.current);
+    popSound();
   }, [g.lastShot?.seq]);
 
-  useEffect(() => { if (!animating) render(aim, null); }, [aim, g.isMyTurn, animating, g.phase, g.arrows.length]);
-
-  // Écran (px canvas) -> coordonnées terrain.
-  function fieldPoint(e) {
-    const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: ((e.clientX - rect.left) / rect.width) * FIELD.W,
-      y: ((e.clientY - rect.top) / rect.height) * FIELD.H,
-    };
-  }
-
-  // Tir « lance-pierre » : on pose le doigt, on tire EN ARRIÈRE pour doser,
-  // on relâche pour décocher (comme au billard).
+  // ---------- Contrôles : maintenir pour bander, glisser pour viser ----------
   function onDown(e) {
-    if (!g.isMyTurn || animating || g.phase !== 'playing') return;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    dragRef.current = fieldPoint(e);
-    setAim({ dx: 0, dy: 0, power: 0 });
+    if (!g.isMyTurn || animatingRef.current || g.phase !== 'playing') return;
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* pointeur simulé */ }
+    aimRef.current = {
+      yaw: 0, pitch: BASE_PITCH, power: 0, holdT: 0,
+      sway: { yaw: 0, pitch: 0 },
+      startX: e.clientX, startY: e.clientY,
+    };
+    setDrawing(true);
   }
   function onMove(e) {
-    if (!dragRef.current) return;
-    const p = fieldPoint(e);
-    const dx = dragRef.current.x - p.x;   // direction opposée au glisser
-    const dy = dragRef.current.y - p.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    setAim({ dx, dy, power: Math.min(1, dist / 0.9) });
+    const aim = aimRef.current;
+    if (!aim) return;
+    const h = mountRef.current?.clientHeight || 400;
+    // Glisser = déplacer le réticule (inversé, façon lance-pierre, sensibilité fine).
+    // La caméra regarde vers +Z : le X du monde apparaît inversé à l'écran,
+    // donc glisser à droite = yaw positif = réticule à gauche.
+    aim.yaw = ((e.clientX - aim.startX) / h) * 0.38;
+    aim.pitch = BASE_PITCH + ((e.clientY - aim.startY) / h) * 0.38;
   }
   function onUp() {
-    const a = aim;
-    dragRef.current = null;
-    if (a && a.power > 0.06) {
-      onAction({ kind: 'shoot', dx: a.dx, dy: a.dy, power: a.power });
-    }
-    setAim(null);
+    const aim = aimRef.current;
+    aimRef.current = null;
+    setDrawing(false);
+    if (powerRef.current) powerRef.current.style.width = '0%';
+    if (!aim || aim.power < 0.12) return; // arc à peine bandé : on annule
+    onAction({
+      kind: 'shoot',
+      yaw: aim.yaw + aim.sway.yaw,
+      pitch: aim.pitch + aim.sway.pitch,
+      power: aim.power,
+    });
   }
 
   if (g.phase === 'waiting') {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title"><Target size={20} color="#e0392e" /> Tir à l'arc — salle d'attente</h3>
-        <p className="cn-hint-text">Chacune tire 5 flèches, une par tour. Pose le doigt, tire vers l'arrière pour bander l'arc, relâche pour décocher. Attention au vent : il change à chaque flèche et dévie ton tir ! Centre = 10 points, bord = 1 point. Le plus grand total gagne. De 2 à 6 joueuses.</p>
+        <p className="cn-hint-text">Cible à 20 mètres, vue à la première personne. Maintiens le doigt pour bander l'arc (la puissance monte toute seule), glisse pour viser, relâche pour décocher. La flèche tombe avec la distance et le vent la dévie — regarde le drapeau et compense ! Plus tu attends, plus ton bras tremble. 5 flèches chacune, centre = 10 points. De 2 à 6 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
@@ -225,15 +482,16 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     );
   }
 
-  const windForce = Math.round(Math.abs(g.wind) * 200); // 0..10
-  const windArrow = g.wind < 0 ? '←' : '→';
+  const windAbs = Math.abs(g.wind || 0);
+  // Vent positif = +X monde = vers la GAUCHE à l'écran (caméra tournée vers +Z).
+  const windArrow = (g.wind || 0) > 0 ? '←' : '→';
   const banner = g.phase === 'over'
     ? (g.winners?.length > 1
       ? (g.winners.includes(me) ? 'Égalité — tu partages la victoire !' : `Égalité entre ${g.winners.map((id) => nameById[id] || '?').join(' et ')} !`)
       : (g.winners?.[0] === me ? 'Tu gagnes la partie !' : `${nameById[g.winners?.[0]] || '?'} gagne la partie !`))
     : animating ? 'La flèche vole…'
       : g.isMyTurn
-        ? (aim && aim.power > 0.02 ? `Puissance ${Math.round(aim.power * 100)} % — relâche pour décocher` : 'Pose le doigt et tire vers l\'arrière pour viser')
+        ? (drawing ? 'Vise… relâche pour décocher !' : 'Maintiens pour bander, glisse pour viser')
         : `Au tour de ${nameById[g.turn] || '?'}…`;
 
   return (
@@ -251,18 +509,17 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         ))}
       </div>
 
-      {g.phase === 'playing' && (
-        <div className="archery-wind">
-          <Wind size={16} />
-          <span>Vent : {windForce === 0 ? 'aucun' : `${windArrow.repeat(Math.max(1, Math.ceil(windForce / 4)))} ${windForce}`}</span>
-          <span className="archery-round">Flèche {g.round}/{g.rounds}</span>
-        </div>
-      )}
-
-      <div className="archery-wrap">
-        <canvas ref={canvasRef} width={CW} height={CH}
-          className={`archery-canvas ${g.isMyTurn && !animating ? 'aiming' : ''}`}
-          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
+      <div className={`archery3d-wrap ${g.isMyTurn && !animating ? 'aiming' : ''}`} ref={mountRef}
+        onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+        {g.phase === 'playing' && (
+          <div className="archery3d-wind">
+            <Wind size={15} />
+            <span>{windAbs < 0.3 ? 'Vent nul' : `${windArrow.repeat(Math.max(1, Math.ceil(windAbs / 2)))} ${windAbs.toFixed(1)} m/s`}</span>
+            <span className="archery3d-round">Flèche {g.round}/{g.rounds}</span>
+          </div>
+        )}
+        <div className={`archery3d-power ${drawing ? 'show' : ''}`}><i ref={powerRef} /></div>
+        {popup && <div key={popup.key} className={`archery3d-popup ${popup.good ? 'good' : ''}`}>{popup.text}</div>}
       </div>
 
       {g.phase === 'over' && isHost && (

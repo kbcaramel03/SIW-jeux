@@ -1,19 +1,56 @@
-// Moteur de Tir à l'arc (façon Plato), logique pure.
-// 2 à 6 joueuses, chacune tire 5 flèches, une par tour. On vise au
-// lance-pierre (direction + puissance) ; le vent, différent à chaque flèche,
-// dévie le tir. Cible à anneaux : 10 points au centre, 1 au bord.
-// Le serveur calcule le point d'impact (autorité), le client anime le vol.
+// Moteur de Tir à l'arc 3D (façon Plato), logique pure + balistique.
+// 2 à 6 joueuses, chacune tire 5 flèches, une par tour.
+// Monde en mètres : X = latéral (+ à droite), Y = hauteur, Z = vers la cible.
+// La flèche subit la gravité et un vent latéral à rafales ; le serveur simule
+// le vol pas à pas (autorité), le client rejoue la même simulation en 3D
+// pour l'animation. Cible à 30 m : 10 anneaux de 6 cm, 10 points au centre.
 
-export const FIELD = { W: 1, H: 1.5 };      // terrain vertical (portrait)
-export const BOW = { x: 0.5, y: 1.32 };     // position de l'arc en bas
-export const TARGET = { x: 0.5, y: 0.35 };  // centre de la cible
-export const RING = 0.03;                    // épaisseur d'un anneau (10 anneaux)
-export const MAX_RANGE = 1.25;               // portée à pleine puissance
-const ROUNDS = 5;                            // flèches par joueuse
+export const G = 9.81;
+export const DT = 1 / 120;
+export const BOW = { x: 0, y: 1.5, z: 0 };
+export const TARGET = { y: 1.3, z: 20, RING: 0.06, R: 0.6, BOARD: 0.75 };
+export const SPEED = { min: 30, max: 70 };      // m/s selon la puissance
+export const WIND_ACCEL = 1.6;                   // poussée latérale par m/s de vent
+export const WIND_MAX = 6;                       // m/s
+const ROUNDS = 5;                                // flèches par joueuse
 const OFFLINE_SKIP_MS = 12000;
 const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 function nm(state, id) { return (state.names && state.names[id]) || 'quelqu\'un'; }
-const newWind = () => (Math.random() * 2 - 1) * 0.05;
+const newWind = () => Math.round((Math.random() * 2 - 1) * WIND_MAX * 10) / 10;
+
+// Simulation du vol : gravité + vent à rafales (déterministe pour que le
+// client rejoue exactement le même vol). Retourne le point d'arrivée :
+// - sur le plan de la cible : { plane: true, x, y, t }
+// - dans l'herbe avant :      { plane: false, gx, gz, t }
+// `onStep(pos, vel, t)` optionnel — utilisé par le client pour animer.
+export function simulateArrow({ yaw, pitch, power }, wind, onStep) {
+  const v = SPEED.min + Math.max(0, Math.min(1, power)) * (SPEED.max - SPEED.min);
+  const cp = Math.cos(pitch);
+  let x = BOW.x, y = BOW.y, z = BOW.z;
+  let vx = v * Math.sin(yaw) * cp, vy = v * Math.sin(pitch), vz = v * Math.cos(yaw) * cp;
+  let t = 0;
+  for (let i = 0; i < 2000; i++) {
+    const px = x, py = y, pz = z;
+    vx += wind * WIND_ACCEL * (1 + 0.35 * Math.sin(t * 7)) * DT; // rafales
+    vy -= G * DT;
+    x += vx * DT; y += vy * DT; z += vz * DT; t += DT;
+    if (z >= TARGET.z) {
+      const k = (TARGET.z - pz) / (z - pz || 1);
+      return { plane: true, x: px + (x - px) * k, y: py + (y - py) * k, t };
+    }
+    if (y <= 0) {
+      const k = (0 - py) / (y - py || 1);
+      return { plane: false, gx: px + (x - px) * k, gz: pz + (z - pz) * k, t };
+    }
+    if (onStep) onStep({ x, y, z }, { vx, vy, vz }, t);
+  }
+  return { plane: false, gx: x, gz: z, t };
+}
+
+export const pointsFor = (x, y) => {
+  const d = Math.sqrt(x * x + (y - TARGET.y) ** 2);
+  return d <= TARGET.R ? Math.max(1, 10 - Math.floor(d / TARGET.RING)) : 0;
+};
 
 export function createArchery() {
   return {
@@ -21,13 +58,13 @@ export function createArchery() {
     phase: 'waiting', // waiting -> playing -> over
     seats: [],
     scores: {},       // userId -> total de points
-    arrows: [],       // { by, x, y, pts } — toutes les flèches plantées
+    arrows: [],       // { by, x, y, pts } — flèches plantées dans la cible
     round: 1,
     rounds: ROUNDS,
     turn: null,
     turnSince: null,
-    wind: 0,          // dérive horizontale pour la flèche en cours
-    lastShot: null,   // { seq, by, x, y, pts } — permet au client d'animer
+    wind: 0,          // m/s latéral (+ = vers la droite) pour la flèche en cours
+    lastShot: null,   // { seq, by, yaw, pitch, power, wind, … } — le client anime
     shotSeq: 0,
     names: {},
     winners: null,
@@ -57,26 +94,24 @@ export function startArchery(state, userId) {
 
 function pushLog(state, text) { state.log.push(text); if (state.log.length > 30) state.log = state.log.slice(-30); }
 
-export function shootArchery(state, userId, { dx, dy, power }) {
+export function shootArchery(state, userId, { yaw, pitch, power }) {
   if (state.phase !== 'playing') throw new Error('La partie est finie.');
   if (state.turn !== userId) throw new Error('Ce n\'est pas ton tour.');
-  if (!Number.isFinite(dx) || !Number.isFinite(dy) || (dx === 0 && dy === 0)) throw new Error('Direction invalide.');
-  const pow = Math.max(0.05, Math.min(1, Number(power) || 0.5));
-  const len = Math.sqrt(dx * dx + dy * dy);
-  const range = pow * MAX_RANGE;
-  // Point d'impact : direction × portée, plus la dérive du vent (proportionnelle
-  // au temps de vol : plus la flèche va loin, plus elle dérive).
-  let x = BOW.x + (dx / len) * range + state.wind * range;
-  let y = BOW.y + (dy / len) * range;
-  const d = Math.sqrt((x - TARGET.x) ** 2 + (y - TARGET.y) ** 2);
-  const pts = Math.max(0, 10 - Math.floor(d / RING));
-  // On garde la flèche visible sur le terrain, même ratée.
-  x = Math.max(0.03, Math.min(FIELD.W - 0.03, x));
-  y = Math.max(0.03, Math.min(FIELD.H - 0.03, y));
+  if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) throw new Error('Visée invalide.');
+  const shot = {
+    yaw: Math.max(-0.6, Math.min(0.6, yaw)),
+    pitch: Math.max(-0.2, Math.min(0.7, pitch)),
+    power: Math.max(0.1, Math.min(1, Number(power) || 0.5)),
+  };
+  const hit = simulateArrow(shot, state.wind);
+  const pts = hit.plane ? pointsFor(hit.x, hit.y) : 0;
 
   state.shotSeq += 1;
-  state.lastShot = { seq: state.shotSeq, by: userId, x, y, pts };
-  state.arrows.push({ by: userId, x, y, pts });
+  state.lastShot = { seq: state.shotSeq, by: userId, ...shot, wind: state.wind, ...hit, pts };
+  // Une flèche se plante dans le panneau (même la bordure à 0 point).
+  if (hit.plane && Math.sqrt(hit.x ** 2 + (hit.y - TARGET.y) ** 2) <= TARGET.BOARD) {
+    state.arrows.push({ by: userId, x: hit.x, y: hit.y, pts });
+  }
   state.scores[userId] = (state.scores[userId] || 0) + pts;
   pushLog(state, pts === 10
     ? `${nm(state, userId)} — EN PLEIN CENTRE, 10 points !`
@@ -102,16 +137,25 @@ export function shootArchery(state, userId, { dx, dy, power }) {
   state.wind = newWind();
 }
 
-// Horloge serveur : une absente tire vers le centre (avec un peu de flou).
+// Horloge serveur : une absente tire un coup honnête (petite recherche de la
+// meilleure visée avec le vent du moment, puis un peu de tremblement).
 export function tickArchery(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;
   if (!state.turnSince || Date.now() - state.turnSince < OFFLINE_SKIP_MS) return false;
-  const dist = Math.sqrt((TARGET.x - BOW.x) ** 2 + (TARGET.y - BOW.y) ** 2);
+  let best = { yaw: 0, pitch: 0.05 }, bd = Infinity;
+  for (let yaw = -0.08; yaw <= 0.08; yaw += 0.01) {
+    for (let pitch = 0; pitch <= 0.12; pitch += 0.01) {
+      const hit = simulateArrow({ yaw, pitch, power: 1 }, state.wind);
+      if (!hit.plane) continue;
+      const d = Math.sqrt(hit.x ** 2 + (hit.y - TARGET.y) ** 2);
+      if (d < bd) { bd = d; best = { yaw, pitch }; }
+    }
+  }
   shootArchery(state, state.turn, {
-    dx: TARGET.x - BOW.x + (Math.random() - 0.5) * 0.08,
-    dy: TARGET.y - BOW.y,
-    power: dist / MAX_RANGE + (Math.random() - 0.5) * 0.1,
+    yaw: best.yaw + (Math.random() - 0.5) * 0.02,
+    pitch: best.pitch + (Math.random() - 0.5) * 0.02,
+    power: 1,
   });
   return true;
 }

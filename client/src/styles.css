@@ -1376,20 +1376,35 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
   .pool-chip { font-size: 0.74rem; }
 }
 
-/* ===== Tir à l'arc ===== */
+/* ===== Tir à l'arc 3D ===== */
 .archery { display: flex; flex-direction: column; gap: 12px; align-items: center; }
-/* Terrain portrait : dimensionné pour tenir dans l'écran sans scroller */
-.archery-wrap { width: min(88vw, 44vh); }
-.archery-canvas { width: 100%; height: auto; display: block; border-radius: 22px;
+.archery-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25); flex-shrink: 0; }
+.archery3d-wrap { position: relative; width: min(96vw, 540px); border-radius: 22px; overflow: hidden;
   box-shadow: 0 14px 34px rgba(25,70,35,0.35);
   touch-action: pan-y; /* on peut faire défiler la page quand ce n'est pas son tour */
   user-select: none; -webkit-user-select: none; }
-.archery-canvas.aiming { cursor: crosshair; touch-action: none; /* pendant MA visée seulement */ }
-.archery-wind { display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 999px;
-  padding: 5px 14px; box-shadow: var(--shadow-sm); font-weight: 700; font-size: 0.85rem; }
-.archery-round { color: var(--ink-soft); font-weight: 600; margin-left: 4px; }
-.archery-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25); flex-shrink: 0; }
+.archery3d-wrap.aiming { cursor: crosshair; touch-action: none; /* pendant MA visée seulement */ }
+.archery3d-wrap canvas { display: block; }
+.archery3d-wind { position: absolute; top: 10px; left: 10px; display: flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,0.92); border-radius: 999px; padding: 5px 12px; font-weight: 700;
+  font-size: 0.8rem; box-shadow: var(--shadow-sm); z-index: 2; pointer-events: none; }
+.archery3d-round { color: var(--ink-soft); font-weight: 600; }
+.archery3d-power { position: absolute; left: 12%; right: 12%; bottom: 12px; height: 10px; border-radius: 999px;
+  background: rgba(255,255,255,0.35); overflow: hidden; opacity: 0; transition: opacity 0.15s;
+  z-index: 2; pointer-events: none; }
+.archery3d-power.show { opacity: 1; }
+.archery3d-power i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #f2c11f, #e0392e); border-radius: 999px; }
+.archery3d-popup { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%);
+  font-size: 2.6rem; font-weight: 900; color: #fff; text-shadow: 0 3px 12px rgba(0,0,0,0.45);
+  animation: arcpop 1s ease-out both; z-index: 2; pointer-events: none; }
+.archery3d-popup.good { color: #ffd83d; }
+@keyframes arcpop {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
+  25% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  70% { opacity: 1; transform: translate(-50%, -55%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -75%) scale(1); }
+}
 
 /* ===== Petit Bac ===== */
 .pb { display: flex; flex-direction: column; gap: 12px; align-items: center; }
