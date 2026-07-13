@@ -211,11 +211,55 @@ export function shootPool(state, userId, { dx, dy, power }) {
   if (potted.length) pushLog(state, `${nm(state, userId)} empoche… pour l'adversaire. Tour suivant.`);
 }
 
-// Horloge serveur : une absente tire doucement vers la bille la plus proche.
+// Le bot cherche un vrai coup : pour ses billes les plus proches, il vise le
+// point fantôme derrière la bille (aligné bille → poche), simule le tir et
+// note le résultat (empocher les siennes = bien, blanche/noire trop tôt = non).
+function bestBotShot(state, shooter) {
+  const balls = state.balls;
+  const cue = balls.find((b) => b.id === 0);
+  const myGroup = state.groups[shooter] || null;
+  const cleared = myGroup && remainingOf(state, myGroup) === 0;
+  const targets = balls
+    .filter((b) => !b.pocketed && b.id !== 0)
+    .filter((b) => (cleared ? b.id === 8 : myGroup ? group(b.id) === myGroup : b.id !== 8))
+    .sort((a, b) => ((a.x - cue.x) ** 2 + (a.y - cue.y) ** 2) - ((b.x - cue.x) ** 2 + (b.y - cue.y) ** 2))
+    .slice(0, 4);
+  let best = null; let bestScore = -Infinity;
+  for (const t of targets) {
+    const pockets = [...POCKETS].sort((p, q) => ((p[0] - t.x) ** 2 + (p[1] - t.y) ** 2) - ((q[0] - t.x) ** 2 + (q[1] - t.y) ** 2)).slice(0, 3);
+    for (const [px, py] of pockets) {
+      const dx = px - t.x, dy = py - t.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const gx = t.x - (dx / d) * 2 * TABLE.R, gy = t.y - (dy / d) * 2 * TABLE.R;
+      const aim = { dx: gx - cue.x, dy: gy - cue.y };
+      for (const power of [0.5, 0.8]) {
+        const sim = balls.map((b) => ({ ...b }));
+        const potted = simulate(sim, { ...aim, power });
+        let score = Math.random(); // départage aléatoire
+        if (potted.includes(0)) score -= 80;
+        if (potted.includes(8)) score += cleared && !potted.includes(0) ? 300 : -600;
+        for (const id of potted) {
+          if (id === 0 || id === 8) continue;
+          score += !myGroup ? 40 : group(id) === myGroup ? 50 : -25;
+        }
+        if (score > bestScore) { bestScore = score; best = { ...aim, power }; }
+      }
+    }
+  }
+  return best;
+}
+
+// Horloge serveur : le bot joue son vrai coup ; une absente tire doucement
+// vers la bille la plus proche (pilote automatique de secours).
 export function tickPool(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;
-  if (!state.turnSince || Date.now() - state.turnSince < OFFLINE_SKIP_MS) return false;
+  const wait = state.turn === 'bot' ? 3000 : OFFLINE_SKIP_MS;
+  if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
+  if (state.turn === 'bot') {
+    const shot = bestBotShot(state, 'bot');
+    if (shot) { shootPool(state, 'bot', shot); return true; }
+  }
   const cue = state.balls.find((b) => b.id === 0);
   let best = null; let bd = Infinity;
   for (const b of state.balls) {

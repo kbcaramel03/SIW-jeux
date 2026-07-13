@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Shuffle, Check, Anchor, Crosshair, Ship, Sparkles } from 'lucide-react';
+import { Shuffle, Check, Anchor, Crosshair, Ship, Sparkles, Bot } from 'lucide-react';
 import { Button } from '@mui/material';
 import { burstAtEl, winConfetti, boomSound, splashSound } from '../effects.js';
 
@@ -73,9 +73,17 @@ function Placing({ game, onAction }) {
           <Button variant="outlined" onClick={() => onAction({ kind: 'ready', value: false })}>Annuler — pas prêt</Button>
         )}
       </div>
+      {!game.oppPresent && (
+        <div className="cn-controls" style={{ marginTop: 10 }}>
+          <Button variant="outlined" color="secondary" startIcon={<Bot size={16} />} onClick={() => onAction({ kind: 'bot' })}>
+            Jouer contre l'Amirale IA
+          </Button>
+        </div>
+      )}
       <p className="muted" style={{ textAlign: 'center' }}>
-        {!game.oppPresent ? 'En attente d\'un·e adversaire…'
-          : game.oppReady ? 'Adversaire prêt' : 'L\'adversaire place sa flotte…'}
+        {!game.oppPresent ? 'En attente d\'un·e adversaire… ou défie l\'Amirale IA 🤖'
+          : game.vsBot ? 'L\'Amirale IA 🤖 est prête au combat !'
+            : game.oppReady ? 'Adversaire prêt' : 'L\'adversaire place sa flotte…'}
       </p>
     </div>
   );
@@ -88,7 +96,7 @@ function Playing({ game, me, onAction }) {
     ? null
     : myTurn
       ? <div className="bs-turn-banner mine"><Crosshair size={18} /> À TOI DE TIRER</div>
-      : <div className="bs-turn-banner theirs">Au tour de l'adversaire — observe ses tirs</div>;
+      : <div className="bs-turn-banner theirs">{game.vsBot ? 'L\'Amirale IA 🤖 vise…' : 'Au tour de l\'adversaire — observe ses tirs'}</div>;
 
   return (
     <div>

@@ -1,4 +1,6 @@
-// Moteur du jeu Code Names (logique pure).
+// Moteur du jeu Code Names (logique pure + IA optionnelle côté bleu en Duo).
+import { aiAvailable, codenamesClue, codenamesGuess } from '../ai.js';
+
 // Deux modes :
 //  - VERSUS (4+ joueurs) : 2 équipes rouge/bleu, l'une contre l'autre.
 //  - DUO/DUET (2-3 joueurs) : coopératif. Deux côtés avec chacun sa propre clé,
@@ -71,6 +73,14 @@ const WORDS = [...new Set([
   'ÉNIGME', 'PUZZLE', 'DÉ', 'CARTE', 'JETON', 'PLATEAU', 'ÉCHEC', 'DAME',
   'UNO', 'KARAOKÉ', 'TIKTOK', 'SELFIE', 'SNAP', 'MESSAGE', 'GROUPE', 'STATUT',
   'QUEEN', 'BESTIE', 'CRUSH', 'DRAMA', 'GOSSIP', 'VIBE', 'MOOD', 'STAR',
+  'HAMMAM', 'CAFTAN', 'HENNÉ', 'MEDINA', 'SOUK', 'TAJINE', 'MENTHE', 'ATLAS',
+  'CHAMEAU', 'FAUCON', 'GAZELLE', 'FENNEC', 'CACTUS', 'DUNE', 'CARAVANE', 'BERBÈRE',
+  'MARIAGE', 'BOUQUET', 'ALLIANCE', 'DEMOISELLE', 'TRAÎNE', 'VOILE', 'DOT', 'YOUYOU',
+  'PYJAMA', 'OREILLER', 'RÉVEIL', 'INSOMNIE', 'SIESTE', 'BÂILLEMENT', 'BERCEUSE', 'SOMNAMBULE',
+  'JALOUSIE', 'RUMEUR', 'PROMESSE', 'SERMENT', 'TRAHISON', 'PARDON', 'VENGEANCE', 'COMPLOT',
+  'MIRAGE', 'ÉCHO', 'OMBRE', 'REFLET', 'BRUME', 'AUBE', 'CRÉPUSCULE', 'HORIZON',
+  'AVALANCHE', 'SÉISME', 'TSUNAMI', 'CANICULE', 'GEL', 'GRÊLE', 'MOUSSON', 'SÉCHERESSE',
+  'LABYRINTHE', 'PYRAMIDE', 'SPHINX', 'MOMIE', 'PHARAON', 'HIÉROGLYPHE', 'OBÉLISQUE', 'PAPYRUS',
 ])];
 
 function shuffle(arr) {
@@ -84,11 +94,15 @@ function shuffle(arr) {
 
 export function createCodenames(options = {}) {
   const words = shuffle(WORDS).slice(0, 25);
-  const mode = options.mode === 'versus' ? 'versus' : options.mode === 'duet' ? 'duet' : null;
-  return {
+  // Mode « ia » : un Duo classique où le côté bleu est tenu par l'IA
+  // (elle donne ses indices ET devine les vôtres).
+  const ai = options.mode === 'ia';
+  const mode = options.mode === 'versus' ? 'versus' : (options.mode === 'duet' || ai) ? 'duet' : null;
+  const state = {
     type: 'codenames',
     phase: 'setup', // setup -> playing -> over
     mode, // 'versus' | 'duet' (choisi à la création du salon)
+    ai,   // true = le côté bleu est joué par l'IA (mode Duo)
     board: words.map((word) => ({ word, revealed: false, kind: null })),
     teams: {
       red: { spymaster: null, spymasters: [], operatives: [] },
@@ -109,8 +123,12 @@ export function createCodenames(options = {}) {
     turnsLeft: 9,
     winner: null, // 'red' | 'blue' (versus) | null
     result: null, // 'won' | 'lost' (duet)
+    aiTask: null,   // appel IA en cours { kind, status, result }
+    aiGuesses: null, // devinettes de l'IA en cours de déroulé { list, i, at }
     log: [],
   };
+  if (ai) state.teams.blue.spymasters = ['ai']; // l'IA occupe le côté bleu
+  return state;
 }
 
 // Versus : une équipe est complète si elle a un maître-espion ET au moins un agent.
@@ -152,6 +170,7 @@ function normalizedTeams(state) {
 export function assignRole(state, userId, team, role) {
   if (state.phase !== 'setup') throw new Error('La partie a déjà commencé.');
   if (!['red', 'blue'].includes(team)) throw new Error('Équipe invalide.');
+  if (state.ai && team === 'blue') throw new Error('Ce côté est tenu par l\'IA 🤖.');
   for (const t of ['red', 'blue']) {
     if (state.teams[t].spymaster === userId) state.teams[t].spymaster = null;
     state.teams[t].spymasters = spymastersOf(state, t).filter((id) => id !== userId);
@@ -224,7 +243,9 @@ export function startGame(state) {
     state.log.push(`Partie lancée ! L'équipe ${state.turn === 'red' ? 'rouge' : 'bleue'} commence.`);
   } else {
     buildDuet(state);
-    state.log.push('Mode Duo : trouvez les 15 agents en 9 tours, sans toucher d\'assassin !');
+    state.log.push(state.ai
+      ? 'Duo avec l\'IA 🤖 : trouvez les 15 agents en 9 tours — elle donne SES indices et devine les vôtres !'
+      : 'Mode Duo : trouvez les 15 agents en 9 tours, sans toucher d\'assassin !');
   }
   state.phase = 'playing';
   state.clue = null;
@@ -409,12 +430,104 @@ export function passTurn(state, userId) {
   else endTurnDuet(state);
 }
 
+// --- Horloge serveur : fait jouer l'IA (côté bleu du mode Duo) ---------------
+// Deux moments : donner un indice quand c'est son tour, deviner quand les
+// humaines ont donné le leur. Les appels API sont asynchrones : on pose une
+// « tâche », le tick suivant l'applique quand elle est prête. Si l'API rame
+// plus de 20 s (ou après un redémarrage du serveur), l'IA passe son tour.
+export function tickCodenames(state) {
+  if (!state.ai || state.phase !== 'playing' || state.mode !== 'duet') return false;
+
+  // Tâche expirée (panne, redémarrage) : on la solde en échec propre.
+  if (state.aiTask?.status === 'pending' && Date.now() - (state.aiTask.t0 || 0) > 20000) {
+    state.aiTask = { ...state.aiTask, status: 'done', result: null };
+  }
+
+  // 1) C'est à l'IA de donner un indice.
+  if (state.turn === 'blue' && !state.clue) {
+    if (!state.aiTask) {
+      if (!aiAvailable()) {
+        state.log.push('L\'IA n\'a pas de clé API configurée — elle passe son tour.');
+        endTurnDuet(state);
+        return true;
+      }
+      const words = state.board
+        .map((c, i) => ({ word: c.word, kind: state.keyBlue[i], revealed: c.revealed }))
+        .filter((w) => !w.revealed)
+        .map(({ word, kind }) => ({ word, kind }));
+      const task = { kind: 'clue', status: 'pending', t0: Date.now() };
+      state.aiTask = task;
+      codenamesClue(words)
+        .then((r) => { task.status = 'done'; task.result = r; })
+        .catch(() => { task.status = 'done'; task.result = null; });
+      state.log.push('🤖 L\'IA réfléchit à un indice…');
+      return true;
+    }
+    if (state.aiTask.status === 'done') {
+      const r = state.aiTask.result;
+      state.aiTask = null;
+      if (r) giveClue(state, 'ai', r.clue, r.count);
+      else { state.log.push('L\'IA sèche sur ce coup… elle passe.'); endTurnDuet(state); }
+      return true;
+    }
+    return false;
+  }
+
+  // 2) Les humaines ont donné un indice : l'IA devine.
+  if (state.turn === 'red' && state.clue) {
+    if (!state.aiGuesses && !state.aiTask) {
+      if (!aiAvailable()) { endTurnDuet(state); return true; }
+      const words = state.board.filter((c) => !c.revealed).map((c) => c.word);
+      const task = { kind: 'guess', status: 'pending', t0: Date.now() };
+      state.aiTask = task;
+      codenamesGuess(state.clue.word, state.clue.count, words)
+        .then((r) => { task.status = 'done'; task.result = r; })
+        .catch(() => { task.status = 'done'; task.result = null; });
+      state.log.push('🤖 L\'IA réfléchit à votre indice…');
+      return true;
+    }
+    if (state.aiTask?.status === 'done') {
+      const list = state.aiTask.result;
+      state.aiTask = null;
+      if (!list || !list.length) { state.log.push('L\'IA ne voit pas le lien… elle passe.'); endTurnDuet(state); return true; }
+      state.aiGuesses = { list, i: 0, at: Date.now() + 1200, picked: null };
+      return true;
+    }
+    if (state.aiGuesses && Date.now() >= state.aiGuesses.at) {
+      const gs = state.aiGuesses;
+      if (gs.picked == null) {
+        // Étape 1 : elle « hésite » — sa sélection s'affiche chez tout le monde.
+        while (gs.i < gs.list.length) {
+          const idx = state.board.findIndex((c) => !c.revealed && c.word === gs.list[gs.i]);
+          if (idx >= 0) { gs.picked = idx; state.selections.ai = [idx]; gs.at = Date.now() + 1600; return true; }
+          gs.i += 1;
+        }
+        state.aiGuesses = null;
+        if (state.clue) { state.log.push('L\'IA s\'arrête là.'); endTurnDuet(state); }
+        return true;
+      }
+      // Étape 2 : elle révèle la carte.
+      const idx = gs.picked;
+      gs.picked = null; gs.i += 1; gs.at = Date.now() + 1400;
+      delete state.selections.ai;
+      reveal(state, idx);
+      if (state.phase !== 'playing' || state.turn !== 'red' || !state.clue) state.aiGuesses = null;
+      return true;
+    }
+    return false;
+  }
+
+  return false;
+}
+
 // --- Vue personnalisée pour chaque joueur ---
 export function viewFor(state, userId) {
   const common = {
     type: 'codenames',
     phase: state.phase,
     mode: state.mode,
+    ai: !!state.ai,
+    aiThinking: !!(state.aiTask && state.aiTask.status === 'pending'),
     teams: normalizedTeams(state),
     clue: state.clue,
     guessesLeft: state.guessesLeft,

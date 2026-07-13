@@ -253,10 +253,13 @@ export function tickFlip7(state) {
     beginRound(state);
     return true;
   }
-  // En manche : auto-play après 10 s si la personne attendue est absente.
+  // En manche : auto-play après 10 s si la personne attendue est absente
+  // (2,5 s pour le bot, qui lui ose tirer des cartes avant de banquer).
   if (state.phase !== 'playing' || !state.round) return false;
   const r = state.round;
-  if (!r.since || Date.now() - r.since < OFFLINE_SKIP_MS) return false;
+  const actor = r.pending[0]?.by || r.turn;
+  const wait = actor === 'bot' ? 2500 : OFFLINE_SKIP_MS;
+  if (!r.since || Date.now() - r.since < wait) return false;
   if (r.pending.length) {
     const pa = r.pending[0];
     if (!isOffline(state, pa.by)) return false;
@@ -264,7 +267,11 @@ export function tickFlip7(state) {
     return true;
   }
   if (r.turn && isOffline(state, r.turn)) {
-    stayFlip7(state, r.turn); // choix sûr : on banque les points et on sort de la manche
+    // Le bot pousse sa chance jusqu'à 4-5 numéros posés, une absente banque direct.
+    const line = r.lines[r.turn];
+    const brave = r.turn === 'bot' && line && !line.busted && line.numbers.length < 4 + (Math.random() < 0.4 ? 1 : 0);
+    if (brave) hitFlip7(state, r.turn);
+    else stayFlip7(state, r.turn);
     return true;
   }
   return false;

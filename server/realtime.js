@@ -102,6 +102,13 @@ function syncGameContext(room) {
   room.game.names = Object.fromEntries(Object.values(room.roster).map((u) => [u.id, u.displayName]));
   room.game.offline = Object.fromEntries(room.players.filter((p) => p.connected === false).map((p) => [p.id, true]));
   room.game.hostId = room.hostId;
+  // Adversaire IA : le siège « bot » est traité comme une joueuse absente —
+  // les moteurs jouent automatiquement pour elle (en plus rapide et plus malin).
+  const g = room.game;
+  if (g.seats?.includes('bot') || g.white === 'bot' || g.black === 'bot') {
+    g.names.bot = '🤖 IA';
+    g.offline.bot = true;
+  }
 }
 
 export function createRealtime(httpServer) {

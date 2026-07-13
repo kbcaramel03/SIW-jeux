@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Paper, Button, TextField, Typography, Stack, ToggleButtonGroup, ToggleButton, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords, Fish, Skull, SpellCheck } from 'lucide-react';
+import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords, Fish, Skull, SpellCheck, Bot } from 'lucide-react';
 import { GiChessPawn, GiCardRandom, GiEightBall, GiArcheryTarget } from 'react-icons/gi';
 import { getSocket } from '../socket.js';
 
@@ -148,6 +148,7 @@ export default function Lobby() {
               <ToggleButtonGroup value={cnMode} exclusive color="primary" onChange={(_, v) => v && setCnMode(v)} size="small" fullWidth>
                 <ToggleButton value="duet"><Users2 size={16} />&nbsp;Duo coop</ToggleButton>
                 <ToggleButton value="versus"><Swords size={16} />&nbsp;Versus</ToggleButton>
+                <ToggleButton value="ia"><Bot size={16} />&nbsp;Duo IA</ToggleButton>
               </ToggleButtonGroup>
             </Stack>
           )}

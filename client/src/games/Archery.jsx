@@ -103,6 +103,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const people = room.roster || room.players;
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
+  nameById.bot = '🤖 IA';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const colorBySeat = Object.fromEntries(g.seats.map((id, i) => [id, SEAT_COLORS[i % SEAT_COLORS.length]]));
@@ -131,7 +132,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     if (!playing || !mountRef.current || world.current) return undefined;
     const mount = mountRef.current;
     const W = mount.clientWidth;
-    const H = Math.min(Math.round(W * 1.25), Math.round(window.innerHeight * 0.72));
+    const H = Math.min(Math.round(W * 1.25), Math.round(window.innerHeight * 0.76));
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -289,8 +290,9 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
       const aim = aimRef.current;
       if (aim) {
         aim.holdT += dt;
-        aim.power = Math.min(1, aim.holdT / 0.7);
-        const amp = (0.006 + Math.min(0.02, aim.holdT * 0.004)) * (0.4 + aim.power);
+        aim.power = Math.min(1, aim.holdT / 0.9);
+        // Tremblement adouci : jouable au pouce sur téléphone, mais toujours là.
+        const amp = (0.004 + Math.min(0.012, aim.holdT * 0.0025)) * (0.4 + aim.power * 0.6);
         aim.sway = {
           yaw: amp * (Math.sin(t * 1.9) + 0.6 * Math.sin(t * 3.3)),
           pitch: amp * (Math.cos(t * 2.4) + 0.5 * Math.sin(t * 4.1)),
@@ -340,7 +342,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     const onResize = () => {
       const w = world.current; if (!w) return;
       const nw = mount.clientWidth;
-      const nh = Math.min(Math.round(nw * 1.25), Math.round(window.innerHeight * 0.72));
+      const nh = Math.min(Math.round(nw * 1.25), Math.round(window.innerHeight * 0.76));
       w.renderer.setSize(nw, nh);
       w.camera.aspect = nw / nh;
       w.camera.updateProjectionMatrix();
@@ -440,11 +442,12 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     const aim = aimRef.current;
     if (!aim) return;
     const h = mountRef.current?.clientHeight || 400;
-    // Glisser = déplacer le réticule (inversé, façon lance-pierre, sensibilité fine).
+    // Glisser = déplacer le réticule (inversé, façon lance-pierre, sensibilité
+    // fine — réduite pour viser précisément au pouce sur un petit écran).
     // La caméra regarde vers +Z : le X du monde apparaît inversé à l'écran,
     // donc glisser à droite = yaw positif = réticule à gauche.
-    aim.yaw = ((e.clientX - aim.startX) / h) * 0.38;
-    aim.pitch = BASE_PITCH + ((e.clientY - aim.startY) / h) * 0.38;
+    aim.yaw = ((e.clientX - aim.startX) / h) * 0.3;
+    aim.pitch = BASE_PITCH + ((e.clientY - aim.startY) / h) * 0.3;
   }
   function onUp() {
     const aim = aimRef.current;
@@ -476,6 +479,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         <div className="cn-controls">
           {!g.amSeated && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'join' })}>Rejoindre la partie</Button>}
           {g.canStart && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>}
+          {g.amSeated && g.seats.length < 6 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>🤖 Inviter l'IA</Button>}
         </div>
         {g.amSeated && !g.canStart && <p className="muted" style={{ textAlign: 'center' }}>En attente d'autres joueuses…</p>}
       </div>

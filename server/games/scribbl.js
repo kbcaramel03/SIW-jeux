@@ -78,6 +78,27 @@ const WORDS = [
   'zodiaque', 'horoscope', 'porte-bonheur', 'mauvais œil', 'trèfle', 'fer à cheval', 'étoile filante', 'vœu',
   'météorite', 'éclipse', 'constellation', 'satellite', 'combinaison spatiale', 'trou noir', 'planète Mars', 'voie lactée',
   'pluie de confettis', 'boule à facettes', 'fumigène', 'projecteur', 'rideau rouge', 'coulisses', 'applaudissements', 'rappel',
+  // Métiers & personnages à mimer en dessin
+  'coiffeuse', 'dentiste', 'arbitre', 'chef cuisinière', 'pompière', 'chirurgienne', 'maîtresse d\'école', 'plombier',
+  'astronaute', 'archéologue', 'vétérinaire', 'photographe', 'facteur', 'jardinier', 'pilote', 'serveuse',
+  // Actions (plus dur à dessiner !)
+  'éternuer', 'ronfler', 'faire la vaisselle', 'se maquiller', 'faire du yoga', 'tricoter', 'applaudir', 'bâiller',
+  'faire un selfie', 'promener son chien', 'rater son bus', 'glisser sur une peau de banane', 'faire la bise', 'bouder',
+  'chuchoter', 'faire ses lacets', 'chercher ses clés', 'danser le slow', 'faire un câlin', 'claquer la porte',
+  // Objets du quotidien
+  'trombone', 'élastique à cheveux', 'pince à linge', 'cintre', 'passoire', 'entonnoir', 'arrosoir', 'tapette à mouches',
+  'ventilateur', 'radiateur', 'interrupteur', 'poubelle', 'paillasson', 'store', 'moustiquaire', 'rallonge électrique',
+  'sèche-cheveux', 'lisseur', 'pince à épiler', 'coton-tige', 'vernis à ongles', 'baume à lèvres', 'crème solaire',
+  // Nourriture
+  'chawarma', 'harira', 'tajine', 'pastilla', 'chebakia', 'cornes de gazelle', 'thé à la menthe', 'zaalouk',
+  'raclette', 'fondue', 'ratatouille', 'quiche', 'éclair au chocolat', 'mille-feuille', 'macaron', 'churros',
+  'bubble tea', 'mojito sans alcool', 'smoothie', 'barbe à papa', 'pomme d\'amour', 'marrons chauds',
+  // Lieux & scènes
+  'salle d\'attente', 'contrôle de sécurité', 'cour de récré', 'salle de sport', 'hammam', 'salon de coiffure',
+  'marché aux poissons', 'fête foraine', 'mariage marocain', 'baby shower', 'remise des diplômes', 'examen du permis',
+  // Expressions & concepts
+  'jet lag', 'lundi matin', 'vendredi soir', 'nuit blanche', 'coup de soleil', 'chair de poule', 'déjà-vu',
+  'panne de réveil', 'batterie faible', 'zone blanche', 'mot de passe oublié', 'appel manqué', 'boîte de réception pleine',
   // Prénoms de la team
   'Khadija', 'Zineb', 'Aya', 'Alia', 'Yasmine',
 ];

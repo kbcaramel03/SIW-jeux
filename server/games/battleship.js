@@ -74,17 +74,96 @@ export function shuffleFleet(state, userId) {
   state.boards[userId] = randomBoard();
 }
 
-export function setReady(state, userId, value) {
-  if (state.phase !== 'placing') throw new Error('Le placement est terminé.');
-  ensureSeat(state, userId);
-  if (value && !state.boards[userId]) throw new Error('Place ta flotte d\'abord.');
-  state.ready[userId] = !!value;
-
+function maybeStart(state) {
   if (state.seats.length === 2 && state.seats.every((id) => state.ready[id])) {
     state.phase = 'playing';
     state.turn = state.seats[Math.floor(Math.random() * 2)];
     state.log.push('Les deux flottes sont prêtes. Que la bataille commence !');
   }
+}
+
+export function setReady(state, userId, value) {
+  if (state.phase !== 'placing') throw new Error('Le placement est terminé.');
+  ensureSeat(state, userId);
+  if (value && !state.boards[userId]) throw new Error('Place ta flotte d\'abord.');
+  state.ready[userId] = !!value;
+  maybeStart(state);
+}
+
+// Invite l'Amirale IA comme adversaire (quand on est seule dans le salon).
+export function addBot(state, userId) {
+  if (state.phase !== 'placing') throw new Error('La partie a déjà commencé.');
+  ensureSeat(state, userId);
+  if (!state.seats.includes(userId)) throw new Error('La partie est complète.');
+  if (state.seats.length >= 2) throw new Error('Vous êtes déjà deux.');
+  state.seats.push('bot');
+  state.boards.bot = randomBoard();
+  state.ready.bot = true;
+  state.log.push('L\'Amirale IA 🤖 rejoint la partie et place sa flotte.');
+  maybeStart(state);
+}
+
+// Cerveau de l'Amirale IA — elle joue comme une humaine, sans tricher :
+// elle ne « voit » que les cases où elle a déjà tiré (touché/raté/coulé).
+// 1) Cible : un bateau est blessé -> on prolonge la ligne ou on tape autour.
+// 2) Chasse : sinon, tir en damier (les bateaux font au moins 2 cases).
+function botPickTarget(board) {
+  const damaged = [];
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const c = board.grid[y][x];
+      if (c.fired && c.ship !== null && !board.ships.find((s) => s.id === c.ship).sunk) {
+        damaged.push([x, y]);
+      }
+    }
+  }
+  const unfired = (x, y) => x >= 0 && x < SIZE && y >= 0 && y < SIZE && !board.grid[y][x].fired;
+  const candidates = [];
+  if (damaged.length >= 2) {
+    // Deux touches alignées : on vise les deux bouts de la ligne.
+    for (const [x, y] of damaged) {
+      for (const [dx, dy] of [[1, 0], [0, 1]]) {
+        if (damaged.some(([ax, ay]) => ax === x + dx && ay === y + dy)) {
+          let [hx, hy] = [x, y];
+          while (damaged.some(([ax, ay]) => ax === hx - dx && ay === hy - dy)) { hx -= dx; hy -= dy; }
+          let [tx, ty] = [x + dx, y + dy];
+          while (damaged.some(([ax, ay]) => ax === tx + dx && ay === ty + dy)) { tx += dx; ty += dy; }
+          if (unfired(hx - dx, hy - dy)) candidates.push([hx - dx, hy - dy]);
+          if (unfired(tx, ty)) candidates.push([tx, ty]);
+        }
+      }
+    }
+  }
+  if (!candidates.length) {
+    for (const [x, y] of damaged) {
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (unfired(x + dx, y + dy)) candidates.push([x + dx, y + dy]);
+      }
+    }
+  }
+  if (!candidates.length) {
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        if ((x + y) % 2 === 0 && unfired(x, y)) candidates.push([x, y]);
+      }
+    }
+  }
+  if (!candidates.length) {
+    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) if (unfired(x, y)) candidates.push([x, y]);
+  }
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+// Horloge serveur : l'Amirale tire ~1 coup par seconde quand c'est son tour.
+export function tickBattleship(state) {
+  if (state.phase !== 'playing' || state.turn !== 'bot') return false;
+  if (state.botAt && Date.now() < state.botAt) return false;
+  state.botAt = Date.now() + 1100; // petit temps de « réflexion » entre deux tirs
+  const human = state.seats.find((id) => id !== 'bot');
+  const target = botPickTarget(state.boards[human]);
+  if (!target) return false;
+  fire(state, 'bot', target[0], target[1]);
+  return true;
 }
 
 export function fire(state, userId, x, y) {
@@ -184,6 +263,7 @@ export function viewFor(state, userId) {
     type: 'bataille',
     phase: state.phase,
     isSeat,
+    vsBot: state.seats.includes('bot'),
     seatsCount: state.seats.length,
     turn: state.turn,
     isMyTurn: state.turn === userId,

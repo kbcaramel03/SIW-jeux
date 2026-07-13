@@ -22,18 +22,20 @@ export const GAMES = {
     key: 'codenames',
     label: 'Code Names',
     emoji: '🕵️',
-    minPlayers: 2,
+    minPlayers: 1,
     maxPlayers: 10,
     ready: true,
     create: codenames.createCodenames,
     view: codenames.viewFor,
     action: applyCodenamesAction,
+    tick: codenames.tickCodenames,
   },
   bataille: {
-    key: 'bataille', label: 'Bataille navale', emoji: '🚢', minPlayers: 2, maxPlayers: 2, ready: true,
+    key: 'bataille', label: 'Bataille navale', emoji: '🚢', minPlayers: 1, maxPlayers: 2, ready: true,
     create: battleship.createBattleship,
     view: battleship.viewFor,
     action: applyBattleshipAction,
+    tick: battleship.tickBattleship,
   },
   uno: {
     key: 'uno', label: 'Uno', emoji: '🎴', minPlayers: 2, maxPlayers: 8, ready: true,
@@ -89,6 +91,7 @@ export const GAMES = {
     create: echecs.createEchecs,
     view: echecs.viewFor,
     action: applyEchecsAction,
+    tick: echecs.tickEchecs,
   },
   gofish: {
     key: 'gofish', label: 'Go Fish', emoji: '🐠', minPlayers: 2, maxPlayers: 6, ready: true,
@@ -163,6 +166,8 @@ function applyUnoAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join':
       return uno.joinUno(state, userId);
+    case 'bot':
+      return uno.joinUno(state, 'bot');
     case 'start':
       return uno.startUno(state, userId);
     case 'play':
@@ -180,6 +185,8 @@ function applyFlip7Action(state, userId, payload) {
   switch (payload.kind) {
     case 'join':
       return flip7.joinFlip7(state, userId);
+    case 'bot':
+      return flip7.joinFlip7(state, 'bot');
     case 'start':
       return flip7.startFlip7(state, userId);
     case 'hit':
@@ -247,6 +254,7 @@ function applyScribblAction(state, userId, payload) {
 function applyEchecsAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return echecs.joinEchecs(state, userId);
+    case 'bot': return echecs.joinEchecs(state, 'bot');
     case 'start': return echecs.startEchecs(state, userId);
     case 'move': return echecs.moveEchecs(state, userId, payload);
     case 'resign': return echecs.resignEchecs(state, userId);
@@ -258,6 +266,7 @@ function applyEchecsAction(state, userId, payload) {
 function applyGoFishAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return gofish.joinGoFish(state, userId);
+    case 'bot': return gofish.joinGoFish(state, 'bot');
     case 'start': return gofish.startGoFish(state, userId);
     case 'ask': return gofish.askGoFish(state, userId, payload.targetId, payload.rank);
     default: throw new Error('Action inconnue.');
@@ -267,6 +276,7 @@ function applyGoFishAction(state, userId, payload) {
 function applyPouilleuxAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return pouilleux.joinPouilleux(state, userId);
+    case 'bot': return pouilleux.joinPouilleux(state, 'bot');
     case 'start': return pouilleux.startPouilleux(state, userId);
     case 'draw': return pouilleux.drawPouilleux(state, userId, payload.index);
     default: throw new Error('Action inconnue.');
@@ -276,6 +286,7 @@ function applyPouilleuxAction(state, userId, payload) {
 function applyPoolAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return pool.joinPool(state, userId);
+    case 'bot': return pool.joinPool(state, 'bot');
     case 'start': return pool.startPool(state, userId);
     case 'shoot': return pool.shootPool(state, userId, payload);
     default: throw new Error('Action inconnue.');
@@ -297,6 +308,7 @@ function applyPetitBacAction(state, userId, payload) {
 function applyArcheryAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return archery.joinArchery(state, userId);
+    case 'bot': return archery.joinArchery(state, 'bot');
     case 'start': return archery.startArchery(state, userId);
     case 'shoot': return archery.shootArchery(state, userId, payload);
     default: throw new Error('Action inconnue.');
@@ -317,6 +329,7 @@ function applyGuessMeAction(state, userId, payload) {
 function applyLudoAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return ludo.joinLudo(state, userId);
+    case 'bot': return ludo.joinLudo(state, 'bot');
     case 'start': return ludo.startLudo(state, userId);
     case 'roll': return ludo.rollLudo(state, userId);
     case 'move': return ludo.moveLudo(state, userId, payload.pawn);
@@ -351,6 +364,8 @@ function applyBattleshipAction(state, userId, payload) {
       return battleship.shuffleFleet(state, userId);
     case 'ready':
       return battleship.setReady(state, userId, payload.value !== false);
+    case 'bot':
+      return battleship.addBot(state, userId);
     case 'fire':
       return battleship.fire(state, userId, payload.x, payload.y);
     default:

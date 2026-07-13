@@ -103,7 +103,9 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
       : (g.winners?.[0] === me ? 'Tu gagnes la partie !' : `${nameById[g.winners?.[0]] || '?'} gagne la partie !`))
     : g.phase === 'write'
       ? (g.mySubmitted ? 'Copie rendue — en attente des autres…' : `Un mot en ${g.letter} par catégorie !`)
-      : 'Relecture : ✓ pour valider, ✗ pour refuser chaque mot.';
+      : g.aiStatus === 'pending' ? 'Relecture — l\'IA corrige… vos votes ✓/✗ gardent le dernier mot.'
+        : g.aiStatus === 'done' ? 'L\'IA a pré-corrigé (🤖) — votez ✓/✗ pour la contredire.'
+          : 'Relecture : ✓ pour valider, ✗ pour refuser chaque mot.';
 
   const scoreboard = (
     <div className="pool-players">
@@ -158,8 +160,10 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
                   <div key={id} className={`pb-answer ${r.pts === 10 ? 'ok' : r.pts === 5 ? 'dup' : 'zero'}`}>
                     <span className="pb-answer-name">{nameById[id] || '?'}</span>
                     <span className="pb-answer-text">{r.text || '—'}</span>
-                    {(r.plus > 0 || r.minus > 0) && (
+                    {(r.plus > 0 || r.minus > 0 || !!r.ai) && (
                       <span className="pb-answer-tally">
+                        {r.ai === 1 && <em className="yes">🤖✓</em>}
+                        {r.ai === -1 && <em className="no">🤖✗</em>}
                         {r.plus > 0 && <em className="yes">✓{r.plus}</em>}
                         {r.minus > 0 && <em className="no">✗{r.minus}</em>}
                       </span>

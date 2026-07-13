@@ -20,6 +20,8 @@ const WRITE_MS = 90000;
 const REVIEW_MS = 60000;
 const GRACE_MS = 2000; // marge pour laisser arriver les derniers envois
 
+import { aiAvailable, petitbacJudge } from '../ai.js';
+
 const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 function nm(state, id) { return (state.names && state.names[id]) || 'quelqu\'un'; }
 function norm(s) {
@@ -106,6 +108,30 @@ function toReview(state) {
   state.phase = 'review';
   state.deadline = Date.now() + REVIEW_MS;
   pushLog(state, 'Relecture : validez (✓) ou refusez (✗) chaque mot !');
+  requestAiVerdicts(state);
+}
+
+// Pré-correction par l'IA : elle donne son avis sur chaque mot (✓/✗), mais les
+// votes des joueuses gardent TOUJOURS le dernier mot. Sans clé API ou en cas
+// de panne, on continue aux votes seuls, comme avant.
+function requestAiVerdicts(state) {
+  if (!aiAvailable()) { state.ai = null; return; }
+  const letter = state.letter;
+  const items = [];
+  for (const id of state.seats) {
+    for (const cat of state.categories) {
+      const word = (state.answers[id] || {})[cat] || '';
+      if (norm(word).length >= 2) items.push({ id: `${id}|${cat}`, category: cat, word });
+    }
+  }
+  if (!items.length) { state.ai = null; return; }
+  state.ai = { status: 'pending' };
+  petitbacJudge(letter, items).then((verdicts) => {
+    // La manche a pu se terminer entre-temps : on vérifie qu'on parle bien
+    // de la même lettre et qu'on est toujours en relecture.
+    if (state.phase !== 'review' || state.letter !== letter) return;
+    state.ai = verdicts ? { status: 'done', verdicts } : { status: 'off' };
+  }).catch(() => { state.ai = { status: 'off' }; });
 }
 
 export function submitPetitBac(state, userId, { answers }) {
@@ -143,9 +169,11 @@ const voteCounts = (state, id, cat) => {
 };
 
 // Un mot est refusé si les ✗ l'emportent sur les ✓ (les votes des autres).
+// Sans aucun vote, c'est l'avis de l'IA qui s'applique (si elle a corrigé).
 const refused = (state, id, cat) => {
   const { plus, minus } = voteCounts(state, id, cat);
-  return minus > plus;
+  if (plus + minus > 0) return minus > plus;
+  return state.ai?.verdicts?.[`${id}|${cat}`] === false;
 };
 
 // Points de la manche en cours : 10 unique, 5 doublon, 0 vide/invalide/refusé.
@@ -199,8 +227,14 @@ export function nextPetitBac(state, userId) {
   finishRound(state);
 }
 
-// Horloge serveur : fait tomber les couperets d'écriture et de relecture.
+// Horloge serveur : fait tomber les couperets d'écriture et de relecture,
+// et diffuse la pré-correction de l'IA dès qu'elle arrive.
 export function tickPetitBac(state) {
+  if (state.phase === 'review' && state.ai?.status === 'done' && !state.ai.shown) {
+    state.ai.shown = true;
+    pushLog(state, 'L\'IA a pré-corrigé — vos votes gardent le dernier mot.');
+    return true;
+  }
   if (!state.deadline || Date.now() < state.deadline + GRACE_MS) return false;
   if (state.phase === 'write') { toReview(state); return true; }
   if (state.phase === 'review') { finishRound(state); return true; }
@@ -234,11 +268,14 @@ export function viewFor(state, userId) {
             res[id][cat].plus = plus;
             res[id][cat].minus = minus;
             res[id][cat].myVote = box[userId] || 0;
+            const v = state.ai?.verdicts?.[`${id}|${cat}`];
+            res[id][cat].ai = v === true ? 1 : v === false ? -1 : 0;
           }
         }
         return res;
       })()
       : null,
+    aiStatus: state.ai?.status || null,
     isHost: userId === state.hostId,
     winners: state.winners ? state.winners.slice() : null,
     log: state.log.slice(-6),

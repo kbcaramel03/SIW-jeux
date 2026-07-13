@@ -10,6 +10,7 @@ import { PORT, DEV_ORIGINS, IS_PROD } from './config.js';
 import db from './db.js';
 import { ensureSeed } from './seedData.js';
 import { synthesize } from './tts.js';
+import { aiAvailable, speech } from './ai.js';
 import { router as authRouter } from './auth.js';
 import { router as adminRouter } from './admin.js';
 import { createRealtime } from './realtime.js';
@@ -48,6 +49,16 @@ app.get('/api/tts', async (req, res) => {
   const rate = clampPct(req.query.rate, '-12%');
   const pitch = clampPct(req.query.pitch, '-12%');
   if (!text) return res.status(400).end();
+  // Voix OpenAI d'abord (naturelle et fiable) si la clé est configurée ;
+  // sinon — ou en cas de panne — la voix Edge gratuite comme avant.
+  if (aiAvailable()) {
+    const audio = await speech(text);
+    if (audio) {
+      res.set('Content-Type', 'audio/mpeg');
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.send(audio);
+    }
+  }
   try {
     const audio = await synthesize(text, voice, rate, pitch);
     res.set('Content-Type', 'audio/mpeg');

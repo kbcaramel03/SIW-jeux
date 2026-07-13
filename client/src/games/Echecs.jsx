@@ -19,6 +19,7 @@ export default function Echecs({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const people = room.roster || room.players; // roster : noms conservés même après un départ
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
+  nameById.bot = '🤖 IA';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const [selected, setSelected] = useState(null);   // case sélectionnée ('e2')
@@ -56,6 +57,7 @@ export default function Echecs({ room, isHost, onAction, onNewGame }) {
         {g.canStart
           ? <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Lancer la partie</Button>
           : <p className="muted">En attente d'une adversaire…</p>}
+        {g.amSeated && g.seats.length < 2 && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>🤖 Inviter l'IA</Button>}
       </div>
     );
   }

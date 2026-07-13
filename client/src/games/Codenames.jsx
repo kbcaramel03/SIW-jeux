@@ -8,6 +8,7 @@ export default function Codenames({ room, isHost, onAction, onNewGame }) {
   const game = room.game;
   const me = room.me.id;
   const nameById = Object.fromEntries((room.roster || room.players).map((p) => [p.id, p.displayName]));
+  nameById.ai = '🤖 IA'; // la maître-espionne IA (mode Duo IA)
 
   if (!game) {
     return (
@@ -131,6 +132,7 @@ function DuetSide({ side, game, me, nameById, onAction }) {
   const members = sideMembers(game.teams[side]);
   const mine = members.includes(me);
   const label = side === 'red' ? 'Rose' : 'Bleu';
+  const aiSide = game.ai && side === 'blue'; // côté tenu par l'IA : on ne s'y assoit pas
   return (
     <div className={`cn-team cn-team-${side}`}>
       <h4>Côté {label}</h4>
@@ -139,13 +141,15 @@ function DuetSide({ side, game, me, nameById, onAction }) {
           ? <li className="muted">Personne pour l'instant</li>
           : members.map((id) => <li key={id}>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</li>)}
       </ul>
-      <button
-        className={`btn btn-mini ${mine ? 'btn-ghost' : 'btn-secondary'}`}
-        disabled={mine}
-        onClick={() => onAction({ kind: 'assign', team: side, role: 'operative' })}
-      >
-        <LogIn size={15} /> {mine ? 'Tu es ici' : 'Rejoindre ce côté'}
-      </button>
+      {!aiSide && (
+        <button
+          className={`btn btn-mini ${mine ? 'btn-ghost' : 'btn-secondary'}`}
+          disabled={mine}
+          onClick={() => onAction({ kind: 'assign', team: side, role: 'operative' })}
+        >
+          <LogIn size={15} /> {mine ? 'Tu es ici' : 'Rejoindre ce côté'}
+        </button>
+      )}
     </div>
   );
 }
@@ -155,10 +159,15 @@ function DuetSetup({ game, me, isHost, nameById, onAction }) {
   const ready = manned('red') && manned('blue');
   return (
     <div className="cn-setup card">
-      <h3 className="section-title"><Handshake size={20} /> Code Names · Duo coopératif</h3>
+      <h3 className="section-title"><Handshake size={20} /> Code Names · {game.ai ? 'Duo avec l\'IA 🤖' : 'Duo coopératif'}</h3>
       <p className="cn-hint-text">
-        Vous jouez <strong>ensemble contre le jeu</strong>. Chacun rejoint un côté : à tour de rôle, un côté <strong>fait deviner</strong>
-        ses mots à l'autre. Objectif commun : trouver les <strong>15 agents</strong> en <strong>9 tours</strong>, sans tomber sur un assassin.
+        {game.ai ? (
+          <>Vous jouez <strong>avec l'IA contre le jeu</strong> : elle tient le côté bleu, donne <strong>ses indices</strong> et
+          devine <strong>les vôtres</strong>. Objectif commun : trouver les <strong>15 agents</strong> en <strong>9 tours</strong>, sans assassin.</>
+        ) : (
+          <>Vous jouez <strong>ensemble contre le jeu</strong>. Chacun rejoint un côté : à tour de rôle, un côté <strong>fait deviner</strong>
+          ses mots à l'autre. Objectif commun : trouver les <strong>15 agents</strong> en <strong>9 tours</strong>, sans tomber sur un assassin.</>
+        )}
       </p>
       <div className="cn-teams">
         <DuetSide side="red" game={game} me={me} nameById={nameById} onAction={onAction} />
@@ -188,9 +197,14 @@ function TopBar({ game, me, nameById }) {
     const activeNames = sideMembers(game.teams[game.turn]).map((id) => nameById[id] || '?').join(', ');
     let line;
     if (game.phase !== 'playing') line = null;
-    else if (game.isClueGiver) line = <strong>À toi de faire deviner — donne un indice !</strong>;
+    else if (game.aiThinking) line = <strong>🤖 L'IA réfléchit…</strong>;
+    else if (game.isClueGiver) {
+      line = game.clue && game.ai
+        ? <strong>🤖 L'IA devine ton indice…</strong>
+        : <strong>À toi de faire deviner — donne un indice !</strong>;
+    }
     else if (game.isGuesser) line = <><strong>{activeNames}</strong> te fait deviner — à toi de trouver !</>;
-    else line = <><strong>{activeNames}</strong> fait deviner…</>;
+    else line = <><strong>{activeNames}</strong> {game.ai ? 'devine ton indice…' : 'fait deviner…'}</>;
     return (
       <div className="cn-topbar cn-topbar-duet">
         <div className="duet-stats">

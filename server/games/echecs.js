@@ -114,6 +114,74 @@ export function drawEchecs(state, userId) {
   }
 }
 
+// --- Bot d'échecs : négamax profondeur 2 avec élagage alpha-bêta -----------
+// Assez fort pour ne pas donner ses pièces, assez faible pour rester battable.
+const PIECE_VAL = { p: 100, n: 305, b: 320, r: 500, q: 900, k: 0 };
+
+// Matériel du camp au trait moins celui de l'adversaire, lu directement dans
+// le FEN : ~10× plus rapide que board(), et appelé des centaines de fois.
+function evalSideToMove(chess) {
+  const [placement, turn] = chess.fen().split(' ');
+  let score = 0;
+  for (const ch of placement) {
+    const low = ch.toLowerCase();
+    const v = PIECE_VAL[low];
+    if (!v) continue;
+    const isBlack = ch === low;
+    score += (isBlack === (turn === 'b')) ? v : -v;
+  }
+  return score;
+}
+
+function negamax(chess, depth, alpha, beta) {
+  // Aux feuilles : évaluation directe, SANS générer les coups (c'était ça qui
+  // rendait chaque coup du bot 30× trop lent et bloquait le serveur).
+  if (depth === 0) return evalSideToMove(chess);
+  // Mat/pat détectés par la liste de coups (isCheckmate() à chaque nœud coûte cher).
+  const moves = chess.moves({ verbose: true });
+  if (!moves.length) return chess.inCheck() ? -99999 - depth : 0;
+  // Captures d'abord : l'élagage coupe beaucoup plus tôt.
+  moves.sort((a, b) => (b.captured ? PIECE_VAL[b.captured] : 0) - (a.captured ? PIECE_VAL[a.captured] : 0));
+  let best = -Infinity;
+  for (const m of moves) {
+    chess.move(m);
+    const v = -negamax(chess, depth - 1, -beta, -alpha);
+    chess.undo();
+    if (v > best) best = v;
+    if (v > alpha) alpha = v;
+    if (alpha >= beta) break;
+  }
+  return best;
+}
+
+function botMove(chess) {
+  const moves = chess.moves({ verbose: true });
+  let best = null; let bestScore = -Infinity;
+  for (const m of moves) {
+    chess.move(m);
+    const v = -negamax(chess, 1, -Infinity, Infinity) + Math.random() * 12; // varie les parties
+    chess.undo();
+    if (v > bestScore) { bestScore = v; best = m; }
+  }
+  return best;
+}
+
+// Horloge serveur : le bot joue son coup ~2 s après le tien.
+export function tickEchecs(state) {
+  if (state.phase !== 'playing') return false;
+  const botColor = state.white === 'bot' ? 'w' : state.black === 'bot' ? 'b' : null;
+  if (!botColor) return false;
+  const chess = new Chess(state.fen);
+  if (chess.turn() !== botColor) { state.botAt = null; return false; }
+  if (!state.botAt) { state.botAt = Date.now() + 2000; return false; }
+  if (Date.now() < state.botAt) return false;
+  state.botAt = null;
+  const mv = botMove(chess);
+  if (!mv) return false;
+  moveEchecs(state, 'bot', { from: mv.from, to: mv.to, promotion: mv.promotion ? 'q' : undefined });
+  return true;
+}
+
 export function viewFor(state, userId) {
   const chess = state.fen ? new Chess(state.fen) : null;
   const myColor = colorOf(state, userId);

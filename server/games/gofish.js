@@ -182,7 +182,8 @@ export function askGoFish(state, userId, targetId, rank) {
 export function tickGoFish(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;
-  if (!state.turnSince || Date.now() - state.turnSince < OFFLINE_SKIP_MS) return false;
+  const wait = state.turn === 'bot' ? 2500 : OFFLINE_SKIP_MS;
+  if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
   const me = state.turn;
   const hand = state.hands[me];
   if (!hand.length) { advanceTurn(state); return true; }

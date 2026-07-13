@@ -142,7 +142,8 @@ export function shootArchery(state, userId, { yaw, pitch, power }) {
 export function tickArchery(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;
-  if (!state.turnSince || Date.now() - state.turnSince < OFFLINE_SKIP_MS) return false;
+  const wait = state.turn === 'bot' ? 3000 : OFFLINE_SKIP_MS;
+  if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
   let best = { yaw: 0, pitch: 0.05 }, bd = Infinity;
   for (let yaw = -0.08; yaw <= 0.08; yaw += 0.01) {
     for (let pitch = 0; pitch <= 0.12; pitch += 0.01) {

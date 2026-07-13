@@ -131,6 +131,7 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const people = room.roster || room.players; // roster : noms conservés même après un départ
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
+  nameById.bot = '🤖 IA';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const boardRef = useRef(null);
@@ -176,6 +177,7 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
         {g.canStart
           ? <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Lancer la partie ({g.seats.length} joueuses)</Button>
           : <p className="muted">En attente d'au moins 2 joueuses…</p>}
+        {g.amSeated && g.seats.length < 4 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>🤖 Inviter l'IA</Button>}
       </div>
     );
   }
