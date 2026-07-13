@@ -145,7 +145,15 @@ export function submitPetitBac(state, userId, { answers }) {
   state.answers[userId] = clean;
   state.submitted[userId] = true;
   pushLog(state, `${nm(state, userId)} a rendu sa copie.`);
-  if (allDone(state)) toReview(state);
+  if (allDone(state)) { toReview(state); return; }
+  // Règle du Petit Bac : la première qui finit crie STOP ! Les autres ont
+  // 4 secondes pour envoyer ce qu'elles ont déjà écrit (leurs clients
+  // l'envoient tout seuls à la fin du compte à rebours).
+  const stopAt = Date.now() + 4000;
+  if (!state.deadline || state.deadline > stopAt) {
+    state.deadline = stopAt;
+    pushLog(state, `STOP ! ${nm(state, userId)} a fini — 4 secondes pour envoyer !`);
+  }
 }
 
 // Vote sur le mot d'une autre joueuse : 1 = ✓ valide, -1 = ✗ refuse.
@@ -232,7 +240,7 @@ export function nextPetitBac(state, userId) {
 export function tickPetitBac(state) {
   if (state.phase === 'review' && state.ai?.status === 'done' && !state.ai.shown) {
     state.ai.shown = true;
-    pushLog(state, 'L\'IA a pré-corrigé — vos votes gardent le dernier mot.');
+    pushLog(state, 'ChatGPT a pré-corrigé — vos votes gardent le dernier mot.');
     return true;
   }
   if (!state.deadline || Date.now() < state.deadline + GRACE_MS) return false;

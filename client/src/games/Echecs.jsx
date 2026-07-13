@@ -3,6 +3,7 @@ import { Button } from '@mui/material';
 import { Play, Sparkles, Flag, Handshake } from 'lucide-react';
 import { FaChessKing, FaChessQueen, FaChessRook, FaChessBishop, FaChessKnight, FaChessPawn } from 'react-icons/fa';
 import { Avatar } from '../components/OnlineRail.jsx';
+import botAvatar from '../assets/chatgpt.svg';
 import { winConfetti, boomSound, popSound } from '../effects.js';
 
 const ICONS = { k: FaChessKing, q: FaChessQueen, r: FaChessRook, b: FaChessBishop, n: FaChessKnight, p: FaChessPawn };
@@ -19,9 +20,10 @@ export default function Echecs({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const people = room.roster || room.players; // roster : noms conservés même après un départ
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
-  nameById.bot = '🤖 IA';
+  nameById.bot = 'ChatGPT';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
+  avatarById.bot = botAvatar;
   const [selected, setSelected] = useState(null);   // case sélectionnée ('e2')
   const [promo, setPromo] = useState(null);         // { from, to } en attente du choix
   const lastSeq = useRef(g.moveSeq);
@@ -57,7 +59,16 @@ export default function Echecs({ room, isHost, onAction, onNewGame }) {
         {g.canStart
           ? <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Lancer la partie</Button>
           : <p className="muted">En attente d'une adversaire…</p>}
-        {g.amSeated && g.seats.length < 2 && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>🤖 Inviter l'IA</Button>}
+        {g.amSeated && g.seats.length < 2 && (
+          <div className="bot-invite">
+            <span className="bot-invite-label">Jouer contre ChatGPT :</span>
+            <div className="cn-controls">
+              <Button variant="outlined" color="success" size="small" onClick={() => onAction({ kind: 'bot', level: 'facile' })}>Facile</Button>
+              <Button variant="outlined" color="secondary" size="small" onClick={() => onAction({ kind: 'bot', level: 'moyen' })}>Moyenne</Button>
+              <Button variant="outlined" color="error" size="small" onClick={() => onAction({ kind: 'bot', level: 'difficile' })}>Difficile</Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

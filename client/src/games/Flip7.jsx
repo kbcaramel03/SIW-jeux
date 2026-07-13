@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@mui/material';
 import { Play, Hand, PauseCircle, Sparkles, Layers } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
+import botAvatar from '../assets/chatgpt.svg';
 import Flip7Card, { Flip7Back } from './Flip7Card.jsx';
 import { winConfetti } from '../effects.js';
 
@@ -16,9 +17,10 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const people = room.roster || room.players; // roster : noms conservés même après un départ
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
-  nameById.bot = '🤖 IA';
+  nameById.bot = 'ChatGPT';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
+  avatarById.bot = botAvatar;
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
           {g.canStart && (
             <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>
           )}
-          {g.amSeated && g.seats.length < 8 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>🤖 Inviter l'IA</Button>}
+          {g.amSeated && g.seats.length < 8 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>Inviter ChatGPT</Button>}
         </div>
         {g.amSeated && !g.canStart && <p className="muted" style={{ textAlign: 'center' }}>En attente d'au moins 2 joueurs…</p>}
       </div>

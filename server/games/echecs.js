@@ -154,12 +154,22 @@ function negamax(chess, depth, alpha, beta) {
   return best;
 }
 
-function botMove(chess) {
+// Trois niveaux : la proportion de bourdes (coup au hasard) et le bruit sur
+// l'évaluation (plus il est grand, moins le bot joue le coup parfait).
+const LEVELS = {
+  facile: { blunder: 0.3, noise: 220 },
+  moyen: { blunder: 0.1, noise: 90 },
+  difficile: { blunder: 0, noise: 15 },
+};
+
+function botMove(chess, level) {
+  const { blunder, noise } = LEVELS[level] || LEVELS.moyen;
   const moves = chess.moves({ verbose: true });
+  if (Math.random() < blunder) return moves[Math.floor(Math.random() * moves.length)];
   let best = null; let bestScore = -Infinity;
   for (const m of moves) {
     chess.move(m);
-    const v = -negamax(chess, 1, -Infinity, Infinity) + Math.random() * 12; // varie les parties
+    const v = -negamax(chess, 1, -Infinity, Infinity) + Math.random() * noise;
     chess.undo();
     if (v > bestScore) { bestScore = v; best = m; }
   }
@@ -176,7 +186,7 @@ export function tickEchecs(state) {
   if (!state.botAt) { state.botAt = Date.now() + 2000; return false; }
   if (Date.now() < state.botAt) return false;
   state.botAt = null;
-  const mv = botMove(chess);
+  const mv = botMove(chess, state.botLevel);
   if (!mv) return false;
   moveEchecs(state, 'bot', { from: mv.from, to: mv.to, promotion: mv.promotion ? 'q' : undefined });
   return true;

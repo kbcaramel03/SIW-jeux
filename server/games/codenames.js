@@ -170,7 +170,7 @@ function normalizedTeams(state) {
 export function assignRole(state, userId, team, role) {
   if (state.phase !== 'setup') throw new Error('La partie a déjà commencé.');
   if (!['red', 'blue'].includes(team)) throw new Error('Équipe invalide.');
-  if (state.ai && team === 'blue') throw new Error('Ce côté est tenu par l\'IA 🤖.');
+  if (state.ai && team === 'blue') throw new Error('Ce côté est tenu par ChatGPT 🤖.');
   for (const t of ['red', 'blue']) {
     if (state.teams[t].spymaster === userId) state.teams[t].spymaster = null;
     state.teams[t].spymasters = spymastersOf(state, t).filter((id) => id !== userId);
@@ -244,7 +244,7 @@ export function startGame(state) {
   } else {
     buildDuet(state);
     state.log.push(state.ai
-      ? 'Duo avec l\'IA 🤖 : trouvez les 15 agents en 9 tours — elle donne SES indices et devine les vôtres !'
+      ? 'Duo avec ChatGPT : trouvez les 15 agents en 9 tours — il donne SES indices et devine les vôtres !'
       : 'Mode Duo : trouvez les 15 agents en 9 tours, sans toucher d\'assassin !');
   }
   state.phase = 'playing';
@@ -447,7 +447,7 @@ export function tickCodenames(state) {
   if (state.turn === 'blue' && !state.clue) {
     if (!state.aiTask) {
       if (!aiAvailable()) {
-        state.log.push('L\'IA n\'a pas de clé API configurée — elle passe son tour.');
+        state.log.push('ChatGPT n\'a pas de clé API configurée — il passe son tour.');
         endTurnDuet(state);
         return true;
       }
@@ -460,14 +460,14 @@ export function tickCodenames(state) {
       codenamesClue(words)
         .then((r) => { task.status = 'done'; task.result = r; })
         .catch(() => { task.status = 'done'; task.result = null; });
-      state.log.push('🤖 L\'IA réfléchit à un indice…');
+      state.log.push('ChatGPT réfléchit à un indice…');
       return true;
     }
     if (state.aiTask.status === 'done') {
       const r = state.aiTask.result;
       state.aiTask = null;
       if (r) giveClue(state, 'ai', r.clue, r.count);
-      else { state.log.push('L\'IA sèche sur ce coup… elle passe.'); endTurnDuet(state); }
+      else { state.log.push('ChatGPT sèche sur ce coup… il passe.'); endTurnDuet(state); }
       return true;
     }
     return false;
@@ -483,13 +483,13 @@ export function tickCodenames(state) {
       codenamesGuess(state.clue.word, state.clue.count, words)
         .then((r) => { task.status = 'done'; task.result = r; })
         .catch(() => { task.status = 'done'; task.result = null; });
-      state.log.push('🤖 L\'IA réfléchit à votre indice…');
+      state.log.push('ChatGPT réfléchit à votre indice…');
       return true;
     }
     if (state.aiTask?.status === 'done') {
       const list = state.aiTask.result;
       state.aiTask = null;
-      if (!list || !list.length) { state.log.push('L\'IA ne voit pas le lien… elle passe.'); endTurnDuet(state); return true; }
+      if (!list || !list.length) { state.log.push('ChatGPT ne voit pas le lien… il passe.'); endTurnDuet(state); return true; }
       state.aiGuesses = { list, i: 0, at: Date.now() + 1200, picked: null };
       return true;
     }
@@ -503,7 +503,7 @@ export function tickCodenames(state) {
           gs.i += 1;
         }
         state.aiGuesses = null;
-        if (state.clue) { state.log.push('L\'IA s\'arrête là.'); endTurnDuet(state); }
+        if (state.clue) { state.log.push('ChatGPT s\'arrête là.'); endTurnDuet(state); }
         return true;
       }
       // Étape 2 : elle révèle la carte.

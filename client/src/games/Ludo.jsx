@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@mui/material';
 import { Play, Sparkles, Star, ArrowRight } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
+import botAvatar from '../assets/chatgpt.svg';
 import { winConfetti, boomSound, diceSound, popSound, burstAtEl } from '../effects.js';
 
 // ---- Géométrie du plateau classique (grille 15×15, coordonnées en cases) ----
@@ -131,9 +132,10 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const people = room.roster || room.players; // roster : noms conservés même après un départ
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
-  nameById.bot = '🤖 IA';
+  nameById.bot = 'ChatGPT';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
+  avatarById.bot = botAvatar;
   const boardRef = useRef(null);
   const lastDie = useRef(g.dieSeq);
   const lastEvent = useRef(g.lastEvent?.seq || 0);
@@ -177,7 +179,7 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
         {g.canStart
           ? <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Lancer la partie ({g.seats.length} joueuses)</Button>
           : <p className="muted">En attente d'au moins 2 joueuses…</p>}
-        {g.amSeated && g.seats.length < 4 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>🤖 Inviter l'IA</Button>}
+        {g.amSeated && g.seats.length < 4 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>Inviter ChatGPT</Button>}
       </div>
     );
   }

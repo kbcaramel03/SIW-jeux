@@ -1212,6 +1212,10 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 
 /* Bulle flottante du chat de salon (mobile) */
 .room-fab { position: fixed; right: 16px; bottom: 16px; z-index: 40; }
+/* Invitation de l'IA avec choix du niveau (bataille navale, échecs) */
+.bot-invite { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 10px; }
+.bot-invite-label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.86rem; color: var(--ink-soft); }
+
 /* Billard & tir à l'arc : le chat est dans la barre du salon (petit écran) */
 .room-chat-btn { display: none !important; }
 @media (max-width: 860px) { .room-chat-btn { display: inline-flex !important; } }

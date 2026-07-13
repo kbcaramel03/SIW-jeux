@@ -106,7 +106,7 @@ function syncGameContext(room) {
   // les moteurs jouent automatiquement pour elle (en plus rapide et plus malin).
   const g = room.game;
   if (g.seats?.includes('bot') || g.white === 'bot' || g.black === 'bot') {
-    g.names.bot = '🤖 IA';
+    g.names.bot = 'ChatGPT';
     g.offline.bot = true;
   }
 }

@@ -4,6 +4,7 @@ import { Button } from '@mui/material';
 import { Play, Hand, SkipForward, Sparkles, RotateCw } from 'lucide-react';
 import UnoCard from './UnoCard.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
+import botAvatar from '../assets/chatgpt.svg';
 import { winConfetti } from '../effects.js';
 
 const COLORS = ['red', 'yellow', 'green', 'blue'];
@@ -17,9 +18,10 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const people = room.roster || room.players; // roster : noms conservés même après un départ
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
-  nameById.bot = '🤖 IA';
+  nameById.bot = 'ChatGPT';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
+  avatarById.bot = botAvatar;
   const [pendingWild, setPendingWild] = useState(null);
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
           {g.canStart && (
             <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>
           )}
-          {g.amSeated && g.seats.length < 8 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>🤖 Inviter l'IA</Button>}
+          {g.amSeated && g.seats.length < 8 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>Inviter ChatGPT</Button>}
         </div>
         {g.amSeated && !g.canStart && <p className="muted" style={{ textAlign: 'center' }}>En attente d'au moins 2 joueurs…</p>}
       </div>

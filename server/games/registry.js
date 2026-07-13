@@ -254,7 +254,11 @@ function applyScribblAction(state, userId, payload) {
 function applyEchecsAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return echecs.joinEchecs(state, userId);
-    case 'bot': return echecs.joinEchecs(state, 'bot');
+    case 'bot': {
+      echecs.joinEchecs(state, 'bot');
+      state.botLevel = ['facile', 'difficile'].includes(payload.level) ? payload.level : 'moyen';
+      return;
+    }
     case 'start': return echecs.startEchecs(state, userId);
     case 'move': return echecs.moveEchecs(state, userId, payload);
     case 'resign': return echecs.resignEchecs(state, userId);
@@ -266,7 +270,6 @@ function applyEchecsAction(state, userId, payload) {
 function applyGoFishAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return gofish.joinGoFish(state, userId);
-    case 'bot': return gofish.joinGoFish(state, 'bot');
     case 'start': return gofish.startGoFish(state, userId);
     case 'ask': return gofish.askGoFish(state, userId, payload.targetId, payload.rank);
     default: throw new Error('Action inconnue.');
@@ -286,7 +289,6 @@ function applyPouilleuxAction(state, userId, payload) {
 function applyPoolAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return pool.joinPool(state, userId);
-    case 'bot': return pool.joinPool(state, 'bot');
     case 'start': return pool.startPool(state, userId);
     case 'shoot': return pool.shootPool(state, userId, payload);
     default: throw new Error('Action inconnue.');
@@ -308,7 +310,6 @@ function applyPetitBacAction(state, userId, payload) {
 function applyArcheryAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return archery.joinArchery(state, userId);
-    case 'bot': return archery.joinArchery(state, 'bot');
     case 'start': return archery.startArchery(state, userId);
     case 'shoot': return archery.shootArchery(state, userId, payload);
     default: throw new Error('Action inconnue.');
@@ -365,7 +366,7 @@ function applyBattleshipAction(state, userId, payload) {
     case 'ready':
       return battleship.setReady(state, userId, payload.value !== false);
     case 'bot':
-      return battleship.addBot(state, userId);
+      return battleship.addBot(state, userId, payload.level);
     case 'fire':
       return battleship.fire(state, userId, payload.x, payload.y);
     default:

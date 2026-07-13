@@ -54,7 +54,7 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title"><PenLine size={20} color="#7a3fbf" /> Petit Bac — salle d'attente</h3>
-        <p className="cn-hint-text">Le jeu du baccalauréat ! Une lettre est tirée : remplissez chaque catégorie par un mot qui commence par cette lettre, avant la fin du chrono. Ensuite, tout le monde relit et vote ✓ ou ✗ sur chaque mot des autres — plus de ✗ que de ✓ et le mot est refusé. Réponse unique = 10 points, doublon = 5, vide ou refusée = 0. Le plus grand total gagne. De 2 à 10 joueuses.</p>
+        <p className="cn-hint-text">Le jeu du baccalauréat ! Une lettre est tirée : remplissez chaque catégorie par un mot qui commence par cette lettre. Dès que la première a fini, STOP — les autres n'ont que 4 secondes pour envoyer ! Ensuite, tout le monde relit et vote ✓ ou ✗ sur chaque mot des autres — plus de ✗ que de ✓ et le mot est refusé. Réponse unique = 10 points, doublon = 5, vide ou refusée = 0. Le plus grand total gagne. De 2 à 10 joueuses.</p>
 
         <div className="pb-config">
           <div className="pb-config-row">
@@ -102,9 +102,11 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
       ? (g.winners.includes(me) ? 'Égalité — tu partages la victoire !' : `Égalité entre ${g.winners.map((id) => nameById[id] || '?').join(' et ')} !`)
       : (g.winners?.[0] === me ? 'Tu gagnes la partie !' : `${nameById[g.winners?.[0]] || '?'} gagne la partie !`))
     : g.phase === 'write'
-      ? (g.mySubmitted ? 'Copie rendue — en attente des autres…' : `Un mot en ${g.letter} par catégorie !`)
-      : g.aiStatus === 'pending' ? 'Relecture — l\'IA corrige… vos votes ✓/✗ gardent le dernier mot.'
-        : g.aiStatus === 'done' ? 'L\'IA a pré-corrigé (🤖) — votez ✓/✗ pour la contredire.'
+      ? (g.mySubmitted ? 'Copie rendue — en attente des autres…'
+        : g.seats.some((id) => g.submitted[id]) ? `🚨 STOP ! ${nameById[g.seats.find((id) => g.submitted[id])] || '?'} a fini — envoie vite !`
+          : `Un mot en ${g.letter} par catégorie !`)
+      : g.aiStatus === 'pending' ? 'Relecture — ChatGPT corrige… vos votes ✓/✗ gardent le dernier mot.'
+        : g.aiStatus === 'done' ? 'ChatGPT a pré-corrigé (🤖) — votez ✓/✗ pour le contredire.'
           : 'Relecture : ✓ pour valider, ✗ pour refuser chaque mot.';
 
   const scoreboard = (

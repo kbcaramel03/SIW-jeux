@@ -74,15 +74,18 @@ function Placing({ game, onAction }) {
         )}
       </div>
       {!game.oppPresent && (
-        <div className="cn-controls" style={{ marginTop: 10 }}>
-          <Button variant="outlined" color="secondary" startIcon={<Bot size={16} />} onClick={() => onAction({ kind: 'bot' })}>
-            Jouer contre l'Amirale IA
-          </Button>
+        <div className="bot-invite">
+          <span className="bot-invite-label"><Bot size={16} /> Jouer contre ChatGPT :</span>
+          <div className="cn-controls">
+            <Button variant="outlined" color="success" size="small" onClick={() => onAction({ kind: 'bot', level: 'facile' })}>Facile</Button>
+            <Button variant="outlined" color="secondary" size="small" onClick={() => onAction({ kind: 'bot', level: 'moyen' })}>Moyenne</Button>
+            <Button variant="outlined" color="error" size="small" onClick={() => onAction({ kind: 'bot', level: 'difficile' })}>Difficile</Button>
+          </div>
         </div>
       )}
       <p className="muted" style={{ textAlign: 'center' }}>
-        {!game.oppPresent ? 'En attente d\'un·e adversaire… ou défie l\'Amirale IA 🤖'
-          : game.vsBot ? 'L\'Amirale IA 🤖 est prête au combat !'
+        {!game.oppPresent ? 'En attente d\'un·e adversaire… ou défie ChatGPT'
+          : game.vsBot ? 'ChatGPT est prêt au combat !'
             : game.oppReady ? 'Adversaire prêt' : 'L\'adversaire place sa flotte…'}
       </p>
     </div>
@@ -96,7 +99,7 @@ function Playing({ game, me, onAction }) {
     ? null
     : myTurn
       ? <div className="bs-turn-banner mine"><Crosshair size={18} /> À TOI DE TIRER</div>
-      : <div className="bs-turn-banner theirs">{game.vsBot ? 'L\'Amirale IA 🤖 vise…' : 'Au tour de l\'adversaire — observe ses tirs'}</div>;
+      : <div className="bs-turn-banner theirs">{game.vsBot ? 'ChatGPT vise…' : 'Au tour de l\'adversaire — observe ses tirs'}</div>;
 
   return (
     <div>

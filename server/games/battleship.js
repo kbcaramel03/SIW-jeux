@@ -91,15 +91,17 @@ export function setReady(state, userId, value) {
 }
 
 // Invite l'Amirale IA comme adversaire (quand on est seule dans le salon).
-export function addBot(state, userId) {
+// Trois niveaux : facile (étourdie), moyen (humaine), difficile (redoutable).
+export function addBot(state, userId, level) {
   if (state.phase !== 'placing') throw new Error('La partie a déjà commencé.');
   ensureSeat(state, userId);
   if (!state.seats.includes(userId)) throw new Error('La partie est complète.');
   if (state.seats.length >= 2) throw new Error('Vous êtes déjà deux.');
   state.seats.push('bot');
+  state.botLevel = ['facile', 'difficile'].includes(level) ? level : 'moyen';
   state.boards.bot = randomBoard();
   state.ready.bot = true;
-  state.log.push('L\'Amirale IA 🤖 rejoint la partie et place sa flotte.');
+  state.log.push(`ChatGPT (niveau ${state.botLevel}) rejoint la partie et place sa flotte.`);
   maybeStart(state);
 }
 
@@ -107,7 +109,7 @@ export function addBot(state, userId) {
 // elle ne « voit » que les cases où elle a déjà tiré (touché/raté/coulé).
 // 1) Cible : un bateau est blessé -> on prolonge la ligne ou on tape autour.
 // 2) Chasse : sinon, tir en damier (les bateaux font au moins 2 cases).
-function botPickTarget(board) {
+function botPickTarget(board, hard) {
   const damaged = [];
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
@@ -141,17 +143,22 @@ function botPickTarget(board) {
       }
     }
   }
-  if (!candidates.length) {
-    for (let y = 0; y < SIZE; y++) {
-      for (let x = 0; x < SIZE; x++) {
-        if ((x + y) % 2 === 0 && unfired(x, y)) candidates.push([x, y]);
-      }
-    }
+  if (!candidates.length && hard) {
+    // Niveau difficile : chasse en damier (les bateaux font au moins 2 cases).
+    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) if ((x + y) % 2 === 0 && unfired(x, y)) candidates.push([x, y]);
   }
   if (!candidates.length) {
+    // Chasse au hasard (niveaux facile/moyen : elle doit rester battable).
     for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) if (unfired(x, y)) candidates.push([x, y]);
   }
   return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+// Un tir complètement au hasard (l'Amirale se déconcentre parfois exprès).
+function randomShot(board) {
+  const cells = [];
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) if (!board.grid[y][x].fired) cells.push([x, y]);
+  return cells.length ? cells[Math.floor(Math.random() * cells.length)] : null;
 }
 
 // Horloge serveur : l'Amirale tire ~1 coup par seconde quand c'est son tour.
@@ -160,7 +167,11 @@ export function tickBattleship(state) {
   if (state.botAt && Date.now() < state.botAt) return false;
   state.botAt = Date.now() + 1100; // petit temps de « réflexion » entre deux tirs
   const human = state.seats.find((id) => id !== 'bot');
-  const target = botPickTarget(state.boards[human]);
+  const board = state.boards[human];
+  // Étourderie selon le niveau : proportion de tirs qui partent au hasard.
+  const level = state.botLevel || 'moyen';
+  const distraction = level === 'facile' ? 0.6 : level === 'difficile' ? 0 : 0.2;
+  const target = Math.random() < distraction ? randomShot(board) : botPickTarget(board, level === 'difficile');
   if (!target) return false;
   fire(state, 'bot', target[0], target[1]);
   return true;

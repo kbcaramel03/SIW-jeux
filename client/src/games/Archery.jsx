@@ -103,7 +103,6 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const people = room.roster || room.players;
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
-  nameById.bot = '🤖 IA';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   const colorBySeat = Object.fromEntries(g.seats.map((id, i) => [id, SEAT_COLORS[i % SEAT_COLORS.length]]));
@@ -478,9 +477,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         </div>
         <div className="cn-controls">
           {!g.amSeated && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'join' })}>Rejoindre la partie</Button>}
-          {g.canStart && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>}
-          {g.amSeated && g.seats.length < 6 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>🤖 Inviter l'IA</Button>}
-        </div>
+          {g.canStart && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>}        </div>
         {g.amSeated && !g.canStart && <p className="muted" style={{ textAlign: 'center' }}>En attente d'autres joueuses…</p>}
       </div>
     );
