@@ -1420,18 +1420,31 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 .pb-cat { background: #fff; border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow-sm);
   display: flex; flex-direction: column; gap: 7px; }
 .pb-cat-title { font-weight: 800; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
-.pb-answer { display: flex; align-items: center; gap: 10px; border: 2px solid transparent; border-radius: 12px;
-  padding: 7px 12px; background: #f7f4fb; font: inherit; font-size: 0.9rem; text-align: left; cursor: pointer; }
-.pb-answer:disabled { cursor: default; }
+.pb-answer { display: flex; align-items: center; gap: 8px; border-radius: 12px;
+  padding: 6px 10px; background: #f7f4fb; font-size: 0.9rem; }
 .pb-answer.ok { background: #eaf7ef; }
 .pb-answer.dup { background: #fdf3e4; }
 .pb-answer.zero { background: #f3f1f4; opacity: 0.85; }
-.pb-answer.i-rejected { border-color: #d34a6a; }
 .pb-answer-name { font-weight: 700; color: var(--ink-soft); flex-shrink: 0; }
 .pb-answer-text { flex: 1; font-weight: 600; overflow-wrap: anywhere; }
-.pb-answer-rejects { display: inline-flex; align-items: center; gap: 3px; color: #d34a6a; font-weight: 700; font-size: 0.8rem; }
-.pb-answer b { color: #20714a; }
+.pb-answer-tally { display: inline-flex; gap: 6px; font-size: 0.78rem; font-weight: 800; flex-shrink: 0; }
+.pb-answer-tally em { font-style: normal; }
+.pb-answer-tally .yes { color: #2e8f5b; }
+.pb-answer-tally .no { color: #d34a6a; }
+.pb-answer b { color: #20714a; flex-shrink: 0; }
 .pb-answer.zero b { color: #999; }
+/* Boutons de vote ✓ / ✗ sur chaque mot */
+.pb-vote { display: inline-flex; gap: 5px; flex-shrink: 0; }
+.pb-vote-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  border-radius: 50%; border: 2px solid #ddd; background: #fff; color: #999; cursor: pointer; padding: 0; }
+.pb-vote-btn.yes.on { border-color: #2e8f5b; background: #2e8f5b; color: #fff; }
+.pb-vote-btn.no.on { border-color: #d34a6a; background: #d34a6a; color: #fff; }
+/* Réglages d'avant-partie (manches + catégories) */
+.pb-config { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; padding: 14px;
+  background: #f8f5fc; border-radius: 14px; }
+.pb-config-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pb-config-label { font-weight: 700; font-size: 0.88rem; color: var(--ink-soft); }
+.pb-cats { display: flex; flex-wrap: wrap; gap: 7px; }
 .pb-rank { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 14px;
   padding: 10px 14px; box-shadow: var(--shadow-sm); font-weight: 600; }
 .pb-rank b { margin-left: auto; }

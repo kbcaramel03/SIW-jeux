@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, TextField } from '@mui/material';
-import { Play, Sparkles, PenLine, Send, Check, ThumbsDown } from 'lucide-react';
+import { Button, TextField, Chip, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Play, Sparkles, PenLine, Send, Check, X } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti, popSound, boomSound } from '../effects.js';
 
@@ -43,11 +43,43 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
     if (g.phase === 'write' && g.amSeated && !g.mySubmitted && left === 0) send();
   }, [left, g.phase]);
 
+  function toggleCategory(cat) {
+    const has = g.categories.includes(cat);
+    const next = has ? g.categories.filter((c) => c !== cat) : [...g.categories, cat];
+    if (next.length < 3 || next.length > 10) return;
+    onAction({ kind: 'config', categories: next });
+  }
+
   if (g.phase === 'waiting') {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title"><PenLine size={20} color="#7a3fbf" /> Petit Bac — salle d'attente</h3>
-        <p className="cn-hint-text">Le jeu du baccalauréat ! Une lettre est tirée : remplissez chaque catégorie par un mot qui commence par cette lettre, avant la fin du chrono. Ensuite, tout le monde relit : touchez une réponse douteuse pour la contester (la majorité l'emporte). Réponse unique = 10 points, doublon = 5, vide ou refusée = 0. 3 manches, le plus grand total gagne. De 2 à 10 joueuses.</p>
+        <p className="cn-hint-text">Le jeu du baccalauréat ! Une lettre est tirée : remplissez chaque catégorie par un mot qui commence par cette lettre, avant la fin du chrono. Ensuite, tout le monde relit et vote ✓ ou ✗ sur chaque mot des autres — plus de ✗ que de ✓ et le mot est refusé. Réponse unique = 10 points, doublon = 5, vide ou refusée = 0. Le plus grand total gagne. De 2 à 10 joueuses.</p>
+
+        <div className="pb-config">
+          <div className="pb-config-row">
+            <span className="pb-config-label">Manches :</span>
+            {isHost ? (
+              <ToggleButtonGroup value={g.rounds} exclusive color="primary" size="small"
+                onChange={(_, v) => v && onAction({ kind: 'config', rounds: v })}>
+                {[2, 3, 5, 7, 10].map((n) => <ToggleButton key={n} value={n}>{n}</ToggleButton>)}
+              </ToggleButtonGroup>
+            ) : <b>{g.rounds}</b>}
+          </div>
+          <div className="pb-config-row">
+            <span className="pb-config-label">Catégories ({g.categories.length}) {isHost ? '— touche pour choisir (3 à 10) :' : ':'}</span>
+          </div>
+          <div className="pb-cats">
+            {(isHost ? (g.allCategories || []) : g.categories).map((cat) => (
+              <Chip key={cat} label={cat} size="small"
+                color={g.categories.includes(cat) ? 'primary' : 'default'}
+                variant={g.categories.includes(cat) ? 'filled' : 'outlined'}
+                onClick={isHost ? () => toggleCategory(cat) : undefined} />
+            ))}
+          </div>
+          {!isHost && <p className="muted" style={{ margin: '4px 0 0' }}>L'hôte règle les manches et les catégories.</p>}
+        </div>
+
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
@@ -71,7 +103,7 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
       : (g.winners?.[0] === me ? 'Tu gagnes la partie !' : `${nameById[g.winners?.[0]] || '?'} gagne la partie !`))
     : g.phase === 'write'
       ? (g.mySubmitted ? 'Copie rendue — en attente des autres…' : `Un mot en ${g.letter} par catégorie !`)
-      : 'Relecture : conteste les réponses douteuses.';
+      : 'Relecture : ✓ pour valider, ✗ pour refuser chaque mot.';
 
   const scoreboard = (
     <div className="pool-players">
@@ -121,17 +153,31 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
               {g.seats.map((id) => {
                 const r = g.results[id][cat];
                 const mine = id === me;
-                const contestable = !mine && r.text;
+                const votable = !mine && !!r.text;
                 return (
-                  <button key={id} type="button"
-                    className={`pb-answer ${r.pts === 10 ? 'ok' : r.pts === 5 ? 'dup' : 'zero'} ${r.iRejected ? 'i-rejected' : ''}`}
-                    disabled={!contestable}
-                    onClick={() => onAction({ kind: 'reject', targetId: id, cat })}>
+                  <div key={id} className={`pb-answer ${r.pts === 10 ? 'ok' : r.pts === 5 ? 'dup' : 'zero'}`}>
                     <span className="pb-answer-name">{nameById[id] || '?'}</span>
                     <span className="pb-answer-text">{r.text || '—'}</span>
-                    {r.rejects > 0 && <span className="pb-answer-rejects"><ThumbsDown size={12} /> {r.rejects}</span>}
+                    {(r.plus > 0 || r.minus > 0) && (
+                      <span className="pb-answer-tally">
+                        {r.plus > 0 && <em className="yes">✓{r.plus}</em>}
+                        {r.minus > 0 && <em className="no">✗{r.minus}</em>}
+                      </span>
+                    )}
+                    {votable && (
+                      <span className="pb-vote">
+                        <button type="button" className={`pb-vote-btn yes ${r.myVote === 1 ? 'on' : ''}`}
+                          onClick={() => onAction({ kind: 'vote', targetId: id, cat, value: 1 })} aria-label="Valider">
+                          <Check size={15} />
+                        </button>
+                        <button type="button" className={`pb-vote-btn no ${r.myVote === -1 ? 'on' : ''}`}
+                          onClick={() => onAction({ kind: 'vote', targetId: id, cat, value: -1 })} aria-label="Refuser">
+                          <X size={15} />
+                        </button>
+                      </span>
+                    )}
                     <b>+{r.pts}</b>
-                  </button>
+                  </div>
                 );
               })}
             </div>

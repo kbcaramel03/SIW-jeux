@@ -305,8 +305,8 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     const dx = dragRef.current.x - p.x;   // direction opposée au glisser
     const dy = dragRef.current.y - p.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    // Sensibilité douce : il faut tirer loin en arrière pour la pleine puissance.
-    setAim({ dx, dy, power: Math.min(1, dist / 0.9) });
+    // Sensibilité : entre-deux (0.5 = trop nerveux, 0.9 = trop mou).
+    setAim({ dx, dy, power: Math.min(1, dist / 0.65) });
   }
   function onUp() {
     const a = aim;

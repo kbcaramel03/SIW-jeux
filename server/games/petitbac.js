@@ -1,15 +1,23 @@
 // Moteur du Petit Bac (jeu du baccalauréat), logique pure.
-// 2 à 10 joueuses. À chaque manche, une lettre est tirée : chacune remplit
-// ses catégories dans le temps imparti, puis tout le monde relit les réponses
-// et peut contester celles des autres (majorité = réponse refusée).
+// 2 à 10 joueuses. Avant de démarrer, l'hôte choisit le nombre de manches et
+// les catégories. À chaque manche, une lettre est tirée : chacune remplit ses
+// catégories dans le temps imparti, puis tout le monde relit et VOTE sur
+// chaque mot des autres (✓ valide / ✗ refuse) — plus de ✗ que de ✓ = refusé.
 // Points : réponse unique valide = 10, en doublon = 5, vide/invalide = 0.
 // Le serveur fait avancer les phases à l'horloge (téléphones en veille ok).
 
-export const CATEGORIES = ['Prénom', 'Animal', 'Ville ou pays', 'Nourriture', 'Métier', 'Objet'];
+export const ALL_CATEGORIES = [
+  'Prénom', 'Animal', 'Ville', 'Pays', 'Métier', 'Objet',
+  'Fruit ou légume', 'Plat ou dessert', 'Boisson', 'Marque',
+  'Célébrité', 'Film ou série', 'Chanteur ou chanteuse', 'Personnage de fiction',
+  'Dessin animé', 'Sport ou loisir', 'Vêtement ou accessoire', 'Fleur ou plante',
+  'Dans la cuisine', 'Dans la salle de bain', 'À la plage', 'À l\'école',
+  'Application ou site', 'Truc qui fait peur', 'Raison d\'être en retard', 'Cadeau d\'anniversaire',
+];
+const DEFAULT_CATEGORIES = ['Prénom', 'Animal', 'Ville', 'Métier', 'Objet', 'Fruit ou légume'];
 const LETTERS = 'ABCDEFGHIJLMNOPRSTV'; // sans les lettres impossibles (K, Q, W, X, Y, Z, U)
-const ROUNDS = 3;
 const WRITE_MS = 90000;
-const REVIEW_MS = 45000;
+const REVIEW_MS = 60000;
 const GRACE_MS = 2000; // marge pour laisser arriver les derniers envois
 
 const isOffline = (s, id) => !!(s.offline && s.offline[id]);
@@ -24,14 +32,14 @@ export function createPetitBac() {
     phase: 'waiting', // waiting -> write -> review -> (write…) -> over
     seats: [],
     scores: {},
-    categories: CATEGORIES.slice(),
+    categories: DEFAULT_CATEGORIES.slice(),
     round: 1,
-    rounds: ROUNDS,
+    rounds: 3,
     letter: null,
     used: [],         // lettres déjà jouées
     answers: {},      // userId -> { catégorie: texte }
     submitted: {},    // userId -> true
-    rejects: {},      // `${userId}|${cat}` -> [id des contestataires]
+    votes: {},        // `${userId}|${cat}` -> { voterId: 1 (✓) | -1 (✗) }
     deadline: null,
     names: {},
     hostId: null,
@@ -47,6 +55,24 @@ export function joinPetitBac(state, userId) {
   if (!state.seats.includes(userId) && state.seats.length < 10) state.seats.push(userId);
 }
 
+// L'hôte règle la partie avant le départ : nombre de manches et catégories.
+export function configPetitBac(state, userId, { rounds, categories }) {
+  if (state.phase !== 'waiting') throw new Error('La partie a déjà commencé.');
+  if (userId !== state.hostId) throw new Error('Seule l\'hôte peut régler la partie.');
+  if (rounds != null) {
+    const r = Math.round(Number(rounds));
+    if (!Number.isFinite(r) || r < 1 || r > 10) throw new Error('Nombre de manches invalide (1 à 10).');
+    state.rounds = r;
+  }
+  if (categories != null) {
+    if (!Array.isArray(categories)) throw new Error('Catégories invalides.');
+    const clean = [...new Set(categories)].filter((c) => ALL_CATEGORIES.includes(c));
+    if (clean.length < 3) throw new Error('Choisis au moins 3 catégories.');
+    if (clean.length > 10) throw new Error('Pas plus de 10 catégories.');
+    state.categories = clean;
+  }
+}
+
 function newLetter(state) {
   const pool = LETTERS.split('').filter((l) => !state.used.includes(l));
   const letter = pool[Math.floor(Math.random() * pool.length)];
@@ -58,7 +84,7 @@ function startRound(state) {
   state.letter = newLetter(state);
   state.answers = {};
   state.submitted = {};
-  state.rejects = {};
+  state.votes = {};
   state.phase = 'write';
   state.deadline = Date.now() + WRITE_MS;
   pushLog(state, `Manche ${state.round} — lettre ${state.letter} !`);
@@ -79,7 +105,7 @@ const allDone = (state) => state.seats.every((id) => state.submitted[id] || isOf
 function toReview(state) {
   state.phase = 'review';
   state.deadline = Date.now() + REVIEW_MS;
-  pushLog(state, 'Relecture : contestez les réponses douteuses !');
+  pushLog(state, 'Relecture : validez (✓) ou refusez (✗) chaque mot !');
 }
 
 export function submitPetitBac(state, userId, { answers }) {
@@ -96,22 +122,33 @@ export function submitPetitBac(state, userId, { answers }) {
   if (allDone(state)) toReview(state);
 }
 
-export function rejectPetitBac(state, userId, { targetId, cat }) {
+// Vote sur le mot d'une autre joueuse : 1 = ✓ valide, -1 = ✗ refuse.
+// Revoter pareil retire le vote ; voter autrement change d'avis.
+export function votePetitBac(state, userId, { targetId, cat, value }) {
   if (state.phase !== 'review') throw new Error('Pas en phase de relecture.');
   if (!state.seats.includes(userId)) throw new Error('Tu n\'es pas dans la partie.');
-  if (targetId === userId) throw new Error('Tu ne peux pas contester ta propre réponse.');
+  if (targetId === userId) throw new Error('On ne vote pas pour son propre mot.');
   if (!state.categories.includes(cat) || !state.seats.includes(targetId)) throw new Error('Réponse inconnue.');
+  const v = value === 1 ? 1 : -1;
   const key = `${targetId}|${cat}`;
-  const voters = state.rejects[key] || (state.rejects[key] = []);
-  const i = voters.indexOf(userId);
-  if (i >= 0) voters.splice(i, 1); else voters.push(userId); // toggle
+  const box = state.votes[key] || (state.votes[key] = {});
+  if (box[userId] === v) delete box[userId]; else box[userId] = v;
 }
 
-// Une réponse est refusée si la majorité des AUTRES joueuses la conteste.
-const rejected = (state, id, cat) =>
-  (state.rejects[`${id}|${cat}`] || []).length >= Math.ceil((state.seats.length - 1) / 2);
+const voteCounts = (state, id, cat) => {
+  const box = state.votes[`${id}|${cat}`] || {};
+  let plus = 0, minus = 0;
+  for (const v of Object.values(box)) { if (v === 1) plus++; else minus++; }
+  return { plus, minus };
+};
 
-// Points de la manche en cours : 10 unique, 5 doublon, 0 vide/invalide/refusée.
+// Un mot est refusé si les ✗ l'emportent sur les ✓ (les votes des autres).
+const refused = (state, id, cat) => {
+  const { plus, minus } = voteCounts(state, id, cat);
+  return minus > plus;
+};
+
+// Points de la manche en cours : 10 unique, 5 doublon, 0 vide/invalide/refusé.
 function roundResults(state) {
   const res = {};
   for (const id of state.seats) res[id] = {};
@@ -120,7 +157,7 @@ function roundResults(state) {
     for (const id of state.seats) {
       const text = (state.answers[id] || {})[cat] || '';
       const n = norm(text);
-      const valid = n.length >= 2 && n[0] === state.letter.toLowerCase() && !rejected(state, id, cat);
+      const valid = n.length >= 2 && n[0] === state.letter.toLowerCase() && !refused(state, id, cat);
       res[id][cat] = { text, valid, n };
       if (valid) counts[n] = (counts[n] || 0) + 1;
     }
@@ -141,7 +178,7 @@ function finishRound(state) {
     return `${nm(state, id)} +${g}`;
   });
   pushLog(state, `Manche ${state.round} (${state.letter}) : ${gains.join(', ')}.`);
-  if (state.round >= state.rounds) {
+  if (state.round >= state.rounds || state.used.length >= LETTERS.length) {
     state.phase = 'over';
     state.deadline = null;
     const best = Math.max(...state.seats.map((id) => state.scores[id] || 0));
@@ -179,6 +216,7 @@ export function viewFor(state, userId) {
     seats: state.seats.slice(),
     scores: { ...state.scores },
     categories: state.categories.slice(),
+    allCategories: state.phase === 'waiting' ? ALL_CATEGORIES.slice() : undefined,
     round: state.round,
     rounds: state.rounds,
     letter: state.letter,
@@ -191,9 +229,11 @@ export function viewFor(state, userId) {
         const res = roundResults(state);
         for (const id of state.seats) {
           for (const cat of state.categories) {
-            const voters = state.rejects[`${id}|${cat}`] || [];
-            res[id][cat].rejects = voters.length;
-            res[id][cat].iRejected = voters.includes(userId);
+            const { plus, minus } = voteCounts(state, id, cat);
+            const box = state.votes[`${id}|${cat}`] || {};
+            res[id][cat].plus = plus;
+            res[id][cat].minus = minus;
+            res[id][cat].myVote = box[userId] || 0;
           }
         }
         return res;

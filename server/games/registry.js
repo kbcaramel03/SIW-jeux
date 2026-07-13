@@ -285,9 +285,10 @@ function applyPoolAction(state, userId, payload) {
 function applyPetitBacAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return petitbac.joinPetitBac(state, userId);
+    case 'config': return petitbac.configPetitBac(state, userId, payload);
     case 'start': return petitbac.startPetitBac(state, userId);
     case 'submit': return petitbac.submitPetitBac(state, userId, payload);
-    case 'reject': return petitbac.rejectPetitBac(state, userId, payload);
+    case 'vote': return petitbac.votePetitBac(state, userId, payload);
     case 'next': return petitbac.nextPetitBac(state, userId);
     default: throw new Error('Action inconnue.');
   }
