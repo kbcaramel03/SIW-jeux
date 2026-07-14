@@ -90,6 +90,20 @@ function skyTexture() {
   return tex;
 }
 
+// Petite feuille (le vent se voit : elles volent plus vite quand il souffle).
+function leafTexture(color) {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.translate(32, 32); ctx.rotate(0.6);
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.ellipse(0, 0, 22, 9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(90,60,20,0.55)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(20, 0); ctx.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 // Halo doux (soleil, nuages) : disque blanc dégradé vers transparent.
 function glowTexture(soft = 0.1) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -162,7 +176,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     if (!playing || !mountRef.current || world.current) return undefined;
     const mount = mountRef.current;
     const W = mount.clientWidth;
-    const H = Math.min(Math.round(W * 1.4), Math.round(window.innerHeight * 0.8));
+    const H = Math.min(Math.round(W * 1.4), window.innerHeight - 221); // budget : bannière + pastilles + barre de chat, zéro scroll
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -326,21 +340,17 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     flag.position.set(-3.8, 2.35, -1.6);
     targetGrp.add(flag);
 
-    // Particules de vent (poussières qui filent dans le sens du vent)
-    const N = 90;
-    const pos = new Float32Array(N * 3);
-    for (let i = 0; i < N; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 22;
-      pos[i * 3 + 1] = 0.3 + Math.random() * 4.2;
-      pos[i * 3 + 2] = 2 + Math.random() * 24;
+    // Feuilles volantes : LE marqueur du vent — plus il souffle, plus elles filent
+    const leafTexs = ['#7fb069', '#d9a441', '#c97b3d'].map((c2) => leafTexture(c2));
+    const leaves = [];
+    for (let i = 0; i < 22; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: leafTexs[i % 3], transparent: true, opacity: 0.9, depthWrite: false }));
+      const sc = 0.14 + Math.random() * 0.12;
+      sp.scale.set(sc, sc, 1);
+      sp.position.set((Math.random() - 0.5) * 22, 0.4 + Math.random() * 3.4, 2 + Math.random() * 22);
+      leaves.push({ sp, k: 0.6 + Math.random() * 0.8, ph: Math.random() * 9, y0: sp.position.y });
+      scene.add(sp);
     }
-    const dustGeo = new THREE.BufferGeometry();
-    dustGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
-      color: 0xffffff, size: 0.06, transparent: true, opacity: 0.4, sizeAttenuation: true,
-      map: glow, alphaTest: 0.3, depthWrite: false, // petits ronds doux
-    }));
-    scene.add(dust);
 
     // Arc au premier plan (accroché à la caméra) + corde + flèche encochée
     const bowGrp = new THREE.Group();
@@ -393,8 +403,8 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     scene.add(trail);
 
     world.current = {
-      renderer, scene, camera, flag, flagGeo, dust, bowGrp, string, nockArrow, reticle, stuck,
-      clouds, board, trail, targetGrp, windGrp, wobbleT0: 0,
+      renderer, scene, camera, flag, flagGeo, bowGrp, string, nockArrow, reticle, stuck,
+      clouds, board, trail, targetGrp, windGrp, leaves, wobbleT0: 0,
       lookAt: new THREE.Vector3(0, TARGET.y, gRef.current.dist || 18), fovTarget: 44,
       raf: 0, clock: new THREE.Clock(),
     };
@@ -419,14 +429,15 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
       }
       fp.needsUpdate = true;
 
-      // Poussières poussées par le vent
-      const dp = w.dust.geometry.attributes.position;
-      for (let i = 0; i < dp.count; i++) {
-        let x = dp.getX(i) + wind * dt * 0.9;
-        if (x > 12) x = -12; if (x < -12) x = 12;
-        dp.setX(i, x);
+      // Feuilles emportées : vitesse proportionnelle au vent, virevolte, tourbillon
+      for (const lf of w.leaves) {
+        lf.sp.position.x += wind * 0.85 * lf.k * dt;
+        lf.sp.position.y = lf.y0 + Math.sin(t * (1.6 + lf.k) + lf.ph) * (0.12 + windN * 0.3);
+        lf.sp.material.rotation += dt * (0.8 + windN * 5) * (lf.ph > 4.5 ? -1 : 1);
+        lf.sp.material.opacity = windN < 0.05 ? 0 : 0.9; // vent nul : pas de feuilles en lévitation
+        if (lf.sp.position.x > 12) lf.sp.position.x = -12;
+        if (lf.sp.position.x < -12) lf.sp.position.x = 12;
       }
-      dp.needsUpdate = true;
 
       // Nuages qui dérivent doucement (poussés par le vent)
       for (const cl of w.clouds) {
@@ -522,7 +533,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     const onResize = () => {
       const w = world.current; if (!w) return;
       const nw = mount.clientWidth;
-      const nh = Math.min(Math.round(nw * 1.4), Math.round(window.innerHeight * 0.8));
+      const nh = Math.min(Math.round(nw * 1.4), window.innerHeight - 221);
       w.renderer.setSize(nw, nh);
       w.camera.aspect = nw / nh;
       w.camera.updateProjectionMatrix();

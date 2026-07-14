@@ -467,8 +467,9 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
       <div className="pool-stage">
         {g.phase === 'playing' && g.isMyTurn && !animating && (
           <div className="pool-power" ref={sliderRef}
+            /* Toute la zone se teinte : vert doux à faible puissance, rouge à fond */
+            style={{ backgroundColor: `hsla(${Math.round(120 - power * 120)}, 82%, 52%, ${0.28 + power * 0.4})` }}
             onPointerDown={sliderDown} onPointerMove={sliderMove} onPointerUp={sliderUp} onPointerCancel={sliderUp}>
-            <div className="pool-power-fill" style={{ height: `${power * 100}%` }} />
             {/* La queue glisse vers le bas : plus elle descend, plus le coup est fort */}
             <div className="pool-power-cue" style={{ top: `${4 + power * 44}%` }} />
           </div>

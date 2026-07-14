@@ -1270,8 +1270,18 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   /* Jeux en canvas : bord à bord, vraiment plein écran */
   .app.in-room .archery3d-wrap { width: 100vw; max-width: none; margin-left: calc(50% - 50vw); border-radius: 0; }
   .app.in-room .pool-stage { gap: 5px; }
-  .app.in-room .pool-table-wrap.vertical { width: min(calc(100vw - 56px), 46vh); }
+  .app.in-room .pool-table-wrap.vertical {
+    width: min(calc(100vw - 56px), calc((100vh - 256px) / 2));
+    width: min(calc(100vw - 56px), calc((100dvh - 256px) / 2));
+  }
   .app.in-room .gf-banner { margin-bottom: 6px; padding: 7px 10px; font-size: 0.85rem; }
+  /* Zéro scroll : chaque plateau est aussi borné par la hauteur de l'écran
+     (calibré sur le plus petit iPhone courant : 375 x 667) */
+  .app.in-room .ch-board { width: min(88vw, calc(100dvh - 310px)); }
+  .app.in-room .ludo-board { width: min(88vw, calc(100dvh - 300px)); }
+  .app.in-room .uno-table { max-width: min(96vw, calc((100dvh - 300px) * 1.45)); }
+  .app.in-room .gf-table { width: min(96vw, calc(100dvh - 350px)); }
+  .app.in-room .cn-card { min-height: 40px; }
   .app.in-room .room-header { display: none; }
   .app.in-room .room-back-fab { display: flex; }
 }
