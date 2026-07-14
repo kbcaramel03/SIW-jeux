@@ -74,6 +74,30 @@ export function shuffleFleet(state, userId) {
   state.boards[userId] = randomBoard();
 }
 
+// Placement manuel : déplacer un bateau (tête en x,y) et/ou le pivoter.
+export function placeShip(state, userId, { id, x, y, horizontal }) {
+  if (state.phase !== 'placing') throw new Error('Le placement est terminé.');
+  const board = state.boards[userId];
+  if (!board) throw new Error('Mélange d\'abord ta flotte.');
+  if (state.ready[userId]) throw new Error('Dé-valide « Prêt » pour bouger tes bateaux.');
+  const ship = board.ships.find((s) => s.id === Number(id));
+  if (!ship) throw new Error('Bateau inconnu.');
+  const px = Math.round(Number(x)), py = Math.round(Number(y));
+  const h = !!horizontal;
+  const cells = [];
+  for (let i = 0; i < ship.size; i++) {
+    const cx = h ? px + i : px;
+    const cy = h ? py : py + i;
+    if (cx < 0 || cx >= SIZE || cy < 0 || cy >= SIZE) throw new Error('Ça dépasse de la mer !');
+    const other = board.grid[cy][cx].ship;
+    if (other !== null && other !== ship.id) throw new Error('Deux bateaux ne peuvent pas se chevaucher.');
+    cells.push([cx, cy]);
+  }
+  for (const [ox, oy] of ship.cells) board.grid[oy][ox].ship = null;
+  for (const [cx, cy] of cells) board.grid[cy][cx].ship = ship.id;
+  ship.cells = cells;
+}
+
 function maybeStart(state) {
   if (state.seats.length === 2 && state.seats.every((id) => state.ready[id])) {
     state.phase = 'playing';
@@ -216,6 +240,19 @@ export function fire(state, userId, x, y) {
   if (result === 'miss') state.turn = opp;
 }
 
+// Bateaux « entiers » pour le dessin client : position de la tête, longueur,
+// orientation. On n'envoie côté ennemi que les bateaux coulés (ou fin de partie).
+function shipSpans(board, keep) {
+  return board.ships.filter(keep).map((s) => ({
+    id: s.id,
+    x: s.cells[0][0],
+    y: s.cells[0][1],
+    len: s.size,
+    horizontal: s.cells.length === 1 || s.cells[0][1] === s.cells[1][1],
+    sunk: s.sunk,
+  }));
+}
+
 // Pour chaque case de bateau : orientation + position (pour dessiner la coque).
 function shipSegments(board) {
   const map = {};
@@ -285,6 +322,8 @@ export function viewFor(state, userId) {
     iWon: state.winner === userId,
     myBoard: myBoardView(),
     enemyBoard: enemyBoardView(),
+    myShips: state.boards[userId] ? shipSpans(state.boards[userId], () => true) : null,
+    enemyShips: opp && state.boards[opp] ? shipSpans(state.boards[opp], (s) => over || s.sunk) : [],
     myFleet: fleetStatus(userId),
     enemyFleet: opp ? fleetStatus(opp) : null,
     lastEvent: state.lastEvent,

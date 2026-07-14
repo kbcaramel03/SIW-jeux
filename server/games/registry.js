@@ -365,6 +365,8 @@ function applyBattleshipAction(state, userId, payload) {
   switch (payload.kind) {
     case 'shuffle':
       return battleship.shuffleFleet(state, userId);
+    case 'place':
+      return battleship.placeShip(state, userId, payload);
     case 'ready':
       return battleship.setReady(state, userId, payload.value !== false);
     case 'bot':

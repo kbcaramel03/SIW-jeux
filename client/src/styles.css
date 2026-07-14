@@ -317,18 +317,32 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .bs-side h4 { margin: 0 0 10px; }
 .bs-yourturn { font-family: var(--font-body); font-size: 0.74rem; font-weight: 700; color: #fff; background: var(--pink); padding: 2px 9px; border-radius: 10px; margin-left: 6px; }
 .bs-grid-wrap { display: flex; justify-content: center; }
-.bs-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; width: 100%; max-width: 350px; aspect-ratio: 1; }
-.bs-grid.sm { max-width: 215px; gap: 2px; }
-.bs-cell { aspect-ratio: 1; border: none; border-radius: 5px; background: #dbe8f4; cursor: default; padding: 0; position: relative; transition: transform 0.08s, background 0.15s; display: flex; align-items: center; justify-content: center; }
+/* La grille n'a plus d'espaces entre cases : les bateaux entiers se posent
+   par-dessus en % exacts (1 case = 10 %). Le quadrillage est un fin liseré. */
+.bs-gridbox { position: relative; width: 100%; max-width: 430px; }
+.bs-gridbox.sm { max-width: 250px; }
+.bs-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0; width: 100%; aspect-ratio: 1;
+  border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.bs-grid.sm { border-radius: 9px; }
+.bs-cell { aspect-ratio: 1; border: none; border-radius: 0; background: #d6e6f5;
+  box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.7); cursor: default; padding: 0;
+  position: relative; transition: background 0.15s; display: flex; align-items: center; justify-content: center; }
+.bs-cell.hit, .bs-cell.miss, .bs-cell.sunk { z-index: 2; }
+
+/* Bateaux entiers superposés à la grille */
+.bs-boat { position: absolute; z-index: 1; pointer-events: none; }
+.bs-boat.tappable { pointer-events: auto; cursor: pointer; }
+.bs-boat.selected { filter: drop-shadow(0 0 5px rgba(122,63,191,0.9)); }
+.bs-boat.selected .bs-boat-svg .hull { fill: #7a5ca8; }
+.bs-boat-svg { width: 100%; height: 100%; display: block; }
+.bs-boat-svg .hull { fill: #5f7189; stroke: #47576b; stroke-width: 0.8; }
+.bs-boat-svg .deck { fill: #8598ad; }
+.bs-boat-svg .win { fill: #eaf1f8; }
+.bs-boat.sunk { opacity: 0.95; z-index: 3; /* l'épave se voit par-dessus les cases rouges */ }
+.bs-boat.sunk .bs-boat-svg .hull { fill: #8c2f28; stroke: #6b211b; }
+.bs-boat.sunk .bs-boat-svg .deck { fill: #a34a42; }
 /* coque de bateau (visible sur MA flotte / bateaux coulÃ©s) */
-.bs-cell.ship { background: #79899e; }
-.bs-cell.ship.orient-h.part-start { border-top-left-radius: 48%; border-bottom-left-radius: 48%; }
-.bs-cell.ship.orient-h.part-end { border-top-right-radius: 48%; border-bottom-right-radius: 48%; }
-.bs-cell.ship.orient-v.part-start { border-top-left-radius: 48%; border-top-right-radius: 48%; }
-.bs-cell.ship.orient-v.part-end { border-bottom-left-radius: 48%; border-bottom-right-radius: 48%; }
-.bs-cell.ship.part-single { border-radius: 48%; }
-.bs-cell .ship-ic { width: 64%; height: 64%; color: #eef2f7; }
-.bs-cell.orient-v .ship-ic { transform: rotate(90deg); }
+/* (anciennes cases-coques supprimées : les bateaux sont dessinés entiers) */
 /* banniÃ¨re de tour + surbrillance du plateau actif */
 .bs-turn-banner { display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center;
   font-family: var(--font-head); font-weight: 600; font-size: 1.05rem; padding: 10px; border-radius: 14px; margin-bottom: 14px; }
@@ -338,7 +352,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .bs-side-mine { opacity: 0.92; }
 .bs-side-mine h4 { font-size: 0.92rem; color: var(--ink-soft); }
 .bs-cell.fireable { cursor: crosshair; background: #cde0f1; }
-.bs-cell.fireable:hover { background: #b9d4ee; transform: scale(1.1); }
+.bs-cell.fireable:hover { background: #b9d4ee; }
 .bs-cell.miss { background: #b0c0cf; }
 .bs-cell.miss::after { content: ''; position: absolute; inset: 36%; border-radius: 50%; background: #6c7e91; }
 .bs-cell.hit { background: #ff7b54; animation: hitpop 0.3s ease; }
@@ -616,10 +630,17 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   .cn-teams { grid-template-columns: 1fr; }
   .room-side { display: none; } /* remplacÃ© par la bulle flottante */
   /* Bataille navale : on garde les DEUX flottes visibles cÃ´te Ã  cÃ´te sur mobile */
-  .bs-arena { grid-template-columns: 1.4fr 1fr; gap: 9px; }
-  .bs-side { padding: 9px; }
-  .bs-grid, .bs-grid.sm { max-width: 100%; }
-  .bs-side h4 { font-size: 0.82rem; }
+  /* Téléphone : mer ennemie pleine largeur, ma flotte petite dessous — et les
+     DEUX visibles sans scroller (tailles bornées par la hauteur de l'écran). */
+  .bs-arena { grid-template-columns: 1fr; gap: 6px; }
+  .bs-side { padding: 7px 8px; }
+  .bs-gridbox { max-width: min(100%, 44vh); margin: 0 auto; }
+  .bs-side-mine { text-align: center; }
+  .bs-side-mine .bs-fleet-ships { justify-content: center; }
+  .bs-gridbox.sm { max-width: min(62vw, 24vh); margin: 0 auto; }
+  .bs-side h4 { font-size: 0.8rem; margin-bottom: 4px; }
+  .bs-fleet { margin-top: 3px; font-size: 0.72rem; }
+  .bs-turn-banner { padding: 6px 10px; margin-bottom: 6px; }
 }
 
 /* ===== Carte Ã  jouer classique (52 cartes) ===== */
