@@ -9,12 +9,12 @@ import { winConfetti, popSound, boomSound } from '../effects.js';
 // Monde en mètres : X = latéral, Y = hauteur, Z = vers la cible.
 const G = 9.81, DT = 1 / 120;
 const BOW = { x: 0, y: 1.5, z: 0 };
-const TARGET = { y: 1.3, z: 20, RING: 0.06, R: 0.6, BOARD: 0.75 };
+const TARGET = { y: 1.3, RING: 0.06, R: 0.6, BOARD: 0.75 };
 const SPEED = { min: 30, max: 70 };
 const WIND_ACCEL = 1.6;
 
 // COPIE de la simulation serveur : même vol, même point d'impact.
-function simulateArrow({ yaw, pitch, power }, wind, onStep) {
+function simulateArrow({ yaw, pitch, power }, wind, dist, onStep) {
   const v = SPEED.min + Math.max(0, Math.min(1, power)) * (SPEED.max - SPEED.min);
   const cp = Math.cos(pitch);
   let x = BOW.x, y = BOW.y, z = BOW.z;
@@ -26,8 +26,8 @@ function simulateArrow({ yaw, pitch, power }, wind, onStep) {
     vy -= G * DT;
     x += vx * DT; y += vy * DT; z += vz * DT; t += DT;
     if (onStep) onStep(x, y, z, t);
-    if (z >= TARGET.z) {
-      const k = (TARGET.z - pz) / (z - pz || 1);
+    if (z >= dist) {
+      const k = (dist - pz) / (z - pz || 1);
       return { plane: true, x: px + (x - px) * k, y: py + (y - py) * k, t };
     }
     if (y <= 0) {
@@ -39,7 +39,7 @@ function simulateArrow({ yaw, pitch, power }, wind, onStep) {
 }
 
 const SEAT_COLORS = ['#e0392e', '#2b5fd4', '#2e9c5c', '#f2c11f', '#7a3fbf', '#f28322'];
-const BASE_PITCH = Math.atan2(TARGET.y - BOW.y, TARGET.z); // viser « tout droit » = le centre
+const basePitch = (dist) => Math.atan2(TARGET.y - BOW.y, dist); // viser « tout droit » = le centre
 
 // Texture des anneaux (dessinée une fois, nette même de près).
 function ringTexture() {
@@ -162,7 +162,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     if (!playing || !mountRef.current || world.current) return undefined;
     const mount = mountRef.current;
     const W = mount.clientWidth;
-    const H = Math.min(Math.round(W * 1.25), Math.round(window.innerHeight * 0.76));
+    const H = Math.min(Math.round(W * 1.4), Math.round(window.innerHeight * 0.8));
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -287,20 +287,23 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
       leg.rotation.x = -0.22;
       board.add(leg);
     }
-    board.position.set(0, TARGET.y, TARGET.z);
-    scene.add(board);
+    board.position.set(0, TARGET.y, 0);
+    const targetGrp = new THREE.Group();
+    targetGrp.position.z = gRef.current.dist || 18;
+    targetGrp.add(board);
+    scene.add(targetGrp);
 
     // Guirlande de fanions au-dessus de la cible (ambiance fête au village)
     const bunting = new THREE.Group();
     const poleMat = new THREE.MeshLambertMaterial({ color: 0xd8d3c6 });
     for (const px of [-3.2, 3.2]) {
       const p = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 3.1, 6), poleMat);
-      p.position.set(px, 1.55, TARGET.z + 0.6);
+      p.position.set(px, 1.55, 0.6);
       bunting.add(p);
     }
     const sag = (x) => 3.05 - 0.35 * (1 - (x / 3.2) ** 2); // la corde pend au milieu
     const ropePts = [];
-    for (let x = -3.2; x <= 3.2001; x += 0.4) ropePts.push(new THREE.Vector3(x, sag(x), TARGET.z + 0.6));
+    for (let x = -3.2; x <= 3.2001; x += 0.4) ropePts.push(new THREE.Vector3(x, sag(x), 0.6));
     const rope = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ropePts), new THREE.LineBasicMaterial({ color: 0xf2ecdd }));
     bunting.add(rope);
     const flagCols = [0xff4d7d, 0xf2c11f, 0x3f74d6, 0x2e9c5c, 0xf28322];
@@ -308,20 +311,20 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
       const x = -3 + i * 0.5;
       const tri = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.3, 4), new THREE.MeshLambertMaterial({ color: flagCols[i % flagCols.length], side: THREE.DoubleSide }));
       tri.rotation.x = Math.PI; // pointe vers le bas
-      tri.position.set(x, sag(x) - 0.18, TARGET.z + 0.6);
+      tri.position.set(x, sag(x) - 0.18, 0.6);
       bunting.add(tri);
     }
-    scene.add(bunting);
+    targetGrp.add(bunting);
 
     // Drapeau : il se tend et ondule selon le vent
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 2.6, 8), new THREE.MeshLambertMaterial({ color: 0xd8d3c6 }));
-    pole.position.set(-3.8, 1.3, TARGET.z - 1.6); // à l'écart de la guirlande
-    scene.add(pole);
+    pole.position.set(-3.8, 1.3, -1.6); // à l'écart de la guirlande
+    targetGrp.add(pole);
     const flagGeo = new THREE.PlaneGeometry(0.8, 0.5, 12, 6);
     flagGeo.translate(0.4, 0, 0); // ancré au mât
     const flag = new THREE.Mesh(flagGeo, new THREE.MeshLambertMaterial({ color: 0xe23c2e, side: THREE.DoubleSide }));
-    flag.position.set(-3.8, 2.35, TARGET.z - 1.6);
-    scene.add(flag);
+    flag.position.set(-3.8, 2.35, -1.6);
+    targetGrp.add(flag);
 
     // Particules de vent (poussières qui filent dans le sens du vent)
     const N = 90;
@@ -329,7 +332,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     for (let i = 0; i < N; i++) {
       pos[i * 3] = (Math.random() - 0.5) * 22;
       pos[i * 3 + 1] = 0.3 + Math.random() * 4.2;
-      pos[i * 3 + 2] = 2 + Math.random() * (TARGET.z - 3);
+      pos[i * 3 + 2] = 2 + Math.random() * 24;
     }
     const dustGeo = new THREE.BufferGeometry();
     dustGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -368,7 +371,19 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     scene.add(reticle);
 
     const stuck = new THREE.Group(); // flèches plantées
-    scene.add(stuck);
+    targetGrp.add(stuck);
+
+    // Flèche de vent 3D près de la cible : sens + force du vent, bien visibles
+    const windGrp = new THREE.Group();
+    const wShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 8), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    wShaft.rotation.z = Math.PI / 2;
+    windGrp.add(wShaft);
+    const wTip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.4, 10), new THREE.MeshLambertMaterial({ color: 0xff4d7d }));
+    wTip.rotation.z = -Math.PI / 2;
+    wTip.position.x = 1;
+    windGrp.add(wTip);
+    windGrp.position.set(2.6, 2.6, -0.4);
+    targetGrp.add(windGrp);
 
     // Traînée blanche derrière la flèche en vol (buffer fixe de 15 points)
     const trailGeo = new THREE.BufferGeometry();
@@ -379,8 +394,8 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
 
     world.current = {
       renderer, scene, camera, flag, flagGeo, dust, bowGrp, string, nockArrow, reticle, stuck,
-      clouds, board, trail, wobbleT0: 0,
-      lookAt: new THREE.Vector3(0, TARGET.y, TARGET.z), fovTarget: 44,
+      clouds, board, trail, targetGrp, windGrp, wobbleT0: 0,
+      lookAt: new THREE.Vector3(0, TARGET.y, gRef.current.dist || 18), fovTarget: 44,
       raf: 0, clock: new THREE.Clock(),
     };
 
@@ -420,6 +435,13 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         if (cl.position.x < -95) cl.position.x = 95;
       }
 
+      // Flèche de vent : sens et taille selon la force, petit flottement
+      const windN2 = Math.min(1, Math.abs(wind) / 6);
+      w.windGrp.scale.x = (wind >= 0 ? 1 : -1) * (0.35 + windN2 * 1.15);
+      w.windGrp.scale.y = w.windGrp.scale.z = 0.55 + windN2 * 0.75;
+      w.windGrp.position.y = 2.6 + Math.sin(t * 2.2) * 0.08;
+      w.windGrp.visible = windN2 > 0.04;
+
       // Le panneau tremble après un impact, puis se calme
       if (w.wobbleT0) {
         const wt = (performance.now() - w.wobbleT0) / 1000;
@@ -427,7 +449,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         else w.board.rotation.z = Math.sin(wt * 34) * 0.045 * (1 - wt / 0.9);
       }
 
-      // Visée en cours : bandage progressif, tremblement, réticule
+      // Visée en cours : armement progressif, tremblement, réticule
       const aim = aimRef.current;
       if (aim) {
         aim.holdT += dt;
@@ -440,10 +462,10 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         };
         const ya = aim.yaw + aim.sway.yaw, pa = aim.pitch + aim.sway.pitch;
         vAim.set(Math.sin(ya) * Math.cos(pa), Math.sin(pa), Math.cos(ya) * Math.cos(pa));
-        const rd = TARGET.z - 0.6;
+        const rd = (gRef.current.dist || 18) - 0.6;
         w.reticle.position.set(BOW.x + vAim.x * rd, BOW.y + vAim.y * rd, BOW.z + vAim.z * rd);
         w.reticle.visible = true;
-        w.fovTarget = 44 - aim.power * 10; // léger zoom quand on bande
+        w.fovTarget = 44 - aim.power * 10; // léger zoom quand on arme
         if (powerRef.current) powerRef.current.style.width = `${Math.round(aim.power * 100)}%`;
       } else if (!flightRef.current) {
         w.reticle.visible = false;
@@ -500,7 +522,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     const onResize = () => {
       const w = world.current; if (!w) return;
       const nw = mount.clientWidth;
-      const nh = Math.min(Math.round(nw * 1.25), Math.round(window.innerHeight * 0.76));
+      const nh = Math.min(Math.round(nw * 1.4), Math.round(window.innerHeight * 0.8));
       w.renderer.setSize(nw, nh);
       w.camera.aspect = nw / nh;
       w.camera.updateProjectionMatrix();
@@ -530,7 +552,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     for (let i = 0; i < arrows.length - (skipLast ? 1 : 0); i++) {
       const a = arrows[i];
       const m = makeArrow(colorBySeat[a.by] || '#888');
-      m.position.set(a.x, a.y, TARGET.z - 0.01);
+      m.position.set(a.x, a.y, -0.01); // relatif au groupe cible
       // Fichée comme une vraie flèche : queue qui retombe, bien visible de face.
       m.rotation.x = 0.3 + Math.random() * 0.15;
       m.rotation.y = (Math.random() - 0.5) * 0.2;
@@ -538,6 +560,15 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
       w.stuck.add(m);
     }
   }
+  // La cible recule à chaque manche (10 m -> 18 m -> 28 m).
+  useEffect(() => {
+    const w = world.current;
+    if (!w || !g.dist) return;
+    w.targetGrp.position.z = g.dist;
+    w.lookAt.set(0, TARGET.y, g.dist);
+    rebuildStuck();
+  }, [g.dist, playing]);
+
   // On ne replante pas la dernière flèche tant que son vol n'a pas été rejoué.
   useEffect(() => {
     const flightPending = g.lastShot && g.lastShot.seq !== lastShotSeq.current;
@@ -554,7 +585,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     animatingRef.current = false;
     // Zoom bref sur l'impact, retour ensuite (+ le panneau tremble)
     if (fl.hit.plane) {
-      w.lookAt.set(fl.hit.x, fl.hit.y, TARGET.z);
+      w.lookAt.set(fl.hit.x, fl.hit.y, gRef.current.dist || 18);
       w.fovTarget = 16;
       w.wobbleT0 = performance.now();
       boomSound(fl.pts >= 9);
@@ -562,7 +593,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     setPopup({ text: fl.pts > 0 ? `+${fl.pts}` : 'Raté…', good: fl.pts >= 8, key: Date.now() });
     setTimeout(() => {
       const ww = world.current;
-      if (ww) { ww.lookAt.set(0, TARGET.y, TARGET.z); ww.fovTarget = 44; }
+      if (ww) { ww.lookAt.set(0, TARGET.y, gRef.current.dist || 18); ww.fovTarget = 44; }
       setPopup(null);
       setAnimating(false);
       rebuildStuck();
@@ -576,8 +607,8 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     if (!shot || shot.seq === lastShotSeq.current || !w) return;
     lastShotSeq.current = shot.seq;
     const path = [new THREE.Vector3(BOW.x, BOW.y, BOW.z)];
-    const hit = simulateArrow(shot, shot.wind, (x, y, z) => path.push(new THREE.Vector3(x, y, z)));
-    if (hit.plane) path.push(new THREE.Vector3(hit.x, hit.y, TARGET.z));
+    const hit = simulateArrow(shot, shot.wind, gRef.current.dist || 18, (x, y, z) => path.push(new THREE.Vector3(x, y, z)));
+    if (hit.plane) path.push(new THREE.Vector3(hit.x, hit.y, gRef.current.dist || 18));
     const arrow = makeArrow(colorBySeat[shot.by] || '#888');
     w.scene.add(arrow);
     flightRef.current = { path, dur: Math.max(450, hit.t * 1200), t0: performance.now(), arrow, hit, pts: shot.pts };
@@ -587,12 +618,12 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     popSound();
   }, [g.lastShot?.seq]);
 
-  // ---------- Contrôles : maintenir pour bander, glisser pour viser ----------
+  // ---------- Contrôles : maintenir pour armer, glisser pour viser ----------
   function onDown(e) {
     if (!g.isMyTurn || animatingRef.current || g.phase !== 'playing') return;
     try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* pointeur simulé */ }
     aimRef.current = {
-      yaw: 0, pitch: BASE_PITCH, power: 0, holdT: 0,
+      yaw: 0, pitch: basePitch(gRef.current.dist || 18), power: 0, holdT: 0,
       sway: { yaw: 0, pitch: 0 },
       startX: e.clientX, startY: e.clientY,
     };
@@ -607,14 +638,14 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     // La caméra regarde vers +Z : le X du monde apparaît inversé à l'écran,
     // donc glisser à droite = yaw positif = réticule à gauche.
     aim.yaw = ((e.clientX - aim.startX) / h) * 0.3;
-    aim.pitch = BASE_PITCH + ((e.clientY - aim.startY) / h) * 0.3;
+    aim.pitch = basePitch(gRef.current.dist || 18) + ((e.clientY - aim.startY) / h) * 0.3;
   }
   function onUp() {
     const aim = aimRef.current;
     aimRef.current = null;
     setDrawing(false);
     if (powerRef.current) powerRef.current.style.width = '0%';
-    if (!aim || aim.power < 0.12) return; // arc à peine bandé : on annule
+    if (!aim || aim.power < 0.12) return; // arc à peine armé : on annule
     onAction({
       kind: 'shoot',
       yaw: aim.yaw + aim.sway.yaw,
@@ -627,7 +658,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title"><Target size={20} color="#e0392e" /> Tir à l'arc — salle d'attente</h3>
-        <p className="cn-hint-text">Cible à 20 mètres, vue à la première personne. Maintiens le doigt pour bander l'arc (la puissance monte toute seule), glisse pour viser, relâche pour décocher. La flèche tombe avec la distance et le vent la dévie — regarde le drapeau et compense ! Plus tu attends, plus ton bras tremble. 5 flèches chacune, centre = 10 points. De 2 à 6 joueuses.</p>
+        <p className="cn-hint-text">3 manches, 3 distances : 10 m, 18 m puis 28 m — de loin, le vent pèse très fort. Maintiens le doigt pour armer (la puissance monte toute seule), glisse pour viser, relâche pour décocher. La flèche tombe avec la distance et le vent la dévie — regarde le drapeau et compense ! Plus tu attends, plus ton bras tremble. Une flèche chacune par manche, centre = 10 points. De 2 à 6 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
@@ -653,7 +684,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         ? (g.winners.includes(me) ? 'Égalité — tu partages la victoire !' : `Égalité entre ${g.winners.map((id) => nameById[id] || '?').join(' et ')} !`)
         : (g.winners?.[0] === me ? 'Tu gagnes la partie !' : `${nameById[g.winners?.[0]] || '?'} gagne la partie !`))
       : g.isMyTurn
-        ? (drawing ? 'Vise… relâche pour décocher !' : 'Maintiens pour bander, glisse pour viser')
+        ? (drawing ? 'Vise… relâche pour décocher !' : 'Maintiens pour armer, glisse pour viser')
         : `Au tour de ${nameById[g.turn] || '?'}…`;
 
   return (
@@ -677,7 +708,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
           <div className="archery3d-wind">
             <Wind size={15} />
             <span>{windAbs < 0.3 ? 'Vent nul' : `${windArrow.repeat(Math.max(1, Math.ceil(windAbs / 2)))} ${windAbs.toFixed(1)} m/s`}</span>
-            <span className="archery3d-round">Flèche {g.round}/{g.rounds}</span>
+            <span className="archery3d-round">Manche {g.round}/{g.rounds} — cible à {g.dist} m</span>
           </div>
         )}
         <div className={`archery3d-power ${drawing ? 'show' : ''}`}><i ref={powerRef} /></div>

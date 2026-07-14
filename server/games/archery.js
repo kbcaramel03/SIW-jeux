@@ -8,11 +8,13 @@
 export const G = 9.81;
 export const DT = 1 / 120;
 export const BOW = { x: 0, y: 1.5, z: 0 };
-export const TARGET = { y: 1.3, z: 20, RING: 0.06, R: 0.6, BOARD: 0.75 };
+export const TARGET = { y: 1.3, RING: 0.06, R: 0.6, BOARD: 0.75 };
 export const SPEED = { min: 30, max: 70 };      // m/s selon la puissance
 export const WIND_ACCEL = 1.6;                   // poussée latérale par m/s de vent
 export const WIND_MAX = 6;                       // m/s
-const ROUNDS = 5;                                // flèches par joueuse
+// 3 manches, 3 distances : très proche, plus loin, très loin.
+export const DISTANCES = [10, 18, 28];
+const ROUNDS = DISTANCES.length;
 const OFFLINE_SKIP_MS = 12000;
 const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 function nm(state, id) { return (state.names && state.names[id]) || 'quelqu\'un'; }
@@ -23,7 +25,7 @@ const newWind = () => Math.round((Math.random() * 2 - 1) * WIND_MAX * 10) / 10;
 // - sur le plan de la cible : { plane: true, x, y, t }
 // - dans l'herbe avant :      { plane: false, gx, gz, t }
 // `onStep(pos, vel, t)` optionnel — utilisé par le client pour animer.
-export function simulateArrow({ yaw, pitch, power }, wind, onStep) {
+export function simulateArrow({ yaw, pitch, power }, wind, dist, onStep) {
   const v = SPEED.min + Math.max(0, Math.min(1, power)) * (SPEED.max - SPEED.min);
   const cp = Math.cos(pitch);
   let x = BOW.x, y = BOW.y, z = BOW.z;
@@ -34,8 +36,8 @@ export function simulateArrow({ yaw, pitch, power }, wind, onStep) {
     vx += wind * WIND_ACCEL * (1 + 0.35 * Math.sin(t * 7)) * DT; // rafales
     vy -= G * DT;
     x += vx * DT; y += vy * DT; z += vz * DT; t += DT;
-    if (z >= TARGET.z) {
-      const k = (TARGET.z - pz) / (z - pz || 1);
+    if (z >= dist) {
+      const k = (dist - pz) / (z - pz || 1);
       return { plane: true, x: px + (x - px) * k, y: py + (y - py) * k, t };
     }
     if (y <= 0) {
@@ -61,6 +63,7 @@ export function createArchery() {
     arrows: [],       // { by, x, y, pts } — flèches plantées dans la cible
     round: 1,
     rounds: ROUNDS,
+    dist: DISTANCES[0], // distance de la cible pour la manche en cours
     turn: null,
     turnSince: null,
     wind: 0,          // m/s latéral (+ = vers la droite) pour la flèche en cours
@@ -84,6 +87,7 @@ export function startArchery(state, userId) {
   state.scores = Object.fromEntries(state.seats.map((id) => [id, 0]));
   state.arrows = [];
   state.round = 1;
+  state.dist = DISTANCES[0];
   state.turn = state.seats[0];
   state.turnSince = Date.now();
   state.wind = newWind();
@@ -103,7 +107,7 @@ export function shootArchery(state, userId, { yaw, pitch, power }) {
     pitch: Math.max(-0.2, Math.min(0.7, pitch)),
     power: Math.max(0.1, Math.min(1, Number(power) || 0.5)),
   };
-  const hit = simulateArrow(shot, state.wind);
+  const hit = simulateArrow(shot, state.wind, state.dist);
   const pts = hit.plane ? pointsFor(hit.x, hit.y) : 0;
 
   state.shotSeq += 1;
@@ -131,7 +135,7 @@ export function shootArchery(state, userId, { yaw, pitch, power }) {
       : `${nm(state, state.winners[0])} gagne avec ${best} points !`);
     return;
   }
-  if (wrapped) state.round += 1;
+  if (wrapped) { state.round += 1; state.dist = DISTANCES[state.round - 1] || DISTANCES[DISTANCES.length - 1]; state.arrows = []; }
   state.turn = state.seats[(idx + 1) % state.seats.length];
   state.turnSince = Date.now();
   state.wind = newWind();
@@ -146,7 +150,7 @@ export function tickArchery(state) {
   let best = { yaw: 0, pitch: 0.05 }, bd = Infinity;
   for (let yaw = -0.08; yaw <= 0.08; yaw += 0.01) {
     for (let pitch = 0; pitch <= 0.12; pitch += 0.01) {
-      const hit = simulateArrow({ yaw, pitch, power: 1 }, state.wind);
+      const hit = simulateArrow({ yaw, pitch, power: 1 }, state.wind, state.dist);
       if (!hit.plane) continue;
       const d = Math.sqrt(hit.x ** 2 + (hit.y - TARGET.y) ** 2);
       if (d < bd) { bd = d; best = { yaw, pitch }; }
@@ -171,6 +175,7 @@ export function viewFor(state, userId) {
     arrows: state.arrows.map((a) => ({ ...a })),
     round: state.round,
     rounds: state.rounds,
+    dist: state.dist,
     turn: state.turn,
     isMyTurn: state.phase === 'playing' && state.turn === userId,
     wind: state.wind,
