@@ -59,7 +59,7 @@ function dealAll(state) {
 export function startBullshit(state, userId) {
   if (state.phase !== 'waiting') throw new Error('Déjà démarrée.');
   if (!state.seats.includes(userId)) throw new Error('Tu n\'es pas dans la partie.');
-  if (state.seats.length < 2) throw new Error('Il faut au moins 2 joueurs.');
+  if (state.seats.length < 3) throw new Error('Il faut au moins 3 joueuses.');
   dealAll(state);
   state.pile = [];
   state.rankIndex = 0;
@@ -185,7 +185,7 @@ export function viewFor(state, userId) {
     type: 'bullshit',
     phase: state.phase,
     amSeated: state.seats.includes(userId),
-    canStart: state.phase === 'waiting' && state.seats.length >= 2 && state.seats.includes(userId),
+    canStart: state.phase === 'waiting' && state.seats.length >= 3 && state.seats.includes(userId),
     seats: state.seats.slice(),
     players: state.seats.map((id) => ({ id, count: state.hands[id] ? state.hands[id].length : 0 })),
     myHand: state.hands[userId] ? sortHand(state.hands[userId]) : [],

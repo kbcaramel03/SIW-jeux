@@ -465,6 +465,20 @@ export function createRealtime(httpServer) {
     });
 
     // Action de jeu générique, déléguée au moteur du jeu concerné.
+    // Billard : relais léger de la visée (hors état du jeu) — l'adversaire voit
+    // la flèche et la puissance bouger en direct pendant le tour de l'autre.
+    socket.on('pool:aim', (data) => {
+      const room = rooms.get(socket.data.roomId);
+      if (!room || room.gameKey !== 'pool' || !room.game) return;
+      if (room.game.turn !== socket.data.user.id) return;
+      const dx = Number(data?.dx), dy = Number(data?.dy);
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+      socket.to(room.id).emit('pool:aim', {
+        dx, dy,
+        power: Math.max(0, Math.min(1, Number(data?.power) || 0)),
+      });
+    });
+
     socket.on('game:action', async (payload, ack) => {
       const room = rooms.get(socket.data.roomId);
       if (!room || !room.game) return ack?.({ error: 'Aucune partie en cours.' });

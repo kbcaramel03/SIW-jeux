@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '@mui/material';
+import { Button, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import { Play, Sparkles, Star, ArrowRight } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
 import botAvatar from '../assets/chatgpt.svg';
@@ -165,8 +165,20 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card ludo-wait">
         <h3 className="section-title">🎲 Ludo</h3>
-        <p className="muted">2 à 4 joueuses. Sors tes pions avec un <b>1 ou un 6</b>, fais le tour du plateau
-          et rentre tes 4 pions ! Les cases ⭐ sont protégées, et on ne peut pas s'empiler : une pièce par case.</p>
+        <p className="muted">2 à 4 joueuses. Fais le tour du plateau et rentre tes 4 pions !
+          Les cases ⭐ sont protégées, et on ne peut pas s'empiler : une pièce par case.</p>
+        <div className="pb-config" style={{ marginTop: 10 }}>
+          <div className="pb-config-row">
+            <span className="pb-config-label">Sortie des pions :</span>
+            {isHost ? (
+              <ToggleButtonGroup value={g.exitAny ? 'libre' : 'classique'} exclusive color="primary" size="small"
+                onChange={(_, v) => v && onAction({ kind: 'config', exitAny: v === 'libre' })}>
+                <ToggleButton value="classique">1 ou 6</ToggleButton>
+                <ToggleButton value="libre">Libre 🎲</ToggleButton>
+              </ToggleButtonGroup>
+            ) : <b>{g.exitAny ? 'Libre 🎲' : '1 ou 6'}</b>}
+          </div>
+        </div>
         <div className="uno-seats">
           {g.seats.map((id, i) => (
             <div key={id} className="uno-seat">

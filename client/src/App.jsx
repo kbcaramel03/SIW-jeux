@@ -110,8 +110,12 @@ function Protected({ children, staffOnly }) {
 
 export default function App() {
   const { user } = useAuth();
+  // Mode immersif : dans un salon sur téléphone, le jeu prend tout l'écran
+  // (l'en-tête du site est masqué en CSS sous 860 px).
+  const location = useLocation();
+  const inRoom = location.pathname.startsWith('/room/');
   return (
-    <div className="app">
+    <div className={`app ${inRoom ? 'in-room' : ''}`}>
       <NavBar />
       <Box className="shell">
         {user && <OnlineRail />}

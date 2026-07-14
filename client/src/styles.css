@@ -640,7 +640,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 
 /* ====== Responsive ====== */
 /* La bulle de chat du salon n'apparaÃ®t que sur petit Ã©cran */
-@media (min-width: 861px) { .room-fab { display: none !important; } }
+
 
 @media (max-width: 860px) {
   .rail { display: none; }
@@ -1249,8 +1249,69 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .msg-typing .dots i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes msgdot { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
 
-/* Bulle flottante du chat de salon (mobile) */
-.room-fab { position: fixed; right: 16px; bottom: 16px; z-index: 40; }
+/* ===== Mode immersif téléphone (façon Plato) ===== */
+/* Dans un salon sur petit écran : plus d'en-tête du site ni du salon,
+   le jeu prend tout l'écran ; un petit bouton retour flotte en haut à gauche. */
+.room-back-fab { display: none; position: fixed; top: 8px; left: 8px; z-index: 44;
+  width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.85); box-shadow: var(--shadow-sm); color: var(--ink-soft);
+  align-items: center; justify-content: center; }
+@media (max-width: 860px) {
+  .app.in-room .MuiAppBar-root { display: none; }
+  .app.in-room .main { padding: 0 0 66px; }
+  .app.in-room .room { padding: 8px 6px 0; }
+  .app.in-room .room-header { display: none; }
+  .app.in-room .room-back-fab { display: flex; }
+}
+
+/* Chat immersif : champ toujours en bas, bulles 10 s, panneau au focus */
+.gchat { display: none; }
+@media (max-width: 860px) {
+  .app.in-room .gchat { display: block; }
+}
+.gchat-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 52; display: flex; gap: 7px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(8px); box-shadow: 0 -3px 14px rgba(60,30,80,0.1); }
+.gchat-bar input { flex: 1; min-width: 0; border: 1.5px solid #e5dcf0; border-radius: 999px;
+  padding: 8px 14px; font: inherit; font-size: 0.9rem; background: #faf8fd; outline: none; }
+.gchat-bar input:focus { border-color: var(--violet); }
+.gchat-bar button { width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--pink); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+/* Bulles éphémères pendant la partie (pointer-events none : on joue à travers) */
+.gchat-toasts { position: fixed; left: 10px; right: 10px; bottom: 62px; z-index: 51;
+  display: flex; flex-direction: column; gap: 5px; align-items: flex-start; pointer-events: none; }
+.gchat-toast { max-width: 86%; background: rgba(30,22,40,0.82); color: #fff; border-radius: 14px;
+  padding: 6px 12px; font-size: 0.82rem; line-height: 1.35; animation: gtoast 0.25s ease;
+  overflow-wrap: anywhere; }
+.gchat-toast b { color: #ffd6e6; margin-right: 5px; font-weight: 700; }
+.gchat-toast.mine { align-self: flex-end; background: rgba(122,63,191,0.85); }
+@keyframes gtoast { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Discussion ouverte : fond assombri + historique complet */
+.gchat-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(20,12,30,0.55); }
+.gchat-panel { position: fixed; left: 0; right: 0; bottom: 54px; top: 16vh; z-index: 51;
+  display: flex; flex-direction: column; justify-content: flex-end; padding: 10px; pointer-events: none; }
+.gchat-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; }
+.gchat-msg { max-width: 82%; background: #fff; border-radius: 14px; padding: 7px 12px;
+  font-size: 0.88rem; line-height: 1.35; box-shadow: var(--shadow-sm); overflow-wrap: anywhere; align-self: flex-start; }
+.gchat-msg b { display: block; font-size: 0.7rem; color: var(--violet); }
+.gchat-msg.mine { align-self: flex-end; background: #efe3ff; }
+.gchat-msg.system { align-self: center; background: transparent; box-shadow: none; color: #e8ddf5;
+  font-size: 0.74rem; font-style: italic; }
+
+/* ===== Pop-up de victoire (fin de partie, tout le monde) ===== */
+.win-modal { position: fixed; inset: 0; z-index: 70; background: rgba(20,12,30,0.6);
+  display: flex; align-items: center; justify-content: center; padding: 20px; animation: gtoast 0.2s ease; }
+.win-box { background: linear-gradient(160deg, #fffdf5, #fff0f6); border-radius: 22px; padding: 26px 30px;
+  text-align: center; max-width: 340px; width: 100%; box-shadow: 0 22px 60px rgba(0,0,0,0.4);
+  border: 2px solid #f2c11f; animation: winpop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.win-trophy { font-size: 2.6rem; margin-bottom: 4px; }
+.win-avatars { display: flex; justify-content: center; gap: 8px; margin-bottom: 8px; }
+.win-avatars .avatar { border: 3px solid #f2c11f; box-sizing: content-box; }
+.win-bot { width: 56px; height: 56px; border-radius: 50%; border: 3px solid #f2c11f; }
+.win-box h2 { margin: 0; font-size: 1.35rem; }
+.win-box p { margin: 4px 0 0; color: var(--ink-soft); font-weight: 600; }
+@keyframes winpop { from { transform: scale(0.5) rotate(-4deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+
 /* ===== Code Names v2 — pensé téléphone d'abord ===== */
 /* Choix du mode dans le salon */
 .cn-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
@@ -1317,13 +1378,43 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
   .cn-clue-form .btn { flex: 1 1 100%; justify-content: center; }
 }
 
+/* ===== Go Fish : familles gagnées (trophées) ===== */
+.gf-seat-books { display: flex; justify-content: center; margin-top: 2px; }
+.gf-seat-books img { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 1.5px solid #f2c11f;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18); margin-left: -5px; padding: 1px; }
+.gf-seat-books img:first-child { margin-left: 0; }
+.gf-mybooks { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.gf-mybooks-label { display: inline-flex; align-items: center; gap: 5px; font-weight: 800; font-size: 0.8rem; color: #a8842a; }
+.gf-book-cards { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.gf-book-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: linear-gradient(160deg, #fff9e8, #ffefc2); border: 2px solid #f2c11f; border-radius: 12px;
+  padding: 7px 10px 5px; box-shadow: 0 3px 8px rgba(190,150,30,0.25), 0 1px 0 2px rgba(242,193,31,0.25); }
+.gf-book-card img { width: 30px; height: 30px; }
+.gf-book-card em { font-style: normal; font-weight: 700; font-size: 0.62rem; color: #7a5c14; }
+.gf-book-card b { position: absolute; top: -7px; right: -7px; background: #f2c11f; color: #5c440c;
+  font-size: 0.58rem; font-weight: 900; border-radius: 999px; padding: 2px 5px; border: 1.5px solid #fff; }
+.gf-rank-books { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; }
+.gf-rank-books img { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1.5px solid #f2c11f; padding: 1px; }
+
+/* Scribbl : nombre de lettres en petit exposant du mot masqué */
+.scr-letters { font-size: 0.6em; opacity: 0.75; margin-left: 2px; font-weight: 800; }
+
+/* Flip 7 : pop-up central de choix de cible */
+.f7-modal { position: fixed; inset: 0; z-index: 60; background: rgba(30,20,40,0.45);
+  display: flex; align-items: center; justify-content: center; padding: 18px; }
+.f7-modal-box { background: #fff; border-radius: 18px; padding: 20px; max-width: 380px; width: 100%;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.35); text-align: center; animation: f7pop 0.25s ease; }
+.f7-modal-title { margin: 0 0 6px; font-size: 1.05rem; }
+.f7-modal .f7-targets { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+@keyframes f7pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
 /* Invitation de l'IA avec choix du niveau (bataille navale, échecs) */
 .bot-invite { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 10px; }
 .bot-invite-label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.86rem; color: var(--ink-soft); }
 
 /* Billard & tir à l'arc : le chat est dans la barre du salon (petit écran) */
-.room-chat-btn { display: none !important; }
-@media (max-width: 860px) { .room-chat-btn { display: inline-flex !important; } }
+
+
 
 /* ====== Ludo ====== */
 .ludo { display: flex; flex-direction: column; gap: 12px; }
@@ -1467,6 +1558,13 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
   background: #fff; border: 2px solid transparent; box-shadow: var(--shadow-sm); font-size: 0.85rem; font-weight: 700; }
 .pool-chip b { color: #20714a; font-size: 0.76rem; }
 .pool-chip.active { border-color: #2e8f5b; box-shadow: 0 0 0 3px rgba(46,143,91,0.2), var(--shadow-sm); }
+/* Scène : curseur de puissance à gauche + table */
+.pool-stage { display: flex; gap: 8px; justify-content: center; align-items: stretch; width: 100%; }
+.pool-power { width: 36px; flex-shrink: 0; border-radius: 999px; background: rgba(255,255,255,0.8);
+  box-shadow: var(--shadow-sm); position: relative; overflow: hidden; touch-action: none; cursor: pointer; }
+.pool-power-fill { position: absolute; top: 0; left: 0; right: 0;
+  background: linear-gradient(180deg, #ffd83d, #ff7b54, #ff4d7d); transition: height 0.05s linear; }
+.pool-power-hint { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 1rem; }
 .pool-table-wrap { width: min(96vw, 740px); }
 /* Verticale : dimensionnée pour tenir dans l'écran (38vh de large = 76vh de haut) */
 .pool-table-wrap.vertical { width: min(94vw, 42vh); } /* agrandie : trop petite pour viser au doigt */

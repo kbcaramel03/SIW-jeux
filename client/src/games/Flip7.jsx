@@ -8,8 +8,16 @@ import Flip7Card, { Flip7Back } from './Flip7Card.jsx';
 import { winConfetti } from '../effects.js';
 
 const ACTION_INFO = {
-  freeze: { label: 'Stop', icon: Hand, hint: 'Choisis qui est stoppé (toi ou un autre joueur encore en jeu) : il sort de la manche mais garde ses points.' },
-  flip3: { label: 'Pioche 3', icon: Layers, hint: 'Choisis qui pioche 3 cartes d\'affilée (toi ou un autre joueur encore en jeu).' },
+  freeze: {
+    label: 'Stop', icon: Hand,
+    choice: 'qui va être stoppée',
+    hint: 'Elle sort de la manche mais garde ses points (tu peux te choisir toi-même).',
+  },
+  flip3: {
+    label: 'Pioche 3', icon: Layers,
+    choice: 'qui va piocher 3 cartes',
+    hint: 'Elle pioche 3 cartes d\'affilée, tant pis si ça casse (tu peux te choisir toi-même).',
+  },
 };
 
 export default function Flip7({ room, isHost, onAction, onNewGame }) {
@@ -74,8 +82,8 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
     if (g.phase === 'over') return g.winner === me ? '🎉 Tu as gagné !' : `${nameById[g.winner] || 'Quelqu\'un'} remporte la partie`;
     if (g.phase === 'roundover') return `Fin de manche — suivante dans ${nextRoundLeft ?? 5}s`;
     if (pa) {
-      if (g.iResolve) return `${paInfo.label} : à toi de choisir une cible`;
-      return `${nameById[pa.by] || '?'} doit résoudre « ${paInfo.label} »`;
+      if (g.iResolve) return `À toi de choisir ${paInfo.choice} !`;
+      return `${nameById[pa.by] || '?'} doit choisir ${paInfo.choice}`;
     }
     if (!g.amSeated) return 'Manche en cours — tu regardes';
     return g.isMyTurn ? 'À toi de jouer : tu tires ou tu restes ?' : `Au tour de ${nameById[g.turn] || '?'}`;
@@ -117,21 +125,24 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
         </div>
       )}
 
-      {/* Choix de cible pour une action */}
+      {/* Choix de cible : pop-up central impossible à rater */}
       {pa && g.iResolve && (
-        <div className="f7-resolve">
-          <p className="f7-resolve-hint">
-            {paInfo.icon && <paInfo.icon size={16} style={{ verticalAlign: -3 }} />} {paInfo.hint}
-          </p>
-          <div className="f7-targets">
-            {g.targets.length === 0
-              ? <span className="muted">Aucune cible possible…</span>
-              : g.targets.map((id) => (
-                <Button key={id} variant="outlined" size="small"
-                  onClick={() => onAction({ kind: 'resolve', targetId: id })}>
-                  {nameById[id] || '?'}{id === me ? ' (toi)' : ''}
-                </Button>
-              ))}
+        <div className="f7-modal">
+          <div className="f7-modal-box">
+            <h3 className="f7-modal-title">
+              {paInfo.icon && <paInfo.icon size={20} style={{ verticalAlign: -4 }} />} Choisis {paInfo.choice}
+            </h3>
+            <p className="f7-resolve-hint">{paInfo.hint}</p>
+            <div className="f7-targets">
+              {g.targets.length === 0
+                ? <span className="muted">Aucune cible possible…</span>
+                : g.targets.map((id) => (
+                  <Button key={id} variant="contained" color={id === me ? 'secondary' : 'primary'}
+                    onClick={() => onAction({ kind: 'resolve', targetId: id })}>
+                    {nameById[id] || '?'}{id === me ? ' (toi)' : ''}
+                  </Button>
+                ))}
+            </div>
           </div>
         </div>
       )}

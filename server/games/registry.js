@@ -52,7 +52,7 @@ export const GAMES = {
     tick: flip7.tickFlip7,
   },
   bullshit: {
-    key: 'bullshit', label: 'Bullshit', emoji: '🤥', minPlayers: 2, maxPlayers: 8, ready: true,
+    key: 'bullshit', label: 'Bullshit', emoji: '🤥', minPlayers: 3, maxPlayers: 8, ready: true,
     create: bullshit.createBullshit,
     view: bullshit.viewFor,
     action: applyBullshitAction,
@@ -243,6 +243,7 @@ function applyConspiracyAction(state, userId, payload) {
 function applyScribblAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return scribbl.joinScribbl(state, userId);
+    case 'config': return scribbl.configScribbl(state, userId, payload);
     case 'start': return scribbl.startScribbl(state, userId);
     case 'choose': return scribbl.chooseWord(state, userId, payload.word);
     case 'guess': return scribbl.guessScribbl(state, userId, payload.text);
@@ -332,6 +333,7 @@ function applyGuessMeAction(state, userId, payload) {
 function applyLudoAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return ludo.joinLudo(state, userId);
+    case 'config': return ludo.configLudo(state, userId, payload);
     case 'bot': return ludo.joinLudo(state, 'bot');
     case 'start': return ludo.startLudo(state, userId);
     case 'roll': return ludo.rollLudo(state, userId);

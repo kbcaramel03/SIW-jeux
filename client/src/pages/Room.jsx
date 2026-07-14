@@ -1,10 +1,12 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Paper, Button, Chip, Typography, Alert, Fab, Drawer, IconButton } from '@mui/material';
-import { ChevronLeft, Users, MessageCircle, Crown, X, WifiOff } from 'lucide-react';
+import { Paper, Button, Chip, Typography, Alert } from '@mui/material';
+import { ChevronLeft, Users, Crown, WifiOff } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import Chat from '../components/Chat.jsx';
+import GameChat from '../components/GameChat.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
+import chatgptLogo from '../assets/chatgpt.svg';
 
 // Chaque jeu est chargé à la demande : on ne télécharge que celui auquel on joue.
 const Codenames = lazy(() => import('../games/Codenames.jsx'));
@@ -24,13 +26,27 @@ const Pool = lazy(() => import('../games/Pool.jsx'));
 const Archery = lazy(() => import('../games/Archery.jsx'));
 const PetitBac = lazy(() => import('../games/PetitBac.jsx'));
 
+// Qui a gagné ? (formats variés selon les jeux : winner id, winners[], équipes…)
+function winnerOf(g) {
+  if (!g || g.phase !== 'over') return null;
+  if (Array.isArray(g.winners) && g.winners.length) return { ids: g.winners };
+  if (g.winner === 'tie') return { text: 'Égalité parfaite ! 🤝' };
+  if (g.winner === 'red') return { text: 'L\'équipe ROUGE gagne ! ❤️' };
+  if (g.winner === 'blue') return { text: 'L\'équipe BLEUE gagne ! 💙' };
+  if (g.winner && typeof g.winner === 'string') return { ids: [g.winner] };
+  if (g.result === 'won') return { text: 'GAGNÉ, bravo l\'équipe ! 🎉' };
+  if (g.result === 'lost') return { text: 'Perdu ensemble… on se refait ? 😅' };
+  return null;
+}
+
 export default function Room() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [error, setError] = useState('');
-  const [chatOpen, setChatOpen] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [winPopup, setWinPopup] = useState(null);
+  const overShown = useRef(false);
 
   useEffect(() => {
     const socket = getSocket();
@@ -67,6 +83,28 @@ export default function Room() {
     return () => clearTimeout(t);
   }, [error, room]);
 
+  // Pop-up de victoire pour tout le monde à la fin de chaque partie.
+  // Au billard, on attend que l'animation des billes se termine (pas de spoil !).
+  useEffect(() => {
+    const over = room?.game?.phase === 'over';
+    if (over && !overShown.current) {
+      overShown.current = true;
+      const info = winnerOf(room.game);
+      if (info) {
+        const delay = room.gameKey === 'pool' ? 4500 : 300;
+        const t = setTimeout(() => setWinPopup(info), delay);
+        return () => clearTimeout(t);
+      }
+    }
+    if (!over) { overShown.current = false; setWinPopup(null); }
+    return undefined;
+  }, [room?.game?.phase]);
+  useEffect(() => {
+    if (!winPopup) return undefined;
+    const t = setTimeout(() => setWinPopup(null), 6000);
+    return () => clearTimeout(t);
+  }, [winPopup]);
+
   function sendAction(payload) {
     return new Promise((resolve) => {
       getSocket().emit('game:action', payload, (res) => {
@@ -87,9 +125,11 @@ export default function Room() {
   if (!room) return <div className="center-screen">Connexion au salon…</div>;
 
   const isHost = room.hostId === room.me.id;
-  // Billard & tir à l'arc : on vise en glissant le doigt sur tout l'écran,
-  // la bulle flottante gênait — le chat passe dans la barre du salon.
-  const dragGame = room.gameKey === 'pool' || room.gameKey === 'archery';
+  const roster = Object.values(room.roster || {});
+  const nameById = Object.fromEntries(roster.map((p) => [p.id, p.displayName]));
+  nameById.bot = 'ChatGPT';
+  const infoById = Object.fromEntries(roster.map((p) => [p.id, p]));
+  const winName = (uid) => (uid === room.me.id ? 'Toi' : nameById[uid] || '?');
 
   const sidePanel = (
     <>
@@ -120,11 +160,6 @@ export default function Room() {
         <Button variant="outlined" size="small" onClick={() => navigate('/')} startIcon={<ChevronLeft size={16} />}>Lobby</Button>
         <Typography variant="h5" sx={{ flex: 1 }}>{room.name}</Typography>
         <Chip color="primary" label={room.gameLabel} />
-        {dragGame && (
-          <IconButton className="room-chat-btn" size="small" color="primary" onClick={() => setChatOpen(true)} aria-label="Chat du salon">
-            <MessageCircle size={20} />
-          </IconButton>
-        )}
       </div>
 
       {offline && <Alert severity="warning" icon={<WifiOff size={18} />} sx={{ mb: 1.5 }}>Connexion perdue — reconnexion en cours…</Alert>}
@@ -188,18 +223,35 @@ export default function Room() {
       </div>
     </div>
 
-      {/* Mobile : chat du salon en bulle flottante (sauf jeux où on glisse le doigt) */}
-      {!dragGame && (
-        <Fab color="primary" className="room-fab" sx={{ position: 'fixed', right: 16, bottom: 16, zIndex: 40 }} onClick={() => setChatOpen(true)} aria-label="Chat du salon">
-          <MessageCircle size={24} />
-        </Fab>
-      )}
-      <Drawer anchor="right" open={chatOpen} onClose={() => setChatOpen(false)} PaperProps={{ sx: { width: 320, maxWidth: '92vw', p: 1.5 } }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <IconButton size="small" onClick={() => setChatOpen(false)}><X size={18} /></IconButton>
+      {/* Téléphone (mode immersif) : bouton retour discret + chat façon Plato */}
+      <button className="room-back-fab" onClick={() => navigate('/')} aria-label="Retour au lobby">
+        <ChevronLeft size={20} />
+      </button>
+      <GameChat messages={room.chat} meId={room.me.id} />
+
+      {/* Pop-up de victoire (tout le monde, fond assombri) */}
+      {winPopup && (
+        <div className="win-modal" onClick={() => setWinPopup(null)}>
+          <div className="win-box">
+            <div className="win-trophy">🏆</div>
+            {winPopup.ids ? (
+              <>
+                <div className="win-avatars">
+                  {winPopup.ids.map((uid) => (
+                    uid === 'bot'
+                      ? <img key={uid} src={chatgptLogo} alt="ChatGPT" className="win-bot" />
+                      : <Avatar key={uid} name={nameById[uid]} gender={infoById[uid]?.gender} avatar={infoById[uid]?.avatar} size={56} />
+                  ))}
+                </div>
+                <h2>{winPopup.ids.map(winName).join(' & ')}</h2>
+                <p>remporte{winPopup.ids.length > 1 ? 'nt' : ''} la partie !</p>
+              </>
+            ) : (
+              <h2>{winPopup.text}</h2>
+            )}
+          </div>
         </div>
-        {sidePanel}
-      </Drawer>
+      )}
     </>
   );
 }

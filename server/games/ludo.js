@@ -62,10 +62,18 @@ export function createLudo() {
     lastEvent: null, // { seq, kind: 'move'|'capture'|'goal'|'out', by }
     eventSeq: 0,
     stepSince: null,
+    exitAny: false,  // option : sortir de l'écurie avec n'importe quel dé
     names: {},
     log: [],
     winner: null,
   };
+}
+
+// L'hôte règle la partie dans le salon : « sortie libre » (n'importe quel dé).
+export function configLudo(state, userId, { exitAny }) {
+  if (state.phase !== 'waiting') throw new Error('La partie a déjà commencé.');
+  if (userId !== state.hostId) throw new Error('Seule l\'hôte règle la partie.');
+  if (exitAny != null) state.exitAny = !!exitAny;
 }
 
 export function joinLudo(state, userId) {
@@ -88,7 +96,7 @@ export function startLudo(state, userId) {
   state.turn = state.seats[Math.floor(Math.random() * state.seats.length)];
   state.die = null; state.sixes = 0; state.movable = [];
   state.stepSince = Date.now();
-  state.log = [`${FR[state.colors[state.turn]]} commence ! (sortie avec un 1 ou un 6)`];
+  state.log = [`${FR[state.colors[state.turn]]} commence ! ${state.exitAny ? '(sortie libre : n\'importe quel dé)' : '(sortie avec un 1 ou un 6)'}`];
 }
 
 function pushLog(state, text) {
@@ -120,7 +128,7 @@ function canMove(state, userId, pawnIdx, die) {
   const p = state.pawns[userId][pawnIdx];
   if (p === GOAL) return false;
   if (p === -1) {
-    if (die !== 6 && die !== 1) return false;
+    if (!state.exitAny && die !== 6 && die !== 1) return false;
     const occ = occupantAt(state, START[color]);
     return !occ || (occ.id !== userId && !isProtected(START[color], occ.color));
   }
@@ -286,6 +294,7 @@ export function viewFor(state, userId) {
     })),
     turn: state.turn,
     isMyTurn: state.turn === userId && state.phase === 'playing',
+    exitAny: !!state.exitAny,
     die: state.die,
     lastDie: state.lastDie,
     dieSeq: state.dieSeq,

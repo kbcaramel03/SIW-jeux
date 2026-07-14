@@ -99,6 +99,23 @@ const WORDS = [
   // Expressions & concepts
   'jet lag', 'lundi matin', 'vendredi soir', 'nuit blanche', 'coup de soleil', 'chair de poule', 'déjà-vu',
   'panne de réveil', 'batterie faible', 'zone blanche', 'mot de passe oublié', 'appel manqué', 'boîte de réception pleine',
+  // Verbes (faciles à mimer en dessin)
+  'courir', 'pleurer', 'dormir', 'cuisiner', 'nager', 'chanter', 'danser', 'grimper',
+  'tomber', 'voler', 'creuser', 'peindre', 'pêcher', 'conduire', 'sauter à la corde', 'faire du vélo',
+  'se doucher', 'se coiffer', 'téléphoner', 'applaudir', 'rêver', 'ronfler', 'frissonner', 'rougir',
+  // Adjectifs (durs !)
+  'géant', 'minuscule', 'invisible', 'collant', 'brûlant', 'gelé', 'pointu', 'mou',
+  'transparent', 'rayé', 'à pois', 'poilu', 'brillant', 'cassé', 'à l\'envers', 'trempé',
+  'jaloux', 'timide', 'furieuse', 'épuisée', 'affamée', 'chanceuse',
+  // Références & pop culture
+  'Titanic', 'Harry Potter', 'La Reine des Neiges', 'Spider-Man', 'Barbie', 'Shrek',
+  'Pikachu', 'Mario', 'Minecraft', 'TikTok danse', 'Squid Game', 'Stranger Things',
+  'Le Roi Lion', 'Ratatouille', 'Cendrillon', 'Aladdin', 'Naruto', 'One Piece',
+  'la Joconde', 'la tour Eiffel', 'les pyramides', 'la statue de la Liberté', 'le Petit Prince', 'Astérix',
+  // Encore plus dur (concepts abstraits)
+  'le hoquet', 'un frisson', 'le trac', 'la flemme', 'un malentendu', 'la télépathie',
+  'un secret', 'le silence', 'une promesse', 'le futur', 'la gravité', 'un écho',
+  'la jalousie', 'le stress', 'un régime', 'une insomnie', 'le portnawak', 'un vertige',
   // Prénoms de la team
   'Khadija', 'Zineb', 'Aya', 'Alia', 'Yasmine',
 ];
@@ -131,10 +148,27 @@ export function createScribbl() {
     type: 'scribbl', phase: 'waiting', // waiting -> choose -> draw -> turnend -> over
     seats: [], scores: {},
     order: [], turnIdx: 0, round: 1, totalRounds: 3,
+    duration: DURATION, // temps de dessin par tour (réglable par l'hôte)
     drawer: null, choices: [], word: null, hint: null,
     revealOrder: [], revealed: 0, maxReveal: 0,
     guessed: {}, deadline: null, since: null, reveal: null, log: [], winner: null,
   };
+}
+
+// L'hôte règle la partie dans le salon : nombre de manches et temps par tour.
+export function configScribbl(state, userId, { rounds, seconds }) {
+  if (state.phase !== 'waiting') throw new Error('La partie a déjà commencé.');
+  if (userId !== state.hostId) throw new Error('Seule l\'hôte règle la partie.');
+  if (rounds != null) {
+    const r = Math.round(Number(rounds));
+    if (!Number.isFinite(r) || r < 1 || r > 10) throw new Error('Nombre de manches invalide (1 à 10).');
+    state.totalRounds = r;
+  }
+  if (seconds != null) {
+    const s = Math.round(Number(seconds));
+    if (![45, 60, 75, 90, 120].includes(s)) throw new Error('Durée invalide.');
+    state.duration = s * 1000;
+  }
 }
 
 export function joinScribbl(state, userId) {
@@ -172,7 +206,7 @@ export function chooseWord(state, userId, word) {
   state.revealOrder = idxs;
   state.revealed = 0;
   state.hint = maskOf(word, new Set());
-  state.deadline = Date.now() + DURATION;
+  state.deadline = Date.now() + (state.duration || DURATION);
   state.phase = 'draw';
   state.log.push({ kind: 'system', text: 'Le dessin commence !' });
 }
@@ -194,7 +228,7 @@ export function guessScribbl(state, userId, text) {
   const name = userId;
   if (norm(text) === norm(state.word)) {
     const remaining = Math.max(0, (state.deadline || 0) - Date.now());
-    const pts = Math.round(20 + 60 * (remaining / DURATION));
+    const pts = Math.round(20 + 60 * (remaining / (state.duration || DURATION)));
     state.scores[userId] = (state.scores[userId] || 0) + pts;
     state.scores[state.drawer] = (state.scores[state.drawer] || 0) + 15;
     state.guessed[userId] = Object.keys(state.guessed).length + 1;
@@ -216,7 +250,8 @@ export function timeupScribbl(state, userId) {
 export function revealScribbl(state) {
   if (state.phase !== 'draw' || !state.deadline) return;
   if (state.revealed >= state.maxReveal) return;
-  const fraction = (DURATION - (state.deadline - Date.now())) / DURATION;
+  const dur = state.duration || DURATION;
+  const fraction = (dur - (state.deadline - Date.now())) / dur;
   const due = (state.revealed + 1) / (state.maxReveal + 1); // étalé sur la durée
   if (fraction < due) return;
   state.revealed += 1;
@@ -280,6 +315,7 @@ export function viewFor(state, userId) {
     drawer: state.drawer,
     isDrawer,
     round: state.round, totalRounds: state.totalRounds,
+    durationSec: Math.round((state.duration || DURATION) / 1000),
     choices: isDrawer && state.phase === 'choose' ? state.choices : null,
     word: isDrawer ? state.word : null,
     hint: state.hint,

@@ -97,7 +97,12 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
               style={{ left: `${x}%`, top: `${y}%` }} disabled={!askable} onClick={() => ask(p.id)}>
               <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={42} />
               <span className="gf-seat-name">{nameById[p.id] || '?'}{isMe ? ' (toi)' : ''}</span>
-              <span className="gf-seat-meta">{p.count} carte{p.count > 1 ? 's' : ''}{p.books.length > 0 && <b> · {p.books.length} 👑</b>}</span>
+              <span className="gf-seat-meta">{p.count} carte{p.count > 1 ? 's' : ''}</span>
+              {p.books.length > 0 && (
+                <span className="gf-seat-books">
+                  {p.books.map((r) => <img key={r} src={SPECIES[r]?.img} alt={SPECIES[r]?.name} title={SPECIES[r]?.name} />)}
+                </span>
+              )}
             </button>
           );
         })}
@@ -110,11 +115,19 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
 
       {picking && <p className="gf-hint">Touche une joueuse à qui demander des <b>{SPECIES[pickedRank]?.name}</b></p>}
 
-      {/* Mes familles complétées */}
+      {/* Mes familles complétées : de beaux trophées dorés */}
       {myBooks.length > 0 && (
         <div className="gf-mybooks">
-          <span className="gf-mybooks-label"><Trophy size={14} /> Tes familles :</span>
-          {myBooks.map((r) => <span key={r} className="gf-book-chip"><img src={SPECIES[r]?.img} alt="" style={{ width: 15, verticalAlign: '-3px' }} /> {SPECIES[r]?.name}</span>)}
+          <span className="gf-mybooks-label"><Trophy size={14} /> Tes familles</span>
+          <div className="gf-book-cards">
+            {myBooks.map((r) => (
+              <span key={r} className="gf-book-card">
+                <img src={SPECIES[r]?.img} alt="" />
+                <em>{SPECIES[r]?.name}</em>
+                <b>×4</b>
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
@@ -142,7 +155,10 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
               <div key={p.id} className={`gf-rank-row ${p.id === g.winner ? 'win' : ''}`}>
                 <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={24} />
                 <b>{nameById[p.id] || '?'}</b>
-                <span>{p.books.length} famille{p.books.length > 1 ? 's' : ''}</span>
+                <span className="gf-rank-books">
+                  {p.books.map((r) => <img key={r} src={SPECIES[r]?.img} alt="" title={SPECIES[r]?.name} />)}
+                  {p.books.length === 0 && <span className="muted">aucune famille</span>}
+                </span>
               </div>
             ))}
           </div>

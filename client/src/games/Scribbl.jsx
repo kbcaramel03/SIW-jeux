@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, IconButton, TextField } from '@mui/material';
+import { Button, IconButton, TextField, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import { Play, Sparkles, Send, Eraser, Trash2, Pencil, Undo2, Redo2, PaintBucket } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import { Avatar } from '../components/OnlineRail.jsx';
@@ -136,6 +136,27 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
             <div key={id} className="uno-seat"><Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} /><span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span></div>
           ))}
         </div>
+        <div className="pb-config">
+          <div className="pb-config-row">
+            <span className="pb-config-label">Manches :</span>
+            {isHost ? (
+              <ToggleButtonGroup value={g.totalRounds} exclusive color="primary" size="small"
+                onChange={(_, v) => v && onAction({ kind: 'config', rounds: v })}>
+                {[1, 2, 3, 5, 7].map((n) => <ToggleButton key={n} value={n}>{n}</ToggleButton>)}
+              </ToggleButtonGroup>
+            ) : <b>{g.totalRounds}</b>}
+          </div>
+          <div className="pb-config-row">
+            <span className="pb-config-label">Temps par dessin :</span>
+            {isHost ? (
+              <ToggleButtonGroup value={g.durationSec} exclusive color="primary" size="small"
+                onChange={(_, v) => v && onAction({ kind: 'config', seconds: v })}>
+                {[45, 60, 75, 90, 120].map((n) => <ToggleButton key={n} value={n}>{n}s</ToggleButton>)}
+              </ToggleButtonGroup>
+            ) : <b>{g.durationSec}s</b>}
+          </div>
+          {!isHost && <p className="muted" style={{ margin: 0 }}>L'hôte règle les manches et le temps.</p>}
+        </div>
         <div className="cn-controls">
           {!g.amSeated && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'join' })}>Rejoindre</Button>}
           {g.canStart && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer</Button>}
@@ -151,8 +172,9 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
     if (g.phase === 'choose') return g.isDrawer ? 'Choisis un mot à dessiner' : `${nameById[g.drawer] || '?'} choisit un mot…`;
     // draw
     if (g.isDrawer) return `Dessine : ${g.word}`;
-    const nb = g.letters != null ? ` · ${g.letters} lettre${g.letters > 1 ? 's' : ''}` : '';
-    return g.iGuessed ? '✅ Trouvé ! Attends les autres…' : `Devine : ${g.hint}${nb}`;
+    if (g.iGuessed) return '✅ Trouvé ! Attends les autres…';
+    // Le nombre de lettres en tout petit, en exposant du mot masqué.
+    return <>Devine : {g.hint}{g.letters != null && <sup className="scr-letters">{g.letters}</sup>}</>;
   }
 
   return (
