@@ -1587,10 +1587,11 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 .pool-power-fill { position: absolute; top: 0; left: 0; right: 0;
   background: linear-gradient(180deg, rgba(255,216,61,0.45), rgba(255,77,125,0.55)); transition: height 0.05s linear; }
 /* Queue de billard dans la jauge : elle descend quand on charge le coup */
-.pool-power-cue { position: absolute; left: 50%; transform: translateX(-50%); width: 9px; height: 52%;
-  border-radius: 6px; pointer-events: none; transition: top 0.05s linear;
-  background: linear-gradient(180deg, #e8e2d4 0 7%, #caa06a 7% 55%, #8a5a2b 55% 100%);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.pool-power-cue { position: absolute; left: 50%; transform: translateX(-50%); width: 12px; height: 52%;
+  pointer-events: none; transition: top 0.05s linear;
+  clip-path: polygon(40% 0, 60% 0, 88% 100%, 12% 100%); /* fine en haut, large en bas : pointe vers le haut */
+  background: linear-gradient(180deg, #f6f1e4 0 6%, #d9b075 6% 45%, #8a5a2b 45% 100%);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
 .pool-table-wrap { width: min(96vw, 740px); }
 /* Verticale : dimensionnée pour tenir dans l'écran (38vh de large = 76vh de haut) */
 .pool-table-wrap.vertical { width: min(94vw, 42vh); } /* agrandie : trop petite pour viser au doigt */
