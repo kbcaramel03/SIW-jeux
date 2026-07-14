@@ -60,9 +60,6 @@ export default function Codenames({ room, isHost, onAction, onNewGame }) {
       <Board game={game} me={me} nameById={nameById} onAction={onAction} />
       <Controls game={game} me={me} onAction={onAction} />
       {game.phase === 'over' && <Over game={game} isHost={isHost} onNewGame={onNewGame} />}
-      <div className="cn-log">
-        {game.log.map((line, i) => <div key={i} className="cn-log-line">{line}</div>)}
-      </div>
     </div>
   );
 }

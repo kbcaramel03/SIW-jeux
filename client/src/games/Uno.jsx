@@ -147,7 +147,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
                 initial={{ scale: 0.5, rotate: -25, opacity: 0 }}
                 animate={{ scale: 1, rotate: 0, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
-                <UnoCard card={g.topCard} size="lg" />
+                <UnoCard card={g.topCard} size="md" />
               </motion.div>
             </AnimatePresence>
           </div>
@@ -168,13 +168,6 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
               ? (g.pendingDraw > 0 ? `Renchéris… ou ramasse ${g.pendingDraw} cartes !` : 'À toi de jouer !')
               : `Au tour de ${nameById[g.turn] || '?'}`}
       </div>
-
-      {/* Fil des dernières actions (pioches, +2/+4, sens…) */}
-      {g.log?.length > 0 && (
-        <div className="uno-feed">
-          {g.log.slice(-2).map((line, i) => <div key={`${line}-${i}`}>{line}</div>)}
-        </div>
-      )}
 
       {/* Contrôles : AU-DESSUS des cartes (accessibles au pouce) */}
       {g.phase === 'playing' && g.isMyTurn && (

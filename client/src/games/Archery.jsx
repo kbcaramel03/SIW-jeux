@@ -68,6 +68,37 @@ function reticleTexture() {
   ctx.beginPath(); ctx.arc(64, 64, 40, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(64, 12); ctx.lineTo(64, 34); ctx.moveTo(64, 94); ctx.lineTo(64, 116);
   ctx.moveTo(12, 64); ctx.lineTo(34, 64); ctx.moveTo(94, 64); ctx.lineTo(116, 64); ctx.stroke();
+  ctx.fillStyle = '#ff4d7d';
+  ctx.beginPath(); ctx.arc(64, 64, 7, 0, Math.PI * 2); ctx.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Ciel en dégradé (zénith bleu -> horizon doré), plaqué dans un dôme.
+function skyTexture() {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 512;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0, '#3f7fd1');
+  grad.addColorStop(0.5, '#8fc3ec');
+  grad.addColorStop(0.78, '#ffe3bd');
+  grad.addColorStop(1, '#ffd39a');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 4, 512);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Halo doux (soleil, nuages) : disque blanc dégradé vers transparent.
+function glowTexture(soft = 0.1) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(64, 64, 6, 64, 64, 62);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(soft, 'rgba(255,255,255,0.9)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 128, 128);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
@@ -121,8 +152,8 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
 
   useEffect(() => { if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' }); }, [g.phase, g.amSeated]);
   useEffect(() => {
-    if (g.phase === 'over' && g.winners?.includes(me)) { winConfetti(); boomSound(true); }
-  }, [g.phase]);
+    if (g.phase === 'over' && !animating && g.winners?.includes(me)) { winConfetti(); boomSound(true); }
+  }, [g.phase, animating]);
 
   const playing = g.phase !== 'waiting';
 
@@ -139,12 +170,40 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x9ecdef);
-    scene.fog = new THREE.Fog(0xb8daf2, 45, 95);
-    scene.add(new THREE.HemisphereLight(0xdfeeff, 0x3e7a44, 1.15));
-    const sun = new THREE.DirectionalLight(0xfff3d8, 1.4);
+    scene.fog = new THREE.Fog(0xe9d9c4, 42, 100);
+    scene.add(new THREE.HemisphereLight(0xd8ecff, 0x3f7a44, 1.05));
+    const sun = new THREE.DirectionalLight(0xffe9bd, 1.55);
     sun.position.set(-18, 30, -10);
     scene.add(sun);
+
+    // Dôme de ciel + soleil + nuages qui dérivent avec le vent
+    const sky = new THREE.Mesh(
+      new THREE.SphereGeometry(150, 20, 14),
+      new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, fog: false })
+    );
+    scene.add(sky);
+    const glow = glowTexture();
+    const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0xfff3cd, transparent: true, opacity: 0.95, fog: false, depthWrite: false }));
+    sunSprite.position.set(-55, 62, 70);
+    sunSprite.scale.set(38, 38, 1);
+    scene.add(sunSprite);
+    const cloudTex = glowTexture(0.55);
+    const clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const cl = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: 0.55 + Math.random() * 0.25, fog: false, depthWrite: false }));
+      cl.position.set((Math.random() - 0.5) * 140, 28 + Math.random() * 26, 60 + Math.random() * 50);
+      cl.scale.set(16 + Math.random() * 22, 6 + Math.random() * 5, 1);
+      clouds.push(cl);
+      scene.add(cl);
+    }
+    // Collines lointaines, basses (le brouillard chaud fait le dégradé)
+    const hillMat = new THREE.MeshLambertMaterial({ color: 0x6f9c74 });
+    for (const [hx, hz, hw, hh] of [[-45, 95, 60, 9], [18, 108, 80, 12], [55, 92, 50, 8], [-8, 120, 95, 14]]) {
+      const hill = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), hillMat);
+      hill.scale.set(hw, hh, hw * 0.6);
+      hill.position.set(hx, -hh * 0.45, hz); // enfoncée : seule une bosse douce dépasse
+      scene.add(hill);
+    }
 
     const camera = new THREE.PerspectiveCamera(44, W / H, 0.05, 200);
     camera.position.set(BOW.x, BOW.y, BOW.z);
@@ -159,21 +218,56 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
       band.rotation.x = -Math.PI / 2; band.position.set(0, 0.01, z + 2.5);
       scene.add(band);
     }
-    // Arbres low-poly en périphérie
+    // Arbres low-poly en périphérie (sapins + feuillus mélangés)
     const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6d4326 });
     const leafMat = new THREE.MeshLambertMaterial({ color: 0x2e7a3c });
-    for (let i = 0; i < 16; i++) {
+    const leafMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9a4f });
+    for (let i = 0; i < 18; i++) {
       const side = i % 2 ? 1 : -1;
-      const tx = side * (7 + Math.random() * 18), tz = 4 + Math.random() * 70;
-      const s = 0.8 + Math.random() * 1.4;
+      const tx = side * (7 + Math.random() * 20), tz = 4 + Math.random() * 75;
+      const s = 0.8 + Math.random() * 1.5;
       const tree = new THREE.Group();
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * s, 0.16 * s, 1.2 * s, 6), trunkMat);
       trunk.position.y = 0.6 * s; tree.add(trunk);
-      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.9 * s, 2.2 * s, 8), leafMat);
-      crown.position.y = 2.1 * s; tree.add(crown);
+      if (i % 3 === 2) {
+        // feuillu : boule de feuillage
+        const crown = new THREE.Mesh(new THREE.SphereGeometry(1.05 * s, 9, 7), leafMat2);
+        crown.scale.y = 0.85;
+        crown.position.y = 2 * s; tree.add(crown);
+      } else {
+        const crown = new THREE.Mesh(new THREE.ConeGeometry(0.9 * s, 2.2 * s, 8), leafMat);
+        crown.position.y = 2.1 * s; tree.add(crown);
+      }
       tree.position.set(tx, 0, tz);
       scene.add(tree);
     }
+    // Buissons en bord de terrain
+    const bushMat = new THREE.MeshLambertMaterial({ color: 0x3c8a46 });
+    for (let i = 0; i < 10; i++) {
+      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.4 + Math.random() * 0.35, 8, 6), bushMat);
+      bush.scale.y = 0.62;
+      bush.position.set((Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 4), 0.22, 3 + Math.random() * 20);
+      scene.add(bush);
+    }
+    // Fleurs dans l'herbe (petits points colorés)
+    const FLOWERS = 90;
+    const fpos = new Float32Array(FLOWERS * 3);
+    const fcol = new Float32Array(FLOWERS * 3);
+    const palette = [[1, 0.72, 0.85], [1, 1, 1], [1, 0.85, 0.35], [0.85, 0.7, 1]];
+    for (let i = 0; i < FLOWERS; i++) {
+      fpos[i * 3] = (Math.random() - 0.5) * 16;
+      fpos[i * 3 + 1] = 0.045;
+      fpos[i * 3 + 2] = 5 + Math.random() * 20; // pas trop près de la caméra
+      const [r, gg, b] = palette[i % palette.length];
+      fcol[i * 3] = r; fcol[i * 3 + 1] = gg; fcol[i * 3 + 2] = b;
+    }
+    const flowerGeo = new THREE.BufferGeometry();
+    flowerGeo.setAttribute('position', new THREE.BufferAttribute(fpos, 3));
+    flowerGeo.setAttribute('color', new THREE.BufferAttribute(fcol, 3));
+    scene.add(new THREE.Points(flowerGeo, new THREE.PointsMaterial({
+      size: 0.06, vertexColors: true, sizeAttenuation: true,
+      map: glow, transparent: true, alphaTest: 0.35, depthWrite: false, // ronds, pas carrés
+    })));
 
     // Cible : panneau + anneaux + chevalet
     const board = new THREE.Group();
@@ -196,14 +290,37 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     board.position.set(0, TARGET.y, TARGET.z);
     scene.add(board);
 
+    // Guirlande de fanions au-dessus de la cible (ambiance fête au village)
+    const bunting = new THREE.Group();
+    const poleMat = new THREE.MeshLambertMaterial({ color: 0xd8d3c6 });
+    for (const px of [-3.2, 3.2]) {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 3.1, 6), poleMat);
+      p.position.set(px, 1.55, TARGET.z + 0.6);
+      bunting.add(p);
+    }
+    const sag = (x) => 3.05 - 0.35 * (1 - (x / 3.2) ** 2); // la corde pend au milieu
+    const ropePts = [];
+    for (let x = -3.2; x <= 3.2001; x += 0.4) ropePts.push(new THREE.Vector3(x, sag(x), TARGET.z + 0.6));
+    const rope = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ropePts), new THREE.LineBasicMaterial({ color: 0xf2ecdd }));
+    bunting.add(rope);
+    const flagCols = [0xff4d7d, 0xf2c11f, 0x3f74d6, 0x2e9c5c, 0xf28322];
+    for (let i = 0; i < 13; i++) {
+      const x = -3 + i * 0.5;
+      const tri = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.3, 4), new THREE.MeshLambertMaterial({ color: flagCols[i % flagCols.length], side: THREE.DoubleSide }));
+      tri.rotation.x = Math.PI; // pointe vers le bas
+      tri.position.set(x, sag(x) - 0.18, TARGET.z + 0.6);
+      bunting.add(tri);
+    }
+    scene.add(bunting);
+
     // Drapeau : il se tend et ondule selon le vent
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 2.6, 8), new THREE.MeshLambertMaterial({ color: 0xd8d3c6 }));
-    pole.position.set(1.9, 1.3, TARGET.z - 1.4);
+    pole.position.set(-3.8, 1.3, TARGET.z - 1.6); // à l'écart de la guirlande
     scene.add(pole);
     const flagGeo = new THREE.PlaneGeometry(0.8, 0.5, 12, 6);
     flagGeo.translate(0.4, 0, 0); // ancré au mât
     const flag = new THREE.Mesh(flagGeo, new THREE.MeshLambertMaterial({ color: 0xe23c2e, side: THREE.DoubleSide }));
-    flag.position.set(1.9, 2.35, TARGET.z - 1.4);
+    flag.position.set(-3.8, 2.35, TARGET.z - 1.6);
     scene.add(flag);
 
     // Particules de vent (poussières qui filent dans le sens du vent)
@@ -216,7 +333,10 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     }
     const dustGeo = new THREE.BufferGeometry();
     dustGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.07, transparent: true, opacity: 0.45, sizeAttenuation: true }));
+    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+      color: 0xffffff, size: 0.06, transparent: true, opacity: 0.4, sizeAttenuation: true,
+      map: glow, alphaTest: 0.3, depthWrite: false, // petits ronds doux
+    }));
     scene.add(dust);
 
     // Arc au premier plan (accroché à la caméra) + corde + flèche encochée
@@ -250,8 +370,16 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     const stuck = new THREE.Group(); // flèches plantées
     scene.add(stuck);
 
+    // Traînée blanche derrière la flèche en vol (buffer fixe de 15 points)
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(15 * 3), 3));
+    const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }));
+    trail.visible = false;
+    scene.add(trail);
+
     world.current = {
       renderer, scene, camera, flag, flagGeo, dust, bowGrp, string, nockArrow, reticle, stuck,
+      clouds, board, trail, wobbleT0: 0,
       lookAt: new THREE.Vector3(0, TARGET.y, TARGET.z), fovTarget: 44,
       raf: 0, clock: new THREE.Clock(),
     };
@@ -284,6 +412,20 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         dp.setX(i, x);
       }
       dp.needsUpdate = true;
+
+      // Nuages qui dérivent doucement (poussés par le vent)
+      for (const cl of w.clouds) {
+        cl.position.x += (wind * 0.12 + 0.18) * dt;
+        if (cl.position.x > 95) cl.position.x = -95;
+        if (cl.position.x < -95) cl.position.x = 95;
+      }
+
+      // Le panneau tremble après un impact, puis se calme
+      if (w.wobbleT0) {
+        const wt = (performance.now() - w.wobbleT0) / 1000;
+        if (wt > 0.9) { w.wobbleT0 = 0; w.board.rotation.z = 0; }
+        else w.board.rotation.z = Math.sin(wt * 34) * 0.045 * (1 - wt / 0.9);
+      }
 
       // Visée en cours : bandage progressif, tremblement, réticule
       const aim = aimRef.current;
@@ -324,13 +466,30 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         const p = fl.path[i], q = fl.path[Math.min(fl.path.length - 1, i + 1)];
         fl.arrow.position.set(p.x, p.y, p.z);
         if (q !== p) fl.arrow.lookAt(q.x, q.y, q.z);
+        // Traînée blanche derrière la flèche (on remplit le buffer fixe)
+        if (i > 1) {
+          const pts = fl.path.slice(Math.max(0, i - 14), i + 1);
+          const attr = w.trail.geometry.attributes.position;
+          for (let k = 0; k < 15; k++) {
+            const tp = pts[Math.min(k, pts.length - 1)];
+            attr.setXYZ(k, tp.x, tp.y, tp.z);
+          }
+          attr.needsUpdate = true;
+          w.trail.geometry.setDrawRange(0, Math.min(15, pts.length));
+          w.trail.visible = true;
+        }
         if (k >= 1) endFlight();
       }
 
       // Caméra : suit doucement le point d'intérêt (zoom sur l'impact)
       camera.fov += (w.fovTarget - camera.fov) * 0.12;
       camera.updateProjectionMatrix();
-      camera.position.set(BOW.x, BOW.y, BOW.z);
+      // Micro-respiration de la caméra : la scène vit même à l'arrêt.
+      camera.position.set(
+        BOW.x + Math.sin(t * 0.5) * 0.018,
+        BOW.y + Math.sin(t * 0.83) * 0.012,
+        BOW.z
+      );
       camera.lookAt(w.lookAt);
 
       renderer.render(scene, camera);
@@ -391,11 +550,13 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     if (!w || !fl) return;
     flightRef.current = null;
     w.scene.remove(fl.arrow);
+    w.trail.visible = false;
     animatingRef.current = false;
-    // Zoom bref sur l'impact, retour ensuite
+    // Zoom bref sur l'impact, retour ensuite (+ le panneau tremble)
     if (fl.hit.plane) {
       w.lookAt.set(fl.hit.x, fl.hit.y, TARGET.z);
       w.fovTarget = 16;
+      w.wobbleT0 = performance.now();
       boomSound(fl.pts >= 9);
     }
     setPopup({ text: fl.pts > 0 ? `+${fl.pts}` : 'Raté…', good: fl.pts >= 8, key: Date.now() });
@@ -486,18 +647,18 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
   const windAbs = Math.abs(g.wind || 0);
   // Vent positif = +X monde = vers la GAUCHE à l'écran (caméra tournée vers +Z).
   const windArrow = (g.wind || 0) > 0 ? '←' : '→';
-  const banner = g.phase === 'over'
-    ? (g.winners?.length > 1
-      ? (g.winners.includes(me) ? 'Égalité — tu partages la victoire !' : `Égalité entre ${g.winners.map((id) => nameById[id] || '?').join(' et ')} !`)
-      : (g.winners?.[0] === me ? 'Tu gagnes la partie !' : `${nameById[g.winners?.[0]] || '?'} gagne la partie !`))
-    : animating ? 'La flèche vole…'
+  const banner = animating ? null
+    : g.phase === 'over'
+      ? (g.winners?.length > 1
+        ? (g.winners.includes(me) ? 'Égalité — tu partages la victoire !' : `Égalité entre ${g.winners.map((id) => nameById[id] || '?').join(' et ')} !`)
+        : (g.winners?.[0] === me ? 'Tu gagnes la partie !' : `${nameById[g.winners?.[0]] || '?'} gagne la partie !`))
       : g.isMyTurn
         ? (drawing ? 'Vise… relâche pour décocher !' : 'Maintiens pour bander, glisse pour viser')
         : `Au tour de ${nameById[g.turn] || '?'}…`;
 
   return (
     <div className="archery fade-up">
-      <div className={`gf-banner ${g.isMyTurn ? 'mine' : ''}`}>{banner}</div>
+      {banner && <div className={`gf-banner ${g.isMyTurn ? 'mine' : ''}`}>{banner}</div>}
 
       <div className="pool-players">
         {g.seats.map((id) => (

@@ -91,7 +91,7 @@ export default function Room() {
       overShown.current = true;
       const info = winnerOf(room.game);
       if (info) {
-        const delay = room.gameKey === 'pool' ? 4500 : 300;
+        const delay = room.gameKey === 'pool' ? 4500 : room.gameKey === 'archery' ? 2600 : 300;
         const t = setTimeout(() => setWinPopup(info), delay);
         return () => clearTimeout(t);
       }

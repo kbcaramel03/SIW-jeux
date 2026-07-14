@@ -430,7 +430,7 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     return rest.length ? rest : (g.remaining.eight ? [8] : []);
   };
   // L'animation d'abord : on ne révèle pas la fin avant que les billes s'arrêtent.
-  const banner = animating ? 'Les billes roulent…'
+  const banner = animating ? null
     : g.phase === 'over'
       ? (g.winner === me ? 'Tu gagnes la partie !' : `${nameById[g.winner] || '?'} gagne la partie !`)
       : g.isMyTurn
@@ -439,7 +439,7 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
 
   return (
     <div className="pool fade-up">
-      <div className={`gf-banner ${g.isMyTurn ? 'mine' : ''}`}>{banner}</div>
+      {banner && <div className={`gf-banner ${g.isMyTurn ? 'mine' : ''}`}>{banner}</div>}
 
       <div className="pool-players">
         {g.seats.map((id) => {
