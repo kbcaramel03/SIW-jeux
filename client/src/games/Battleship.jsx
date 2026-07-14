@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Shuffle, Check, Anchor, Crosshair, Ship, Sparkles, Bot, RotateCw } from 'lucide-react';
+import { Shuffle, Check, Anchor, Crosshair, Ship, Sparkles, Bot } from 'lucide-react';
 import { Button } from '@mui/material';
 import { burstAtEl, winConfetti, boomSound, splashSound } from '../effects.js';
 
@@ -71,14 +71,18 @@ function BoatShape({ len }) {
 }
 
 // Superposition des bateaux sur la grille (positions en % : 1 case = 10 %).
-function Boats({ ships, tappable, selectedId, onTap }) {
+// `dragPos` : position flottante du bateau en cours de glisser (suivi du doigt).
+function Boats({ ships, dragPos, handlers }) {
   if (!ships) return null;
   return (
     <>
       {ships.map((s) => {
+        const dragging = dragPos && dragPos.id === s.id;
+        const px = dragging ? dragPos.x : s.x;
+        const py = dragging ? dragPos.y : s.y;
         const style = {
-          left: `${s.x * 10}%`,
-          top: `${s.y * 10}%`,
+          left: `${px * 10}%`,
+          top: `${py * 10}%`,
           width: `${s.len * 10}%`,
           height: '10%',
         };
@@ -89,9 +93,12 @@ function Boats({ ships, tappable, selectedId, onTap }) {
         return (
           <div
             key={s.id}
-            className={`bs-boat ${s.sunk ? 'sunk' : ''} ${tappable ? 'tappable' : ''} ${selectedId === s.id ? 'selected' : ''}`}
+            className={`bs-boat ${s.sunk ? 'sunk' : ''} ${handlers ? 'tappable' : ''} ${dragging ? 'selected' : ''}`}
             style={style}
-            onClick={tappable ? (e) => { e.stopPropagation(); onTap(s); } : undefined}
+            onPointerDown={handlers ? (e) => handlers.down(e, s) : undefined}
+            onPointerMove={handlers ? handlers.move : undefined}
+            onPointerUp={handlers ? handlers.up : undefined}
+            onPointerCancel={handlers ? handlers.up : undefined}
           >
             <BoatShape len={s.len} />
           </div>
@@ -101,51 +108,64 @@ function Boats({ ships, tappable, selectedId, onTap }) {
   );
 }
 
-/* ---- Placement : mélanger, ou toucher un bateau puis le déplacer/pivoter ---- */
+/* ---- Placement : glisser un bateau pour le déplacer, le toucher pour pivoter ---- */
 function Placing({ game, onAction }) {
-  const [selected, setSelected] = useState(null); // id du bateau choisi
   const ships = game.myShips || [];
-  const ship = ships.find((s) => s.id === selected) || null;
+  const [drag, setDrag] = useState(null); // { id, x, y } pendant le glisser
+  const dragRef = useRef(null);
 
-  function tapBoat(s) {
+  function boatDown(e, s) {
     if (game.myReady) return;
-    if (selected === s.id) {
-      // Re-toucher le bateau choisi = le pivoter (autour de sa tête, borné).
-      const len = s.len;
-      const x = Math.min(s.x, s.horizontal ? 10 - 1 : 10 - len);
-      const y = Math.min(s.y, s.horizontal ? 10 - len : 10 - 1);
-      onAction({ kind: 'place', id: s.id, x, y, horizontal: !s.horizontal });
-    } else {
-      setSelected(s.id);
-    }
+    e.stopPropagation();
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* simulé */ }
+    const box = e.currentTarget.closest('.bs-gridbox')?.getBoundingClientRect();
+    if (!box) return;
+    dragRef.current = { s, cell: box.width / 10, startX: e.clientX, startY: e.clientY, moved: false };
   }
-
-  function tapCell(x, y) {
-    if (!ship || game.myReady) return;
-    // Déplace la tête du bateau vers la case touchée (bornée dans la mer).
-    const nx = Math.min(x, ship.horizontal ? 10 - ship.len : 9);
-    const ny = Math.min(y, ship.horizontal ? 9 : 10 - ship.len);
-    onAction({ kind: 'place', id: ship.id, x: nx, y: ny, horizontal: ship.horizontal });
+  function boatMove(e) {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = (e.clientX - d.startX) / d.cell;
+    const dy = (e.clientY - d.startY) / d.cell;
+    if (!d.moved && Math.sqrt(dx * dx + dy * dy) < 0.35) return; // pas encore un vrai glisser
+    d.moved = true;
+    setDrag({ id: d.s.id, x: d.s.x + dx, y: d.s.y + dy });
+  }
+  function boatUp(e) {
+    const d = dragRef.current;
+    dragRef.current = null;
+    setDrag(null);
+    if (!d) return;
+    const s = d.s;
+    if (!d.moved) {
+      // Simple touche (sans glisser) : le bateau pivote sur place (borné).
+      const x = Math.min(s.x, s.horizontal ? 9 : 10 - s.len);
+      const y = Math.min(s.y, s.horizontal ? 10 - s.len : 9);
+      onAction({ kind: 'place', id: s.id, x, y, horizontal: !s.horizontal });
+      return;
+    }
+    // Dépose : on aimante à la case la plus proche, bornée dans la mer.
+    const dx = (e.clientX - d.startX) / d.cell;
+    const dy = (e.clientY - d.startY) / d.cell;
+    const nx = Math.max(0, Math.min(s.horizontal ? 10 - s.len : 9, Math.round(s.x + dx)));
+    const ny = Math.max(0, Math.min(s.horizontal ? 9 : 10 - s.len, Math.round(s.y + dy)));
+    onAction({ kind: 'place', id: s.id, x: nx, y: ny, horizontal: s.horizontal });
   }
 
   return (
     <div className="card bs-placing" style={{ background: '#fff', borderRadius: 18, padding: 18, boxShadow: 'var(--shadow)' }}>
       <h3 className="section-title"><Anchor size={20} /> Place ta flotte</h3>
       <p className="cn-hint-text">
-        <strong>Touche un bateau</strong> pour le choisir, <strong>retouche-le</strong> pour le pivoter,
-        <strong> touche une case</strong> pour le déplacer. Ou <strong>mélange</strong> jusqu'à ce que ça te plaise, puis <strong>Prêt</strong> !
+        <strong>Fais glisser</strong> un bateau pour le déplacer, <strong>touche-le</strong> (sans bouger) pour le pivoter.
+        Ou <strong>mélange</strong> jusqu'à ce que ça te plaise, puis <strong>Prête</strong> !
       </p>
-      <Grid board={game.myBoard} kind="my"
-        ships={ships} tappableBoats={!game.myReady} selectedId={selected} onTapBoat={tapBoat}
-        onTapCell={!game.myReady ? tapCell : undefined} />
+      <Grid board={game.myBoard} kind="my" ships={ships} dragPos={drag}
+        boatHandlers={!game.myReady ? { down: boatDown, move: boatMove, up: boatUp } : null} />
       <div className="cn-controls">
         {!game.myReady ? (
           <>
-            <Button variant="outlined" startIcon={<Shuffle size={16} />} onClick={() => { setSelected(null); onAction({ kind: 'shuffle' }); }}>Mélanger</Button>
-            {ship && (
-              <Button variant="outlined" color="secondary" startIcon={<RotateCw size={16} />} onClick={() => tapBoat(ship)}>Pivoter</Button>
-            )}
-            <Button variant="contained" startIcon={<Check size={16} />} onClick={() => { setSelected(null); onAction({ kind: 'ready', value: true }); }}>Je suis prête</Button>
+            <Button variant="outlined" startIcon={<Shuffle size={16} />} onClick={() => onAction({ kind: 'shuffle' })}>Mélanger</Button>
+            <Button variant="contained" startIcon={<Check size={16} />} onClick={() => onAction({ kind: 'ready', value: true })}>Je suis prête</Button>
           </>
         ) : (
           <Button variant="outlined" onClick={() => onAction({ kind: 'ready', value: false })}>Annuler — pas prête</Button>
@@ -217,7 +237,7 @@ function Fleet({ fleet, label }) {
 }
 
 /* ---- Grille 10x10 + bateaux entiers par-dessus ---- */
-function Grid({ board, kind, canFire, onFire, small, ships, tappableBoats, selectedId, onTapBoat, onTapCell }) {
+function Grid({ board, kind, canFire, onFire, small, ships, dragPos, boatHandlers }) {
   if (!board) return <div className="bs-grid-empty muted">Préparation…</div>;
   return (
     <div className="bs-grid-wrap">
@@ -235,22 +255,19 @@ function Grid({ board, kind, canFire, onFire, small, ships, tappableBoats, selec
                 if (canFire && !cell.fired) cls.push('fireable');
               }
               const fireClick = kind === 'enemy' && canFire && !cell.fired;
-              const moveClick = kind === 'my' && !!onTapCell;
               return (
                 <button
                   key={`${x}-${y}`}
                   data-cell={`${kind}-${x}-${y}`}
                   className={cls.join(' ')}
-                  disabled={!fireClick && !moveClick}
-                  onClick={fireClick
-                    ? (e) => { e.currentTarget.blur(); onFire(x, y); }
-                    : moveClick ? () => onTapCell(x, y) : undefined}
+                  disabled={!fireClick}
+                  onClick={fireClick ? (e) => { e.currentTarget.blur(); onFire(x, y); } : undefined}
                 />
               );
             })
           )}
         </div>
-        <Boats ships={ships} tappable={!!tappableBoats} selectedId={selectedId} onTap={onTapBoat} />
+        <Boats ships={ships} dragPos={dragPos} handlers={boatHandlers} />
       </div>
     </div>
   );

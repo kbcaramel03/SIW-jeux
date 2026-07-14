@@ -184,7 +184,7 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
             <div key={id} className="uno-seat">
               <span className="ludo-dot" style={{ background: HEX[['red', 'green', 'yellow', 'blue'][i]] }} />
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -231,7 +231,7 @@ export default function Ludo({ room, isHost, onAction, onNewGame }) {
           <div key={pl.id} className={`ludo-chip ${g.turn === pl.id && g.phase === 'playing' ? 'active' : ''}`}
             style={{ '--pc': HEX[pl.color] }}>
             <Avatar name={nameById[pl.id]} gender={genderById[pl.id]} avatar={avatarById[pl.id]} size={26} />
-            <span className="ludo-chip-name">{nameById[pl.id] || '?'}{pl.id === me ? ' (toi)' : ''}</span>
+            <span className="ludo-chip-name">{nameById[pl.id] || '?'}</span>
             <span className="ludo-chip-home">{pl.rank ? `${['🥇', '🥈', '🥉', '4ᵉ'][pl.rank - 1]}` : `${pl.home}/4 🏠`}</span>
           </div>
         ))}

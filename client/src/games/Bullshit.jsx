@@ -35,7 +35,7 @@ export default function Bullshit({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>

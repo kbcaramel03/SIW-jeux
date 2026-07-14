@@ -282,7 +282,7 @@ export default function MessagesDrawer({ open, onClose, meId }) {
             {conv?.members.map((m) => (
               <ListItemButton key={m.id} disableRipple>
                 <ListItemAvatar><Avatar name={m.displayName} gender={m.gender} avatar={m.avatar} size={36} /></ListItemAvatar>
-                <ListItemText primary={`${m.displayName}${m.id === meId ? ' (toi)' : ''}`} secondary={onlineSet.has(m.id) ? 'en ligne' : null} />
+                <ListItemText primary={`${m.displayName}$`} secondary={onlineSet.has(m.id) ? 'en ligne' : null} />
               </ListItemButton>
             ))}
           </List>

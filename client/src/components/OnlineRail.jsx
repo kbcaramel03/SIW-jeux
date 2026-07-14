@@ -32,7 +32,7 @@ export function PresenceList({ people, meId }) {
       {people.map((p) => (
         <li key={p.id} className="online-item">
           <Avatar name={p.displayName} gender={p.gender} avatar={p.avatar} />
-          <span>{p.displayName}{p.id === meId ? ' (toi)' : ''}</span>
+          <span>{p.displayName}</span>
         </li>
       ))}
     </ul>

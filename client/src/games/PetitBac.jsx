@@ -84,7 +84,7 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -114,7 +114,7 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
       {g.seats.map((id) => (
         <div key={id} className={`pool-chip ${g.phase === 'write' && g.submitted[id] ? 'active' : ''}`}>
           <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} size={26} />
-          <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+          <span>{nameById[id] || '?'}</span>
           <b>{g.scores[id] || 0} pts</b>
           {g.phase === 'write' && g.submitted[id] && <Check size={15} color="#2e8f5b" />}
         </div>
@@ -202,7 +202,7 @@ export default function PetitBac({ room, isHost, onAction, onNewGame }) {
             <div key={id} className={`pb-rank ${g.winners?.includes(id) ? 'winner' : ''}`}>
               <span className="pb-rank-pos">{i + 1}</span>
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} size={28} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
               <b>{g.scores[id] || 0} pts</b>
             </div>
           ))}

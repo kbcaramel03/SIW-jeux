@@ -632,7 +632,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -665,7 +665,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
           <div key={id} className={`pool-chip ${g.turn === id && g.phase === 'playing' ? 'active' : ''}`}>
             <span className="archery-dot" style={{ background: colorBySeat[id] }} />
             <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} size={26} />
-            <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+            <span>{nameById[id] || '?'}</span>
             <b>{g.scores[id] || 0} pts</b>
           </div>
         ))}

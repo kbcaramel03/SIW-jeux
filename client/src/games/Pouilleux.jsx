@@ -39,7 +39,7 @@ export default function Pouilleux({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -80,7 +80,7 @@ export default function Pouilleux({ room, isHost, onAction, onNewGame }) {
             <div key={p.id} className={`gf-seat ${g.turn === p.id ? 'active' : ''} ${isTarget ? 'target' : ''} ${p.safe ? 'safe' : ''}`}
               style={{ left: `${x}%`, top: `${y}%` }}>
               <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={42} />
-              <span className="gf-seat-name">{nameById[p.id] || '?'}{isMe ? ' (toi)' : ''}</span>
+              <span className="gf-seat-name">{nameById[p.id] || '?'}</span>
               <span className="gf-seat-meta">{p.safe ? <b style={{ color: '#2e8c47' }}>sauvée ✓</b> : `${p.count} 🃏`}</span>
             </div>
           );

@@ -75,7 +75,7 @@ const lr = (r) => (r / TABLE.W) * (CW - 2 * PAD);
 // (une bille = distance au choc centre à centre 2R, ou une bande = mur à R).
 function castAim(balls, ox, oy, ux, uy) {
   const { R, W, H } = TABLE;
-  let t = 3, type = 'none', vert = false;
+  let t = 3, type = 'none', vert = false, ball = null;
   const walls = [
     ux < 0 && [(R - ox) / ux, true],
     ux > 0 && [(W - R - ox) / ux, true],
@@ -94,9 +94,9 @@ function castAim(balls, ox, oy, ux, uy) {
     const d2 = cx * cx + cy * cy - proj * proj;
     if (d2 >= rr) continue;
     const tt = proj - Math.sqrt(rr - d2);
-    if (tt > 1e-6 && tt < t) { t = tt; type = 'ball'; }
+    if (tt > 1e-6 && tt < t) { t = tt; type = 'ball'; ball = b; }
   }
-  return { t, type, vert };
+  return { t, type, vert, ball };
 }
 
 function drawScene(ctx, balls, aim, vertical) {
@@ -144,6 +144,24 @@ function drawScene(ctx, balls, aim, vertical) {
         ctx.beginPath(); ctx.arc(lx(ex), ly(ey), lr(TABLE.R), 0, Math.PI * 2);
         ctx.stroke();
         ctx.lineWidth = 4;
+
+        // Mini flèche SUR LA BILLE TOUCHÉE : la direction qu'ELLE va prendre
+        // (le choc pousse la bille le long de la ligne des centres).
+        const b = hit.ball;
+        const blen = Math.sqrt((b.x - ex) ** 2 + (b.y - ey) ** 2) || 1;
+        const bx = (b.x - ex) / blen, by = (b.y - ey) / blen;
+        const alen = 0.07 + 0.05 * (aim.power || 0);
+        const ax0 = b.x + bx * (TABLE.R + 0.006), ay0 = b.y + by * (TABLE.R + 0.006);
+        const ax1 = b.x + bx * (TABLE.R + alen), ay1 = b.y + by * (TABLE.R + alen);
+        ctx.strokeStyle = '#ff4d7d';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(lx(ax0), ly(ay0)); ctx.lineTo(lx(ax1), ly(ay1)); ctx.stroke();
+        ctx.fillStyle = '#ff4d7d';
+        ctx.beginPath();
+        ctx.moveTo(lx(ax1 + bx * 0.032), ly(ay1 + by * 0.032));
+        ctx.lineTo(lx(ax1 - by * 0.017), ly(ay1 + bx * 0.017));
+        ctx.lineTo(lx(ax1 + by * 0.017), ly(ay1 - bx * 0.017));
+        ctx.closePath(); ctx.fill();
         break;
       }
       if (hit.type !== 'cushion') break;
@@ -151,21 +169,6 @@ function drawScene(ctx, balls, aim, vertical) {
       px = ex; py = ey;
     }
     ctx.setLineDash([]);
-
-    // Mini flèche colorée SUR la bille : la direction qu'elle va prendre.
-    const alen = 0.07 + 0.05 * (aim.power || 0);
-    const ax0 = cue.x + ux * (TABLE.R + 0.006), ay0 = cue.y + uy * (TABLE.R + 0.006);
-    const ax1 = cue.x + ux * (TABLE.R + alen), ay1 = cue.y + uy * (TABLE.R + alen);
-    ctx.strokeStyle = '#ff4d7d';
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(lx(ax0), ly(ay0)); ctx.lineTo(lx(ax1), ly(ay1)); ctx.stroke();
-    ctx.fillStyle = '#ff4d7d';
-    ctx.beginPath();
-    ctx.moveTo(lx(ax1 + ux * 0.032), ly(ay1 + uy * 0.032));
-    ctx.lineTo(lx(ax1 - uy * 0.017), ly(ay1 + ux * 0.017));
-    ctx.lineTo(lx(ax1 + uy * 0.017), ly(ay1 - ux * 0.017));
-    ctx.closePath(); ctx.fill();
 
     // Queue de billard reculée selon la puissance du curseur.
     if ((aim.power || 0) > 0.02) {
@@ -353,14 +356,14 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     };
   }
 
-  // Visée façon Plato : toucher/glisser sur la table ORIENTE la flèche
-  // (direction = de la blanche vers le doigt). La puissance, c'est le curseur.
+  // Visée lance-pierre : on vise DEPUIS DERRIÈRE la blanche — elle part
+  // dans le sens opposé au doigt (comme sur Plato).
   function pointAt(e) {
     if (!g.isMyTurn || animating || g.phase !== 'playing') return;
     const p = tablePoint(e);
     const cue = g.balls.find((b) => b.id === 0);
     if (!cue) return;
-    const dx = p.x - cue.x, dy = p.y - cue.y;
+    const dx = cue.x - p.x, dy = cue.y - p.y;
     if (Math.sqrt(dx * dx + dy * dy) < 0.02) return; // trop près de la bille
     const a = { dx, dy };
     setAim(a);
@@ -404,12 +407,12 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title"><Target size={20} color="#2e8f5b" /> Billard — salle d'attente</h3>
-        <p className="cn-hint-text">Le 8-ball classique en face à face. Le premier empochage attribue votre groupe — billes pleines ou rayées. Videz votre groupe, puis empochez la noire pour gagner ; la faire tomber trop tôt, c'est perdre. Touchez la table pour viser (la flèche sur la blanche montre la direction), puis tirez le curseur de gauche vers le bas — plus c'est bas, plus c'est fort — et relâchez pour tirer. 2 joueuses.</p>
+        <p className="cn-hint-text">Le 8-ball classique en face à face. Le premier empochage attribue votre groupe — billes pleines ou rayées. Videz votre groupe, puis empochez la noire pour gagner ; la faire tomber trop tôt, c'est perdre. Visez en tirant DERRIÈRE la blanche (elle part dans le sens opposé, la flèche montre où ira la bille touchée), puis faites descendre la queue à gauche — plus elle descend, plus le coup est fort — et relâchez. 2 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -434,7 +437,7 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     : g.phase === 'over'
       ? (g.winner === me ? 'Tu gagnes la partie !' : `${nameById[g.winner] || '?'} gagne la partie !`)
       : g.isMyTurn
-        ? (power > 0.02 ? `Puissance ${Math.round(power * 100)} % — relâche pour tirer !` : 'Touche la table pour viser, puis tire le curseur vers le bas')
+        ? (power > 0.02 ? `Puissance ${Math.round(power * 100)} % — relâche pour tirer !` : 'Tire derrière la blanche pour viser, puis descends la queue à gauche')
         : `${nameById[g.turn] || '?'} vise…`;
 
   return (
@@ -447,7 +450,7 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
           return (
             <div key={id} className={`pool-chip ${g.turn === id && g.phase === 'playing' ? 'active' : ''}`}>
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} size={26} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
               {rest === null
                 ? <b>{groupLabel(null)}</b>
                 : <span className="pool-chip-balls">
@@ -466,7 +469,8 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
           <div className="pool-power" ref={sliderRef}
             onPointerDown={sliderDown} onPointerMove={sliderMove} onPointerUp={sliderUp} onPointerCancel={sliderUp}>
             <div className="pool-power-fill" style={{ height: `${power * 100}%` }} />
-            <span className="pool-power-hint">💪</span>
+            {/* La queue glisse vers le bas : plus elle descend, plus le coup est fort */}
+            <div className="pool-power-cue" style={{ top: `${4 + power * 44}%` }} />
           </div>
         )}
         <div className={`pool-table-wrap ${vertical ? 'vertical' : ''}`}>

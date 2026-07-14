@@ -52,7 +52,7 @@ export default function Echecs({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -117,7 +117,7 @@ export default function Echecs({ room, isHost, onAction, onNewGame }) {
   const playerBar = (id, color) => (
     <div className={`ch-player ${g.phase === 'playing' && g.turnColor === color ? 'active' : ''}`}>
       <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} size={26} />
-      <span className="ch-player-name">{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+      <span className="ch-player-name">{nameById[id] || '?'}</span>
       <span className={`ch-color-dot ${color === 'w' ? 'white' : 'black'}`} />
       <span className="ch-captured">
         {g.captured[color].map((t, i) => <Piece key={i} type={t} color={color === 'w' ? 'b' : 'w'} small />)}

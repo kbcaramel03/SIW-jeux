@@ -30,12 +30,12 @@ const PetitBac = lazy(() => import('../games/PetitBac.jsx'));
 function winnerOf(g) {
   if (!g || g.phase !== 'over') return null;
   if (Array.isArray(g.winners) && g.winners.length) return { ids: g.winners };
-  if (g.winner === 'tie') return { text: 'Égalité parfaite ! 🤝' };
-  if (g.winner === 'red') return { text: 'L\'équipe ROUGE gagne ! ❤️' };
-  if (g.winner === 'blue') return { text: 'L\'équipe BLEUE gagne ! 💙' };
+  if (g.winner === 'tie') return { text: 'Égalité parfaite !' };
+  if (g.winner === 'red') return { text: 'L\'équipe ROUGE gagne !' };
+  if (g.winner === 'blue') return { text: 'L\'équipe BLEUE gagne !' };
   if (g.winner && typeof g.winner === 'string') return { ids: [g.winner] };
-  if (g.result === 'won') return { text: 'GAGNÉ, bravo l\'équipe ! 🎉' };
-  if (g.result === 'lost') return { text: 'Perdu ensemble… on se refait ? 😅' };
+  if (g.result === 'won') return { text: 'Gagné, bravo l\'équipe !' };
+  if (g.result === 'lost') return { text: 'Perdu ensemble… on se refait ?' };
   return null;
 }
 
@@ -129,7 +129,7 @@ export default function Room() {
   const nameById = Object.fromEntries(roster.map((p) => [p.id, p.displayName]));
   nameById.bot = 'ChatGPT';
   const infoById = Object.fromEntries(roster.map((p) => [p.id, p]));
-  const winName = (uid) => (uid === room.me.id ? 'Toi' : nameById[uid] || '?');
+  const winName = (uid) => nameById[uid] || '?';
 
   const sidePanel = (
     <>
@@ -139,7 +139,7 @@ export default function Room() {
           {room.players.map((p) => (
             <li key={p.id} className={p.connected === false ? 'away' : ''}>
               <Avatar name={p.displayName} gender={p.gender} avatar={p.avatar} />
-              <span>{p.displayName}{p.id === room.me.id ? ' (toi)' : ''}</span>
+              <span>{p.displayName}</span>
               {p.id === room.hostId && <Crown size={15} color="#c2a36b" />}
               {p.connected === false && <span className="away-tag"><WifiOff size={12} /> absent·e</span>}
             </li>

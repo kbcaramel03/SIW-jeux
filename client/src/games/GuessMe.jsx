@@ -41,7 +41,7 @@ export default function GuessMe({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -110,9 +110,11 @@ export default function GuessMe({ room, isHost, onAction, onNewGame }) {
         <div className="gm-reveal">
           {g.players.map((p) => (
             <div key={p.id} className="gm-reveal-card">
-              <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={34} />
-              <b>{nameById[p.id] || '?'}</b>
-              <span className="gm-answer">{p.answer ? choiceText(p.answer) : '?'}</span>
+              <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={30} />
+              <div className="gm-reveal-info">
+                <b>{nameById[p.id] || '?'}</b>
+                <span className="gm-answer">{p.answer ? choiceText(p.answer) : '?'}</span>
+              </div>
               {p.gain != null && <span className="gm-gain">+{p.gain}</span>}
             </div>
           ))}

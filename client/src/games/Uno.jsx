@@ -50,7 +50,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -107,7 +107,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
               style={{ left: `${x}%`, top: `${y}%` }}>
               <div className="uno-opp-info">
                 <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={26} />
-                <span className="uno-opp-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
+                <span className="uno-opp-name">{nameById[p.id] || '?'}</span>
                 <span className="uno-count">{p.count}</span>
               </div>
               <AnimatePresence>

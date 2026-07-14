@@ -42,7 +42,7 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -181,7 +181,7 @@ export default function Conspiracy({ room, isHost, onAction, onNewGame }) {
                 <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={40} />
                 {(onTeam || isPicked) && <span className="csp2-seat-team"><Users size={11} /></span>}
               </div>
-              <span className="csp2-seat-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
+              <span className="csp2-seat-name">{nameById[p.id] || '?'}</span>
               <AnimatePresence>
                 {vIcon && (
                   <motion.span key={vIcon} className={`csp2-stamp ${vIcon}`}

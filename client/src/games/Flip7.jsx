@@ -54,7 +54,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -105,7 +105,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
             <div key={p.id} className={`f7-rank rank-${r <= 3 ? r : 'n'} ${p.id === me ? 'me' : ''}`}>
               <span className="f7-rank-pos">{rankMark(r)}</span>
               <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={22} />
-              <span className="f7-rank-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
+              <span className="f7-rank-name">{nameById[p.id] || '?'}</span>
               <span className="f7-rank-score">{p.score}</span>
             </div>
           );
@@ -139,7 +139,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
                 : g.targets.map((id) => (
                   <Button key={id} variant="contained" color={id === me ? 'secondary' : 'primary'}
                     onClick={() => onAction({ kind: 'resolve', targetId: id })}>
-                    {nameById[id] || '?'}{id === me ? ' (toi)' : ''}
+                    {nameById[id] || '?'}
                   </Button>
                 ))}
             </div>
@@ -193,7 +193,7 @@ export default function Flip7({ room, isHost, onAction, onNewGame }) {
               <div className="f7-player-head">
                 <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} />
                 <div className="f7-player-id">
-                  <span className="f7-player-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
+                  <span className="f7-player-name">{nameById[p.id] || '?'}</span>
                   <span className="f7-player-score">{p.score} pts</span>
                 </div>
                 {status === 'busted' && <span className="f7-badge bust">PERDU</span>}

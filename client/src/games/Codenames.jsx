@@ -154,7 +154,7 @@ function Setup({ game, me, isHost, ids, onAction }) {
                 <ul className="duet-members">
                   {members.length === 0
                     ? <li className="muted">Personne</li>
-                    : members.map((id) => <li key={id}>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</li>)}
+                    : members.map((id) => <li key={id}>{nameById[id] || '?'}</li>)}
                 </ul>
                 <button className={`btn btn-mini ${mine ? 'btn-ghost' : 'btn-secondary'}`} disabled={mine}
                   onClick={() => onAction({ kind: 'assign', team: side, role: 'operative' })}>
@@ -171,7 +171,7 @@ function Setup({ game, me, isHost, ids, onAction }) {
           <div className="cn-team cn-team-red">
             <h4>Côté Rouge — vous</h4>
             <ul className="duet-members">
-              {sideMembers(game.teams.red).map((id) => <li key={id}>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</li>)}
+              {sideMembers(game.teams.red).map((id) => <li key={id}>{nameById[id] || '?'}</li>)}
             </ul>
           </div>
           <div className="cn-team cn-team-blue">

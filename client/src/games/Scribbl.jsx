@@ -133,7 +133,7 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
         <p className="cn-hint-text">Un jeu de dessin et de devinettes. Chacune son tour, une joueuse illustre un mot tiré au sort pendant que les autres tentent de le reconnaître. Plus vous devinez tôt, plus vous marquez de points — et la dessinatrice en gagne à chaque bonne réponse. De 2 à 10 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
-            <div key={id} className="uno-seat"><Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} /><span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span></div>
+            <div key={id} className="uno-seat"><Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} /><span>{nameById[id] || '?'}</span></div>
           ))}
         </div>
         <div className="pb-config">
@@ -224,7 +224,7 @@ export default function Scribbl({ room, isHost, onAction, onNewGame }) {
             {g.players.slice().sort((a, b) => b.score - a.score).map((p) => (
               <div key={p.id} className={`scr-pl ${p.guessed ? 'guessed' : ''}`}>
                 <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={26} />
-                <span className="scr-pl-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
+                <span className="scr-pl-name">{nameById[p.id] || '?'}</span>
                 {p.isDrawer && <Pencil size={13} />}
                 {p.guessed && <span className="scr-check">✓</span>}
                 <span className="scr-pl-score">{p.score}</span>

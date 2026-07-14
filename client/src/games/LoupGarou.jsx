@@ -101,7 +101,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
         <p className="cn-hint-text">Un jeu d'enquête et de bluff. La nuit, les Loups-Garous dévorent un villageois en secret ; le jour, le village débat puis vote pour éliminer un suspect. Les rôles spéciaux — Voyante, Sorcière, Chasseur, Cupidon et d'autres — bouleversent la partie. Le village l'emporte en démasquant tous les loups, les loups en prenant le dessus. Un maître du jeu vocal mène chaque nuit. De 4 à 18 joueuses. Choisissez la composition ci-dessous, puis lancez.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
-            <div key={id} className="uno-seat"><Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} /><span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span></div>
+            <div key={id} className="uno-seat"><Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} /><span>{nameById[id] || '?'}</span></div>
           ))}
         </div>
 
@@ -313,7 +313,7 @@ export default function LoupGarou({ room, isHost, onAction, onNewGame }) {
               style={{ left: `${x}%`, top: `${y}%` }} disabled={!selecting || dead} onClick={() => clickPlayer(p)}>
               {aura && <span className="lg-aura" aria-hidden />}
               <div className="lg-player-av"><Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={36} />{dead && <span className="lg-dead-x"><Skull size={15} /></span>}</div>
-              <span className="lg-player-name">{nameById[p.id] || '?'}{p.id === me ? ' (toi)' : ''}</span>
+              <span className="lg-player-name">{nameById[p.id] || '?'}</span>
               <div className={`lg-card3d ${known ? 'flipped' : ''}`}>
                 <div className="lg-card3d-inner">
                   <div className="lg-card3d-back"><GiMoon /></div>

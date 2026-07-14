@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@mui/material';
-import { Play, Sparkles, Fish, Trophy, MessageCircleQuestion } from 'lucide-react';
+import { Play, Sparkles, Fish, MessageCircleQuestion } from 'lucide-react';
 import GoFishCard, { SPECIES } from './GoFishCard.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti, popSound, boomSound } from '../effects.js';
@@ -36,7 +36,7 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
               <Avatar name={nameById[id]} gender={genderById[id]} avatar={avatarById[id]} />
-              <span>{nameById[id] || '?'}{id === me ? ' (toi)' : ''}</span>
+              <span>{nameById[id] || '?'}</span>
             </div>
           ))}
         </div>
@@ -70,7 +70,6 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
   }
 
   const n = g.players.length;
-  const myBooks = g.players.find((p) => p.id === me)?.books || [];
   const asked = g.lastAsk || null;
 
   return (
@@ -95,13 +94,13 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
           return (
             <button key={p.id} className={`gf-seat ${g.turn === p.id ? 'active' : ''} ${askable ? 'askable' : ''}`}
               style={{ left: `${x}%`, top: `${y}%` }} disabled={!askable} onClick={() => ask(p.id)}>
-              <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={42} />
-              <span className="gf-seat-name">{nameById[p.id] || '?'}{isMe ? ' (toi)' : ''}</span>
+              <span className="gf-seat-top">
+                <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={26} />
+                <span className="gf-seat-name">{nameById[p.id] || '?'}</span>
+              </span>
               <span className="gf-seat-meta">{p.count} carte{p.count > 1 ? 's' : ''}</span>
               {p.books.length > 0 && (
-                <span className="gf-seat-books">
-                  {p.books.map((r) => <img key={r} src={SPECIES[r]?.img} alt={SPECIES[r]?.name} title={SPECIES[r]?.name} />)}
-                </span>
+                <span className="gf-seat-fams">{p.books.length} famille{p.books.length > 1 ? 's' : ''}</span>
               )}
             </button>
           );
@@ -114,22 +113,6 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
       </div>
 
       {picking && <p className="gf-hint">Touche une joueuse à qui demander des <b>{SPECIES[pickedRank]?.name}</b></p>}
-
-      {/* Mes familles complétées : de beaux trophées dorés */}
-      {myBooks.length > 0 && (
-        <div className="gf-mybooks">
-          <span className="gf-mybooks-label"><Trophy size={14} /> Tes familles</span>
-          <div className="gf-book-cards">
-            {myBooks.map((r) => (
-              <span key={r} className="gf-book-card">
-                <img src={SPECIES[r]?.img} alt="" />
-                <em>{SPECIES[r]?.name}</em>
-                <b>×4</b>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Ma main : on tape une carte pour choisir l'espèce à demander */}
       <div className="gf-hand">
@@ -155,10 +138,7 @@ export default function GoFish({ room, isHost, onAction, onNewGame }) {
               <div key={p.id} className={`gf-rank-row ${p.id === g.winner ? 'win' : ''}`}>
                 <Avatar name={nameById[p.id]} gender={genderById[p.id]} avatar={avatarById[p.id]} size={24} />
                 <b>{nameById[p.id] || '?'}</b>
-                <span className="gf-rank-books">
-                  {p.books.map((r) => <img key={r} src={SPECIES[r]?.img} alt="" title={SPECIES[r]?.name} />)}
-                  {p.books.length === 0 && <span className="muted">aucune famille</span>}
-                </span>
+                <span className="gf-rank-count">{p.books.length} famille{p.books.length > 1 ? 's' : ''}</span>
               </div>
             ))}
           </div>

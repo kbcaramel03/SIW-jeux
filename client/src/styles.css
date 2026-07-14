@@ -331,7 +331,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 
 /* Bateaux entiers superposés à la grille */
 .bs-boat { position: absolute; z-index: 1; pointer-events: none; }
-.bs-boat.tappable { pointer-events: auto; cursor: pointer; }
+.bs-boat.tappable { pointer-events: auto; cursor: grab; touch-action: none; /* le glisser ne fait pas defiler la page */ }
 .bs-boat.selected { filter: drop-shadow(0 0 5px rgba(122,63,191,0.9)); }
 .bs-boat.selected .bs-boat-svg .hull { fill: #7a5ca8; }
 .bs-boat-svg { width: 100%; height: 100%; display: block; }
@@ -847,7 +847,11 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .gf-seat.askable { cursor: pointer; border-color: #f0b400; animation: gfPulse 1.4s ease-in-out infinite; }
 .gf-seat.askable:hover { background: #fff7e0; }
 @keyframes gfPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(240,180,0,0.5); } 50% { box-shadow: 0 0 0 7px rgba(240,180,0,0); } }
+/* Avatar à gauche du nom, sur une ligne (même règle que partout) */
+.gf-seat-top { display: flex; align-items: center; gap: 5px; max-width: 100%; min-width: 0; }
 .gf-seat-name { font-weight: 700; font-size: 0.76rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.gf-seat-fams { font-size: 0.62rem; font-weight: 800; color: #a8842a; }
+.gf-rank-count { margin-left: auto; font-weight: 700; color: var(--ink-soft); }
 .gf-seat-meta { font-size: 0.64rem; color: var(--ink-soft); font-weight: 700; }
 .gf-seat-meta b { color: #2e8c47; }
 .gf-pool { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px; }
@@ -896,7 +900,7 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 /* Go Fish sur petits téléphones */
 @media (max-width: 480px) {
   .gf-table { width: 96vw; aspect-ratio: 1; }
-  .gf-seat { width: 66px; padding: 4px 3px; }
+  .gf-seat { width: 88px; padding: 4px 3px; }
   .gf-seat-name { font-size: 0.64rem; }
   .gf-seat-meta { font-size: 0.56rem; }
   .gfc { width: 48px; height: 68px; }
@@ -972,7 +976,10 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .gm-mini-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; min-width: 0; }
 .gm-mini-choices button { min-height: 36px; border-radius: 10px; padding: 5px 7px; overflow-wrap: anywhere; }
 .gm-reveal { padding: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 9px; }
-.gm-reveal-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; border-radius: 13px; background: #faf6fd; text-align: center; min-width: 0; }
+/* Avatar toujours à gauche du nom, alignés (règle maison, partout pareil) */
+.gm-reveal-card { position: relative; display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 13px; background: #faf6fd; text-align: left; min-width: 0; }
+.gm-reveal-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.gm-reveal-info b { font-size: 0.82rem; }
 .gm-reveal-card b, .gm-answer { max-width: 100%; overflow-wrap: anywhere; }
 .gm-answer { font-family: var(--font-head); font-weight: 900; color: #7c3db0; }
 .gm-gain { position: absolute; right: 7px; top: 7px; border-radius: 999px; background: #d7f0e2; color: #1f7a52; padding: 2px 7px; font-weight: 900; font-size: 0.75rem; }
@@ -984,8 +991,8 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 @media (max-width: 520px) {
   .gf { gap: 9px; }
   .gf-table { width: min(100%, 340px); aspect-ratio: 1; border-radius: 22px; margin-top: 0; }
-  .gf-seat { width: 72px; padding: 5px 3px; }
-  .gf-seat .avatar { width: 32px !important; height: 32px !important; }
+  .gf-seat { width: 96px; padding: 5px 4px; }
+  .gf-seat .avatar { width: 24px !important; height: 24px !important; }
   .gf-seat-name { font-size: 0.66rem; }
   .gf-seat-meta { font-size: 0.58rem; }
   .gf-pool { transform: translate(-50%, -50%) scale(0.84); }
@@ -1560,11 +1567,15 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 .pool-chip.active { border-color: #2e8f5b; box-shadow: 0 0 0 3px rgba(46,143,91,0.2), var(--shadow-sm); }
 /* Scène : curseur de puissance à gauche + table */
 .pool-stage { display: flex; gap: 8px; justify-content: center; align-items: stretch; width: 100%; }
-.pool-power { width: 36px; flex-shrink: 0; border-radius: 999px; background: rgba(255,255,255,0.8);
+.pool-power { width: 40px; flex-shrink: 0; border-radius: 999px; background: rgba(255,255,255,0.8);
   box-shadow: var(--shadow-sm); position: relative; overflow: hidden; touch-action: none; cursor: pointer; }
 .pool-power-fill { position: absolute; top: 0; left: 0; right: 0;
-  background: linear-gradient(180deg, #ffd83d, #ff7b54, #ff4d7d); transition: height 0.05s linear; }
-.pool-power-hint { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 1rem; }
+  background: linear-gradient(180deg, rgba(255,216,61,0.45), rgba(255,77,125,0.55)); transition: height 0.05s linear; }
+/* Queue de billard dans la jauge : elle descend quand on charge le coup */
+.pool-power-cue { position: absolute; left: 50%; transform: translateX(-50%); width: 9px; height: 52%;
+  border-radius: 6px; pointer-events: none; transition: top 0.05s linear;
+  background: linear-gradient(180deg, #e8e2d4 0 7%, #caa06a 7% 55%, #8a5a2b 55% 100%);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
 .pool-table-wrap { width: min(96vw, 740px); }
 /* Verticale : dimensionnée pour tenir dans l'écran (38vh de large = 76vh de haut) */
 .pool-table-wrap.vertical { width: min(94vw, 42vh); } /* agrandie : trop petite pour viser au doigt */
