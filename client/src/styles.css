@@ -468,6 +468,24 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 .uno-turn-banner { font-family: var(--font-head); font-weight: 600; padding: 8px 16px; border-radius: 14px; background: #efe7ee; color: var(--ink-soft); }
 .uno-turn-banner.mine { background: #d7f0e2; color: #1f7a52; }
 .uno-hand { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 92px; }
+/* Fil des dernières actions (pioches, +2/+4, sens) */
+.uno-feed { width: 100%; max-width: 480px; margin: 0 auto; background: rgba(255,255,255,0.75);
+  border-radius: 10px; padding: 4px 10px; font-size: 0.72rem; color: var(--ink-soft);
+  text-align: center; line-height: 1.5; }
+/* Cumul de +2/+4 en cours */
+.uno-pendingchip { background: #18181b; color: #fff; font-family: var(--font-head); font-weight: 700;
+  border-radius: 999px; padding: 3px 12px; font-size: 0.82rem; animation: unopulse 0.9s infinite alternate; }
+@keyframes unopulse { from { transform: scale(1); } to { transform: scale(1.12); box-shadow: 0 0 14px rgba(228,67,58,0.7); } }
+/* Téléphone : cartes plus petites pour que la main tienne à l'écran */
+@media (max-width: 640px) {
+  .uno-card.size-md { width: 44px; height: 66px; }
+  .uno-card.size-md .uno-sym { font-size: 1rem; }
+  .uno-card.size-lg { width: 56px; height: 84px; }
+  .uno-card.size-lg .uno-sym { font-size: 1.5rem; }
+  .uno-card.size-mini { width: 20px; height: 30px; }
+  .uno-hand { gap: 4px; min-height: 70px; }
+  .uno-hand-card { margin: 0 -3px; } /* léger éventail serré */
+}
 .uno-color-picker { position: fixed; inset: 0; background: rgba(40,30,45,0.4); display: flex; align-items: center; justify-content: center; z-index: 60; }
 .uno-color-picker-box { background: #fff; padding: 22px; border-radius: 18px; text-align: center; box-shadow: var(--shadow); }
 .uno-color-choices { display: flex; gap: 10px; margin: 12px 0; }

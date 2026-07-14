@@ -1,11 +1,14 @@
 // Moteur de Uno (2 à 8 joueurs), logique pure.
 // 108 cartes : 4 couleurs (0 x1, 1-9 x2, skip/reverse/+2 x2) + 4 jokers + 4 joker+4.
-// Règles simplifiées et claires : pas de cumul de +2/+4, on pioche 1 carte (jouable
-// immédiatement ou on passe). Premier à vider sa main gagne.
+// Les +2/+4 SE CUMULENT : la victime peut renchérir (+2 sur +2, +4 sur tout)
+// et le total glisse à la suivante — sinon elle ramasse tout. On pioche 1 carte
+// (jouable immédiatement ou on passe). Premier à vider sa main gagne.
 
 const COLORS = ['red', 'yellow', 'green', 'blue'];
 const OFFLINE_SKIP_MS = 10000; // une joueuse absente joue automatiquement après 10 s
 const isOffline = (s, id) => !!(s.offline && s.offline[id]);
+const nm = (s, id) => (s.names && s.names[id]) || 'quelqu\'un';
+function pushLog(state, text) { state.log.push(text); if (state.log.length > 30) state.log = state.log.slice(-30); }
 
 function shuffle(a) {
   a = [...a];
@@ -42,6 +45,8 @@ export function createUno() {
     turn: null,
     turnSince: null,   // début du tour courant (pour l'auto-play des absents)
     drawnCardId: null, // carte piochée jouable ce tour (par le joueur actif)
+    pendingDraw: 0,    // cartes à ramasser (cumul des +2/+4 en cours)
+    pendingType: null, // 'draw2' | 'wild4' — sur quoi on peut renchérir
     lastPenalty: null, // { targetId, count, by, nonce } pour l'animation +2/+4
     winner: null,
     log: [],
@@ -92,8 +97,10 @@ export function startUno(state, userId) {
   state.turnSince = Date.now();
   state.phase = 'playing';
   state.drawnCardId = null;
+  state.pendingDraw = 0;
+  state.pendingType = null;
   state.lastPenalty = null;
-  state.log.push('La partie commence !');
+  state.log = ['La partie commence !'];
 }
 
 function idxOf(state, id) { return state.seats.indexOf(id); }
@@ -119,7 +126,13 @@ export function playCard(state, userId, cardId, chosenColor) {
   if (ci === -1) throw new Error('Carte introuvable.');
   const card = hand[ci];
   const top = state.discard[state.discard.length - 1];
-  if (!isPlayable(card, state.currentColor, top.type)) throw new Error('Carte non jouable.');
+  // Cumul en cours : on ne peut que renchérir (+2 sur +2, +4 sur tout) ou ramasser.
+  if (state.pendingDraw > 0) {
+    const canStack = card.type === 'wild4' || (card.type === 'draw2' && state.pendingType === 'draw2');
+    if (!canStack) throw new Error(`Ramasse les ${state.pendingDraw} cartes, ou renchéris avec un +${state.pendingType === 'wild4' ? '4' : '2 ou +4'}.`);
+  } else if (!isPlayable(card, state.currentColor, top.type)) {
+    throw new Error('Carte non jouable.');
+  }
 
   // couleur pour les jokers
   if (card.color === 'wild') {
@@ -140,24 +153,27 @@ export function playCard(state, userId, cardId, chosenColor) {
 
   switch (card.type) {
     case 'skip':
+      pushLog(state, `${nm(state, userId)} passe le tour de ${nm(state, nextPlayer(state))}.`);
       advance(state, 2);
       break;
     case 'reverse':
       state.direction *= -1;
+      pushLog(state, `${nm(state, userId)} inverse le sens !`);
       advance(state, state.seats.length === 2 ? 2 : 1);
       break;
-    case 'draw2': {
-      const victim = nextPlayer(state);
-      drawCards(state, victim, 2);
-      state.lastPenalty = { targetId: victim, count: 2, by: userId, nonce: Date.now() };
-      advance(state, 2);
-      break;
-    }
+    case 'draw2':
     case 'wild4': {
+      // Le malus ne tombe pas tout de suite : la victime a son tour pour
+      // renchérir (le cumul glisse alors à la suivante) ou ramasser.
+      const add = card.type === 'draw2' ? 2 : 4;
+      const stacked = state.pendingDraw > 0;
+      state.pendingDraw += add;
+      state.pendingType = card.type === 'wild4' ? 'wild4' : (state.pendingType || 'draw2');
       const victim = nextPlayer(state);
-      drawCards(state, victim, 4);
-      state.lastPenalty = { targetId: victim, count: 4, by: userId, nonce: Date.now() };
-      advance(state, 2);
+      pushLog(state, stacked
+        ? `${nm(state, userId)} renchérit avec un +${add} — cumul à ${state.pendingDraw} pour ${nm(state, victim)} !`
+        : `${nm(state, userId)} pose un +${add} — ${nm(state, victim)} ramasse ou renchérit !`);
+      advance(state, 1);
       break;
     }
     default:
@@ -170,7 +186,19 @@ export function drawUno(state, userId) {
   if (state.phase !== 'playing') throw new Error('La partie n\'est pas en cours.');
   if (state.turn !== userId) throw new Error('Ce n\'est pas ton tour.');
   if (state.drawnCardId !== null) throw new Error('Tu as déjà pioché — joue-la ou passe.');
+  // Un cumul de +2/+4 t'attend : tu ramasses tout, et le tour passe.
+  if (state.pendingDraw > 0) {
+    const count = state.pendingDraw;
+    drawCards(state, userId, count);
+    state.lastPenalty = { targetId: userId, count, by: null, nonce: Date.now() };
+    pushLog(state, `${nm(state, userId)} ramasse ${count} cartes !`);
+    state.pendingDraw = 0;
+    state.pendingType = null;
+    advance(state, 1);
+    return;
+  }
   drawCards(state, userId, 1);
+  pushLog(state, `${nm(state, userId)} pioche une carte.`);
   const hand = state.hands[userId];
   const drawn = hand[hand.length - 1];
   const top = state.discard[state.discard.length - 1];
@@ -202,6 +230,13 @@ function pickColor(hand) {
 function autoPlay(state, userId) {
   const hand = state.hands[userId] || [];
   const top = state.discard[state.discard.length - 1];
+  // Un cumul l'attend : elle renchérit si elle peut, sinon elle ramasse.
+  if (state.pendingDraw > 0) {
+    const stackCard = hand.find((c) => c.type === 'wild4' || (c.type === 'draw2' && state.pendingType === 'draw2'));
+    if (stackCard) playCard(state, userId, stackCard.id, pickColor(hand));
+    else drawUno(state, userId);
+    return;
+  }
   if (state.drawnCardId !== null) {
     const drawn = hand.find((c) => c.id === state.drawnCardId);
     if (drawn && isPlayable(drawn, state.currentColor, top.type)) playCard(state, userId, drawn.id, pickColor(hand));
@@ -245,6 +280,8 @@ export function viewFor(state, userId) {
     isMyTurn: state.turn === userId,
     myDrawnCardId: state.turn === userId ? state.drawnCardId : null,
     deckCount: state.deck.length,
+    pendingDraw: state.pendingDraw || 0,
+    pendingType: state.pendingType,
     lastPenalty: state.lastPenalty,
     winner: state.winner,
     log: state.log.slice(-8),

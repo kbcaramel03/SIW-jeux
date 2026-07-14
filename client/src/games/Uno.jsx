@@ -23,6 +23,15 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
   avatarById.bot = botAvatar;
   const [pendingWild, setPendingWild] = useState(null);
+  // Le badge +N ne reste que 2,5 s (avant il restait figé toute la partie).
+  const [penaltyShown, setPenaltyShown] = useState(null);
+
+  useEffect(() => {
+    if (!g.lastPenalty) return undefined;
+    setPenaltyShown(g.lastPenalty);
+    const t = setTimeout(() => setPenaltyShown(null), 2500);
+    return () => clearTimeout(t);
+  }, [g.lastPenalty?.nonce]);
 
   useEffect(() => {
     if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' });
@@ -61,6 +70,10 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
 
   const playableNow = (card) => {
     if (!g.isMyTurn) return false;
+    // Cumul en cours : seuls les +2/+4 qui renchérissent sont jouables.
+    if (g.pendingDraw > 0) {
+      return card.type === 'wild4' || (card.type === 'draw2' && g.pendingType === 'draw2');
+    }
     if (g.myDrawnCardId != null) return card.id === g.myDrawnCardId;
     return isPlayable(card, g.currentColor, g.topType);
   };
@@ -88,7 +101,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
           const y = 50 + Math.sin(ang) * 39;
           const fanRot = (ang * 180) / Math.PI + 90;
           const fan = Math.min(p.count, 7);
-          const penalty = g.lastPenalty?.targetId === p.id ? g.lastPenalty : null;
+          const penalty = penaltyShown?.targetId === p.id ? penaltyShown : null;
           return (
             <div key={p.id} className={`uno-opp ${p.id === me ? 'me' : ''} ${g.turn === p.id ? 'active' : ''}`}
               style={{ left: `${x}%`, top: `${y}%` }}>
@@ -142,6 +155,7 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
             <span className={`uno-color-dot c-${g.currentColor}`} title="Couleur en cours" />
             <RotateCw size={18} style={{ transform: g.direction === -1 ? 'scaleX(-1)' : 'none' }} />
           </div>
+          {g.pendingDraw > 0 && <div className="uno-pendingchip">🔥 +{g.pendingDraw} en jeu !</div>}
         </div>
       </div>
 
@@ -150,8 +164,28 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
         {g.phase === 'over'
           ? (g.winner === me ? 'Tu as gagné !' : `${nameById[g.winner] || 'Quelqu\'un'} a gagné`)
           : !g.amSeated ? 'Manche en cours — tu regardes (rejoins à la prochaine)'
-            : g.isMyTurn ? 'À toi de jouer !' : `Au tour de ${nameById[g.turn] || '?'}`}
+            : g.isMyTurn
+              ? (g.pendingDraw > 0 ? `Renchéris… ou ramasse ${g.pendingDraw} cartes !` : 'À toi de jouer !')
+              : `Au tour de ${nameById[g.turn] || '?'}`}
       </div>
+
+      {/* Fil des dernières actions (pioches, +2/+4, sens…) */}
+      {g.log?.length > 0 && (
+        <div className="uno-feed">
+          {g.log.slice(-2).map((line, i) => <div key={`${line}-${i}`}>{line}</div>)}
+        </div>
+      )}
+
+      {/* Contrôles : AU-DESSUS des cartes (accessibles au pouce) */}
+      {g.phase === 'playing' && g.isMyTurn && (
+        <div className="cn-controls uno-actions">
+          {g.pendingDraw > 0
+            ? <Button variant="contained" color="error" startIcon={<Hand size={16} />} onClick={() => onAction({ kind: 'draw' })}>Ramasser {g.pendingDraw} cartes</Button>
+            : g.myDrawnCardId == null
+              ? <Button variant="contained" startIcon={<Hand size={16} />} onClick={() => onAction({ kind: 'draw' })}>Piocher</Button>
+              : <Button variant="outlined" startIcon={<SkipForward size={16} />} onClick={() => onAction({ kind: 'pass' })}>Passer</Button>}
+        </div>
+      )}
 
       {/* Ma main */}
       <div className="uno-hand">
@@ -168,15 +202,6 @@ export default function Uno({ room, isHost, onAction, onNewGame }) {
           ))}
         </AnimatePresence>
       </div>
-
-      {/* Contrôles */}
-      {g.phase === 'playing' && g.isMyTurn && (
-        <div className="cn-controls">
-          {g.myDrawnCardId == null
-            ? <Button variant="outlined" startIcon={<Hand size={16} />} onClick={() => onAction({ kind: 'draw' })}>Piocher</Button>
-            : <Button variant="outlined" startIcon={<SkipForward size={16} />} onClick={() => onAction({ kind: 'pass' })}>Passer</Button>}
-        </div>
-      )}
 
       {g.phase === 'over' && isHost && (
         <div className="cn-over"><Button variant="contained" startIcon={<Sparkles size={18} />} onClick={onNewGame}>Rejouer</Button></div>
