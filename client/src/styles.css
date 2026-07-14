@@ -1212,6 +1212,72 @@ input:focus { border-color: var(--purple); box-shadow: 0 0 0 4px rgba(168, 85, 2
 
 /* Bulle flottante du chat de salon (mobile) */
 .room-fab { position: fixed; right: 16px; bottom: 16px; z-index: 40; }
+/* ===== Code Names v2 — pensé téléphone d'abord ===== */
+/* Choix du mode dans le salon */
+.cn-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.cn-mode-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px;
+  border: 2px solid #e8e0f2; border-radius: 14px; background: #faf7fd; font: inherit; cursor: pointer; }
+.cn-mode-btn:disabled { cursor: default; }
+.cn-mode-btn b { font-size: 0.85rem; }
+.cn-mode-btn small { font-size: 0.62rem; color: var(--ink-soft); line-height: 1.25; }
+.cn-mode-btn.on { border-color: var(--violet); background: #f1e8ff; box-shadow: 0 3px 10px rgba(122,63,191,0.15); }
+.cn-mode-ic { color: var(--violet); }
+.cn-ai-side { display: flex; align-items: center; gap: 10px; }
+.cn-warn { background: #fdeeee; color: #a33; border-radius: 12px; padding: 8px 12px; font-size: 0.82rem; font-weight: 600; text-align: center; }
+
+/* Bandeau du haut : deux camps (avatars + points) + statut + indice */
+.cn-headwrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.cn-head { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: stretch; }
+.cn-side { border-radius: 14px; padding: 8px 10px; background: #fff; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 5px; border: 2px solid transparent; position: relative; }
+.cn-side.red { background: #fff1f1; }
+.cn-side.blue { background: #eef4ff; }
+.cn-side.red.active { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.18), var(--shadow-sm); }
+.cn-side.blue.active { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.18), var(--shadow-sm); }
+.cn-side-top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.cn-side-name { font-weight: 800; font-size: 0.82rem; }
+.cn-side.red .cn-side-name { color: #d43a3a; }
+.cn-side.blue .cn-side-name { color: #2b6fd4; }
+.cn-side-count { font-family: var(--font-head); font-weight: 700; font-size: 1.35rem; line-height: 1; }
+.cn-side.red .cn-side-count { color: #ef4444; }
+.cn-side.blue .cn-side-count { color: #3b82f6; }
+.cn-side-sub { color: var(--ink-soft); font-size: 0.62rem; margin-top: -4px; }
+.cn-side-turn { font-size: 0.66rem; font-weight: 700; color: var(--ink-soft); }
+.cn-faces { display: flex; align-items: center; }
+.cn-faces .avatar { margin-right: -6px; border: 2px solid #fff; box-sizing: content-box; }
+.cn-faces-more { margin-left: 10px; font-size: 0.68rem; font-weight: 700; color: var(--ink-soft); }
+.cn-head-mid { display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; }
+.cn-vs { font-family: var(--font-head); font-weight: 700; color: var(--ink-soft); font-size: 0.95rem; }
+.cn-statusline { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px;
+  background: #fff; border-radius: 999px; padding: 7px 14px; box-shadow: var(--shadow-sm); font-size: 0.88rem; text-align: center; }
+.cn-statusline b.red { color: #d43a3a; }
+.cn-statusline b.blue { color: #2b6fd4; }
+.cn-statusline .cn-clue-pill { margin-top: 0; }
+
+/* Plateau compact : tout tient à l'écran, la police s'adapte au mot */
+.cn-board { gap: 5px; }
+.cn-card { aspect-ratio: auto; min-height: 46px; padding: 3px 2px; border-radius: 9px;
+  font-size: 0.72rem; font-weight: 700; line-height: 1.08; letter-spacing: 0;
+  overflow-wrap: anywhere; hyphens: auto; -webkit-hyphens: auto; }
+.cn-card.w2 { font-size: 0.6rem; }
+.cn-card.w3 { font-size: 0.53rem; }
+@media (min-width: 700px) {
+  .cn-board { gap: 9px; }
+  .cn-card { min-height: 64px; font-size: 0.95rem; }
+  .cn-card.w2 { font-size: 0.82rem; }
+  .cn-card.w3 { font-size: 0.72rem; }
+}
+
+/* Formulaire d'indice : plein écran sur mobile */
+.cn-clue-form { display: flex; gap: 7px; flex-wrap: nowrap; }
+.cn-clue-form input { flex: 1; min-width: 0; }
+.cn-clue-form .btn { white-space: nowrap; }
+@media (max-width: 520px) {
+  .cn-clue-form { flex-wrap: wrap; }
+  .cn-clue-form input { flex: 1 1 60%; }
+  .cn-clue-form .btn { flex: 1 1 100%; justify-content: center; }
+}
+
 /* Invitation de l'IA avec choix du niveau (bataille navale, échecs) */
 .bot-invite { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 10px; }
 .bot-invite-label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.86rem; color: var(--ink-soft); }

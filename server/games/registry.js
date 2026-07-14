@@ -147,6 +147,8 @@ function applyCodenamesAction(state, userId, payload) {
   switch (payload.kind) {
     case 'assign':
       return codenames.assignRole(state, userId, payload.team, payload.role);
+    case 'mode':
+      return codenames.setMode(state, userId, payload.mode);
     case 'start':
       return codenames.startGame(state);
     case 'clue':

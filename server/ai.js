@@ -12,32 +12,47 @@ const TTS_VOICE = () => process.env.OPENAI_TTS_VOICE || 'sage';
 
 export const aiAvailable = () => !!KEY();
 
+// Si le modèle demandé n'existe pas (identifiant qui change, accès restreint…),
+// on essaie les suivants au lieu d'échouer en silence — et on mémorise celui
+// qui marche pour les appels suivants.
+const FALLBACK_MODELS = ['gpt-5.6-luna', 'gpt-5.1-mini', 'gpt-4o-mini'];
+let workingModel = null;
+
 // Appel « chat » avec réponse JSON garantie. Renvoie l'objet parsé, ou null
 // en cas de pépin (panne, quota, JSON invalide) — jamais d'exception.
 export async function chatJSON(system, user, { timeoutMs = 12000 } = {}) {
   if (!aiAvailable()) return null;
+  const first = workingModel || MODEL();
+  const models = [first, ...FALLBACK_MODELS.filter((m) => m !== first)];
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${KEY()}` },
-      body: JSON.stringify({
-        model: MODEL(),
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: typeof user === 'string' ? user : JSON.stringify(user) },
-        ],
-      }),
-    });
-    if (!res.ok) {
-      console.error('OpenAI chat :', res.status, (await res.text()).slice(0, 200));
-      return null;
+    for (const model of models) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${KEY()}` },
+        body: JSON.stringify({
+          model,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: typeof user === 'string' ? user : JSON.stringify(user) },
+          ],
+        }),
+      });
+      if (res.ok) {
+        if (workingModel !== model) { workingModel = model; console.log('OpenAI : modèle utilisé →', model); }
+        const data = await res.json();
+        return JSON.parse(data.choices?.[0]?.message?.content || 'null');
+      }
+      const detail = (await res.text()).slice(0, 200);
+      console.error('OpenAI chat :', model, res.status, detail);
+      // 400/404 = modèle inconnu ou paramètre refusé -> on tente le suivant.
+      // 401/429/5xx = clé, quota ou panne -> inutile d'insister.
+      if (res.status !== 400 && res.status !== 404) return null;
     }
-    const data = await res.json();
-    return JSON.parse(data.choices?.[0]?.message?.content || 'null');
+    return null;
   } catch (e) {
     console.error('OpenAI chat :', e.message);
     return null;

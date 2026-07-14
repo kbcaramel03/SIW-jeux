@@ -101,8 +101,9 @@ export function createCodenames(options = {}) {
   const state = {
     type: 'codenames',
     phase: 'setup', // setup -> playing -> over
-    mode, // 'versus' | 'duet' (choisi à la création du salon)
-    ai,   // true = le côté bleu est joué par l'IA (mode Duo)
+    mode, // 'versus' | 'duet' — choisi par l'hôte dans le salon (setMode)
+    uiMode: ai ? 'ia' : mode, // ce que l'hôte a choisi ('ia' = duet + ChatGPT)
+    ai,   // true = le côté bleu est joué par ChatGPT (mode Duo)
     board: words.map((word) => ({ word, revealed: false, kind: null })),
     teams: {
       red: { spymaster: null, spymasters: [], operatives: [] },
@@ -164,6 +165,28 @@ function normalizedTeams(state) {
       operatives: operativesOf(state, 'blue'),
     },
   };
+}
+
+// L'hôte choisit le mode DANS le salon, avant le départ (plus à la création).
+export function setMode(state, userId, mode) {
+  if (state.phase !== 'setup') throw new Error('La partie a déjà commencé.');
+  if (userId !== state.hostId) throw new Error('Seule l\'hôte choisit le mode.');
+  if (!['versus', 'duet', 'ia'].includes(mode)) throw new Error('Mode inconnu.');
+  state.ai = mode === 'ia';
+  state.mode = mode === 'ia' ? 'duet' : mode;
+  state.uiMode = mode;
+  const blue = state.teams.blue;
+  const humansBlue = [...new Set([...(blue.spymasters || []), blue.spymaster, ...(blue.operatives || [])]
+    .filter((id) => id && id !== 'ai'))];
+  if (state.ai) {
+    // Le côté bleu devient celui de ChatGPT : les humaines basculent côté rouge.
+    blue.spymaster = null; blue.spymasters = ['ai']; blue.operatives = [];
+    for (const id of humansBlue) {
+      if (!state.teams.red.operatives.includes(id)) state.teams.red.operatives.push(id);
+    }
+  } else {
+    blue.spymasters = (blue.spymasters || []).filter((id) => id !== 'ai');
+  }
 }
 
 // --- Composition des équipes ---
@@ -526,7 +549,9 @@ export function viewFor(state, userId) {
     type: 'codenames',
     phase: state.phase,
     mode: state.mode,
+    uiMode: state.uiMode ?? (state.ai ? 'ia' : state.mode),
     ai: !!state.ai,
+    aiKey: aiAvailable(), // pour prévenir si la clé OpenAI manque sur Render
     aiThinking: !!(state.aiTask && state.aiTask.status === 'pending'),
     teams: normalizedTeams(state),
     clue: state.clue,

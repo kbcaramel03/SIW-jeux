@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Paper, Button, TextField, Typography, Stack, ToggleButtonGroup, ToggleButton, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Users2, Swords, Fish, Skull, SpellCheck, Bot } from 'lucide-react';
+import { Paper, Button, TextField, Typography, Stack, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Grid3x3, Ship, Dices, Drama, Eye, Brush, Moon, Gamepad2, DoorOpen, Plus, Fish, Skull, SpellCheck } from 'lucide-react';
 import { GiChessPawn, GiCardRandom, GiEightBall, GiArcheryTarget } from 'react-icons/gi';
 import { getSocket } from '../socket.js';
 
@@ -42,7 +42,6 @@ export default function Lobby() {
   const [rooms, setRooms] = useState([]);
   const [selected, setSelected] = useState(null);
   const [roomName, setRoomName] = useState('');
-  const [cnMode, setCnMode] = useState('versus');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -62,7 +61,7 @@ export default function Lobby() {
   function createRoom() {
     if (!selected) return;
     setError('');
-    const options = selected === 'codenames' ? { mode: cnMode } : {};
+    const options = {};
     getSocket().emit('room:create', { gameKey: selected, name: roomName, options }, (res) => {
       if (res?.error) return setError(res.error);
       navigate(`/room/${res.roomId}`);
@@ -143,14 +142,9 @@ export default function Lobby() {
           <TextField autoFocus fullWidth size="small" sx={{ mt: 1 }} value={roomName}
             onChange={(e) => setRoomName(e.target.value)} placeholder="Nom du salon (optionnel)" />
           {selected === 'codenames' && (
-            <Stack spacing={1} sx={{ mt: 2 }}>
-              <Typography color="text.secondary" sx={{ fontWeight: 600, fontSize: 14 }}>Mode :</Typography>
-              <ToggleButtonGroup value={cnMode} exclusive color="primary" onChange={(_, v) => v && setCnMode(v)} size="small" fullWidth>
-                <ToggleButton value="duet"><Users2 size={16} />&nbsp;Duo coop</ToggleButton>
-                <ToggleButton value="versus"><Swords size={16} />&nbsp;Versus</ToggleButton>
-                <ToggleButton value="ia"><Bot size={16} />&nbsp;Duo IA</ToggleButton>
-              </ToggleButtonGroup>
-            </Stack>
+            <Typography color="text.secondary" sx={{ mt: 1.5, fontSize: 14 }}>
+              Le mode (Versus, Duo, Duo ChatGPT) se choisit dans le salon.
+            </Typography>
           )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
