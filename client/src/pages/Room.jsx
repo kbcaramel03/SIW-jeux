@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Paper, Button, Chip, Typography, Alert } from '@mui/material';
-import { ChevronLeft, Users, Crown, WifiOff } from 'lucide-react';
+import { ChevronLeft, Users, Crown, WifiOff, MessageCircle } from 'lucide-react';
 import { getSocket } from '../socket.js';
 import Chat from '../components/Chat.jsx';
 import GameChat from '../components/GameChat.jsx';
