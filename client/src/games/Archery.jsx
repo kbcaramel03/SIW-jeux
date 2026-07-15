@@ -669,7 +669,7 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title"><Target size={20} color="#e0392e" /> Tir à l'arc — salle d'attente</h3>
-        <p className="cn-hint-text">3 manches, 3 distances : 10 m, 18 m puis 28 m — de loin, le vent pèse très fort. Maintiens le doigt pour armer (la puissance monte toute seule), glisse pour viser, relâche pour décocher. La flèche tombe avec la distance et le vent la dévie — regarde le drapeau et compense ! Plus tu attends, plus ton bras tremble. Une flèche chacune par manche, centre = 10 points. De 2 à 6 joueuses.</p>
+        <p className="cn-hint-text">6 manches : 10, 18 puis 28 m — chaque distance se joue par vent calme, puis par GRAND vent. Maintiens le doigt pour armer (la puissance monte toute seule), glisse pour viser, relâche pour décocher. La flèche tombe avec la distance et le vent la dévie — regarde le drapeau et compense ! Plus tu attends, plus ton bras tremble. Une flèche chacune par manche, centre = 10 points. De 2 à 6 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">

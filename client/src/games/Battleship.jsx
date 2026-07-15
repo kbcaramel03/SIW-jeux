@@ -71,18 +71,15 @@ function BoatShape({ len }) {
 }
 
 // Superposition des bateaux sur la grille (positions en % : 1 case = 10 %).
-// `dragPos` : position flottante du bateau en cours de glisser (suivi du doigt).
-function Boats({ ships, dragPos, handlers }) {
+// Pendant un glisser, la position est pilotée en direct dans le DOM (fluide).
+function Boats({ ships, handlers }) {
   if (!ships) return null;
   return (
     <>
       {ships.map((s) => {
-        const dragging = dragPos && dragPos.id === s.id;
-        const px = dragging ? dragPos.x : s.x;
-        const py = dragging ? dragPos.y : s.y;
         const style = {
-          left: `${px * 10}%`,
-          top: `${py * 10}%`,
+          left: `${s.x * 10}%`,
+          top: `${s.y * 10}%`,
           width: `${s.len * 10}%`,
           height: '10%',
         };
@@ -93,7 +90,7 @@ function Boats({ ships, dragPos, handlers }) {
         return (
           <div
             key={s.id}
-            className={`bs-boat ${s.sunk ? 'sunk' : ''} ${handlers ? 'tappable' : ''} ${dragging ? 'selected' : ''}`}
+            className={`bs-boat ${s.sunk ? 'sunk' : ''} ${handlers ? 'tappable' : ''}`}
             style={style}
             onPointerDown={handlers ? (e) => handlers.down(e, s) : undefined}
             onPointerMove={handlers ? handlers.move : undefined}
@@ -111,16 +108,17 @@ function Boats({ ships, dragPos, handlers }) {
 /* ---- Placement : glisser un bateau pour le déplacer, le toucher pour pivoter ---- */
 function Placing({ game, onAction }) {
   const ships = game.myShips || [];
-  const [drag, setDrag] = useState(null); // { id, x, y } pendant le glisser
   const dragRef = useRef(null);
 
+  // Fluidité : pendant le glisser on bouge le DOM directement (aucun re-rendu
+  // React à chaque mouvement de doigt), et on ne pose l'état qu'au relâcher.
   function boatDown(e, s) {
     if (game.myReady) return;
     e.stopPropagation();
     try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* simulé */ }
     const box = e.currentTarget.closest('.bs-gridbox')?.getBoundingClientRect();
     if (!box) return;
-    dragRef.current = { s, cell: box.width / 10, startX: e.clientX, startY: e.clientY, moved: false };
+    dragRef.current = { s, el: e.currentTarget, cell: box.width / 10, startX: e.clientX, startY: e.clientY, moved: false };
   }
   function boatMove(e) {
     const d = dragRef.current;
@@ -129,14 +127,16 @@ function Placing({ game, onAction }) {
     const dy = (e.clientY - d.startY) / d.cell;
     if (!d.moved && Math.sqrt(dx * dx + dy * dy) < 0.35) return; // pas encore un vrai glisser
     d.moved = true;
-    setDrag({ id: d.s.id, x: d.s.x + dx, y: d.s.y + dy });
+    d.el.style.left = `${(d.s.x + dx) * 10}%`;
+    d.el.style.top = `${(d.s.y + dy) * 10}%`;
+    d.el.classList.add('selected');
   }
   function boatUp(e) {
     const d = dragRef.current;
     dragRef.current = null;
-    setDrag(null);
     if (!d) return;
     const s = d.s;
+    d.el.classList.remove('selected');
     if (!d.moved) {
       // Simple touche (sans glisser) : le bateau pivote sur place (borné).
       const x = Math.min(s.x, s.horizontal ? 9 : 10 - s.len);
@@ -149,6 +149,9 @@ function Placing({ game, onAction }) {
     const dy = (e.clientY - d.startY) / d.cell;
     const nx = Math.max(0, Math.min(s.horizontal ? 10 - s.len : 9, Math.round(s.x + dx)));
     const ny = Math.max(0, Math.min(s.horizontal ? 9 : 10 - s.len, Math.round(s.y + dy)));
+    // On recale tout de suite sur la grille (le serveur confirmera derrière).
+    d.el.style.left = `${nx * 10}%`;
+    d.el.style.top = `${ny * 10}%`;
     onAction({ kind: 'place', id: s.id, x: nx, y: ny, horizontal: s.horizontal });
   }
 
@@ -159,7 +162,7 @@ function Placing({ game, onAction }) {
         <strong>Fais glisser</strong> un bateau pour le déplacer, <strong>touche-le</strong> (sans bouger) pour le pivoter.
         Ou <strong>mélange</strong> jusqu'à ce que ça te plaise, puis <strong>Prête</strong> !
       </p>
-      <Grid board={game.myBoard} kind="my" ships={ships} dragPos={drag}
+      <Grid board={game.myBoard} kind="my" ships={ships}
         boatHandlers={!game.myReady ? { down: boatDown, move: boatMove, up: boatUp } : null} />
       <div className="cn-controls">
         {!game.myReady ? (
@@ -237,7 +240,7 @@ function Fleet({ fleet, label }) {
 }
 
 /* ---- Grille 10x10 + bateaux entiers par-dessus ---- */
-function Grid({ board, kind, canFire, onFire, small, ships, dragPos, boatHandlers }) {
+function Grid({ board, kind, canFire, onFire, small, ships, boatHandlers }) {
   if (!board) return <div className="bs-grid-empty muted">Préparation…</div>;
   return (
     <div className="bs-grid-wrap">
@@ -267,7 +270,7 @@ function Grid({ board, kind, canFire, onFire, small, ships, dragPos, boatHandler
             })
           )}
         </div>
-        <Boats ships={ships} dragPos={dragPos} handlers={boatHandlers} />
+        <Boats ships={ships} handlers={boatHandlers} />
       </div>
     </div>
   );

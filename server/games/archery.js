@@ -12,13 +12,23 @@ export const TARGET = { y: 1.3, RING: 0.06, R: 0.6, BOARD: 0.75 };
 export const SPEED = { min: 30, max: 70 };      // m/s selon la puissance
 export const WIND_ACCEL = 1.6;                   // poussée latérale par m/s de vent
 export const WIND_MAX = 6;                       // m/s
-// 3 manches, 3 distances : très proche, plus loin, très loin.
-export const DISTANCES = [10, 18, 28];
-const ROUNDS = DISTANCES.length;
+// 6 manches : chaque distance (proche, loin, très loin) se joue deux fois —
+// d'abord par vent calme, puis par GRAND vent (4,5 à 7,5 m/s : dur !).
+export const ROUNDS_CFG = [
+  { dist: 10, windy: false }, { dist: 10, windy: true },
+  { dist: 18, windy: false }, { dist: 18, windy: true },
+  { dist: 28, windy: false }, { dist: 28, windy: true },
+];
+const ROUNDS = ROUNDS_CFG.length;
 const OFFLINE_SKIP_MS = 12000;
 const isOffline = (s, id) => !!(s.offline && s.offline[id]);
 function nm(state, id) { return (state.names && state.names[id]) || 'quelqu\'un'; }
-const newWind = () => Math.round((Math.random() * 2 - 1) * WIND_MAX * 10) / 10;
+function newWind(state) {
+  const windy = (ROUNDS_CFG[state.round - 1] || ROUNDS_CFG[0]).windy;
+  if (!windy) return Math.round((Math.random() * 2 - 1) * 10) / 10; // brise : -1 à 1
+  const mag = 4.5 + Math.random() * 3;
+  return Math.round((Math.random() < 0.5 ? -mag : mag) * 10) / 10;
+}
 
 // Simulation du vol : gravité + vent à rafales (déterministe pour que le
 // client rejoue exactement le même vol). Retourne le point d'arrivée :
@@ -63,7 +73,8 @@ export function createArchery() {
     arrows: [],       // { by, x, y, pts } — flèches plantées dans la cible
     round: 1,
     rounds: ROUNDS,
-    dist: DISTANCES[0], // distance de la cible pour la manche en cours
+    dist: ROUNDS_CFG[0].dist, // distance de la cible pour la manche en cours
+    windy: false,             // manche avec grand vent ?
     turn: null,
     turnSince: null,
     wind: 0,          // m/s latéral (+ = vers la droite) pour la flèche en cours
@@ -87,10 +98,11 @@ export function startArchery(state, userId) {
   state.scores = Object.fromEntries(state.seats.map((id) => [id, 0]));
   state.arrows = [];
   state.round = 1;
-  state.dist = DISTANCES[0];
+  state.dist = ROUNDS_CFG[0].dist;
+  state.windy = ROUNDS_CFG[0].windy;
   state.turn = state.seats[0];
   state.turnSince = Date.now();
-  state.wind = newWind();
+  state.wind = newWind(state);
   state.winners = null; state.lastShot = null; state.shotSeq = 0;
   state.phase = 'playing';
   state.log = [`${nm(state, state.turn)} tire la première flèche !`];
@@ -135,10 +147,16 @@ export function shootArchery(state, userId, { yaw, pitch, power }) {
       : `${nm(state, state.winners[0])} gagne avec ${best} points !`);
     return;
   }
-  if (wrapped) { state.round += 1; state.dist = DISTANCES[state.round - 1] || DISTANCES[DISTANCES.length - 1]; state.arrows = []; }
+  if (wrapped) {
+    state.round += 1;
+    const cfg = ROUNDS_CFG[state.round - 1] || ROUNDS_CFG[ROUNDS_CFG.length - 1];
+    state.dist = cfg.dist;
+    state.windy = cfg.windy;
+    state.arrows = [];
+  }
   state.turn = state.seats[(idx + 1) % state.seats.length];
   state.turnSince = Date.now();
-  state.wind = newWind();
+  state.wind = newWind(state);
 }
 
 // Horloge serveur : une absente tire un coup honnête (petite recherche de la
@@ -176,6 +194,7 @@ export function viewFor(state, userId) {
     round: state.round,
     rounds: state.rounds,
     dist: state.dist,
+    windy: !!state.windy,
     turn: state.turn,
     isMyTurn: state.phase === 'playing' && state.turn === userId,
     wind: state.wind,

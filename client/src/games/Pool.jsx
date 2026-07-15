@@ -170,17 +170,16 @@ function drawScene(ctx, balls, aim, vertical) {
     }
     ctx.setLineDash([]);
 
-    // Queue de billard reculée selon la puissance du curseur.
-    if ((aim.power || 0) > 0.02) {
-      const back = 0.06 + aim.power * 0.16;
-      ctx.strokeStyle = '#caa06a';
-      ctx.lineWidth = 7;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(lx(cue.x - ux * (0.045 + back * 0.2)), ly(cue.y - uy * (0.045 + back * 0.2)));
-      ctx.lineTo(lx(cue.x - ux * (0.045 + back)), ly(cue.y - uy * (0.045 + back)));
-      ctx.stroke();
-    }
+    // Queue translucide derrière la blanche : c'est la poignée d'orientation
+    // (opaque quand on la tient), et elle recule selon la puissance.
+    const back = 0.16 + (aim.power || 0) * 0.16;
+    ctx.strokeStyle = aim.grabbed ? 'rgba(202,160,106,0.95)' : 'rgba(202,160,106,0.45)';
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lx(cue.x - ux * (0.04 + (aim.power || 0) * 0.03)), ly(cue.y - uy * (0.04 + (aim.power || 0) * 0.03)));
+    ctx.lineTo(lx(cue.x - ux * (0.04 + back)), ly(cue.y - uy * (0.04 + back)));
+    ctx.stroke();
   }
 
   // billes
@@ -356,22 +355,55 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     };
   }
 
-  // Visée lance-pierre : on vise DEPUIS DERRIÈRE la blanche — elle part
-  // dans le sens opposé au doigt (comme sur Plato).
-  function pointAt(e) {
-    if (!g.isMyTurn || animating || g.phase !== 'playing') return;
+  // Rotation façon Plato : on ATTRAPE la queue translucide OU les pointillés,
+  // et on tourne (sensibilité réduite). Si on ne tient rien, rien ne bouge.
+  const grabRef = useRef(null);   // { last: angle du doigt au dernier mouvement }
+  const angleRef = useRef(null);  // angle de visée courant (radians)
+  const ROT_SENS = 0.55;          // rotation deux fois moins nerveuse que le doigt
+
+  function setAimFromAngle(a2) {
+    angleRef.current = a2;
+    const v = { dx: Math.cos(a2), dy: Math.sin(a2) };
+    setAim(v);
+    emitAim(v, power);
+  }
+
+  function onDown(e) {
+    if (!g.isMyTurn || animating || g.phase !== 'playing' || !aim) return;
     const p = tablePoint(e);
     const cue = g.balls.find((b) => b.id === 0);
     if (!cue) return;
-    const dx = cue.x - p.x, dy = cue.y - p.y;
-    if (Math.sqrt(dx * dx + dy * dy) < 0.02) return; // trop près de la bille
-    const a = { dx, dy };
-    setAim(a);
-    emitAim(a, power);
-  }
-  function onDown(e) {
+    // Suis-je sur la queue ou sur la ligne de visée ? (distance à l'axe du tir)
+    const len = Math.sqrt(aim.dx ** 2 + aim.dy ** 2) || 1;
+    const ux = aim.dx / len, uy = aim.dy / len;
+    const rx = p.x - cue.x, ry = p.y - cue.y;
+    const proj = rx * ux + ry * uy;               // le long de l'axe (négatif = queue)
+    const cross = Math.abs(rx * uy - ry * ux);    // écart perpendiculaire
+    const firstHit = castAim(g.balls, cue.x, cue.y, ux, uy).t;
+    const onLine = cross < 0.07 && proj > 0.02 && proj < Math.min(firstHit + 0.05, 1.4);
+    const onCue = cross < 0.07 && proj < -0.02 && proj > -0.55;
+    if (!onLine && !onCue) return; // on ne tient rien : rien ne bouge
     try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* simulé */ }
-    pointAt(e);
+    grabRef.current = { last: Math.atan2(ry, rx) };
+    if (angleRef.current == null) angleRef.current = Math.atan2(aim.dy, aim.dx);
+    setAim((a2) => ({ ...a2, grabbed: true }));
+  }
+  function onMove(e) {
+    if (!grabRef.current) return;
+    const p = tablePoint(e);
+    const cue = g.balls.find((b) => b.id === 0);
+    if (!cue) return;
+    const ang = Math.atan2(p.y - cue.y, p.x - cue.x);
+    let delta = ang - grabRef.current.last;
+    while (delta > Math.PI) delta -= 2 * Math.PI;
+    while (delta < -Math.PI) delta += 2 * Math.PI;
+    grabRef.current.last = ang;
+    setAimFromAngle(angleRef.current + delta * ROT_SENS);
+    setAim((a2) => ({ ...a2, grabbed: true }));
+  }
+  function onUpCanvas() {
+    grabRef.current = null;
+    setAim((a2) => (a2 ? { ...a2, grabbed: false } : a2));
   }
 
   // Curseur de puissance (gauche) : plus on descend, plus c'est fort.
@@ -407,7 +439,7 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     return (
       <div className="card" style={{ background: '#fff', borderRadius: 18, padding: 22, boxShadow: 'var(--shadow)' }}>
         <h3 className="section-title"><Target size={20} color="#2e8f5b" /> Billard — salle d'attente</h3>
-        <p className="cn-hint-text">Le 8-ball classique en face à face. Le premier empochage attribue votre groupe — billes pleines ou rayées. Videz votre groupe, puis empochez la noire pour gagner ; la faire tomber trop tôt, c'est perdre. Visez en tirant DERRIÈRE la blanche (elle part dans le sens opposé, la flèche montre où ira la bille touchée), puis faites descendre la queue à gauche — plus elle descend, plus le coup est fort — et relâchez. 2 joueuses.</p>
+        <p className="cn-hint-text">Le 8-ball classique en face à face. Le premier empochage attribue votre groupe — billes pleines ou rayées. Videz votre groupe, puis empochez la noire pour gagner ; la faire tomber trop tôt, c'est perdre. Attrapez la queue translucide ou les pointillés et tournez pour orienter le tir (la flèche montre où ira la bille touchée), puis faites descendre la queue à gauche — plus elle descend, plus le coup est fort — et relâchez. 2 joueuses.</p>
         <div className="uno-seats">
           {g.seats.map((id) => (
             <div key={id} className="uno-seat">
@@ -437,7 +469,7 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
     : g.phase === 'over'
       ? (g.winner === me ? 'Tu gagnes la partie !' : `${nameById[g.winner] || '?'} gagne la partie !`)
       : g.isMyTurn
-        ? (power > 0.02 ? `Puissance ${Math.round(power * 100)} % — relâche pour tirer !` : 'Tire derrière la blanche pour viser, puis descends la queue à gauche')
+        ? (power > 0.02 ? `Puissance ${Math.round(power * 100)} % — relâche pour tirer !` : 'Attrape la queue ou les pointillés pour orienter, puis descends la queue à gauche')
         : `${nameById[g.turn] || '?'} vise…`;
 
   return (
@@ -478,7 +510,8 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
           <canvas ref={canvasRef}
             width={vertical ? CH : CW} height={vertical ? CW : CH}
             className={`pool-canvas ${g.isMyTurn && !animating ? 'aiming' : ''}`}
-            onPointerDown={onDown} onPointerMove={(e) => { if (e.buttons) pointAt(e); }} />
+            onPointerDown={onDown} onPointerMove={onMove}
+            onPointerUp={onUpCanvas} onPointerCancel={onUpCanvas} />
         </div>
       </div>
 
