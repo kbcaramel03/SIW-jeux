@@ -259,7 +259,7 @@ export function tickFlip7(state) {
   if (state.phase !== 'playing' || !state.round) return false;
   const r = state.round;
   const actor = r.pending[0]?.by || r.turn;
-  const wait = actor === 'bot' ? 2500 : OFFLINE_SKIP_MS;
+  const wait = actor === 'bot' ? 1500 + (r.since % 3200) : OFFLINE_SKIP_MS;
   if (!r.since || Date.now() - r.since < wait) return false;
   if (r.pending.length) {
     const pa = r.pending[0];

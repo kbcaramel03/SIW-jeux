@@ -5,14 +5,17 @@ import { Play, Sparkles, Hand, Gavel, Check } from 'lucide-react';
 import PlayingCard from './PlayingCard.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti } from '../effects.js';
+import botAvatar from '../assets/chatgpt.svg';
 
 export default function Bullshit({ room, isHost, onAction, onNewGame }) {
   const g = room.game;
   const me = room.me.id;
   const people = room.roster || room.players; // roster : noms conservés même après un départ
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
+  nameById.bot = 'ChatGPT';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
+  avatarById.bot = botAvatar;
   const [selected, setSelected] = useState([]);
 
   useEffect(() => {
@@ -42,6 +45,7 @@ export default function Bullshit({ room, isHost, onAction, onNewGame }) {
         <div className="cn-controls">
           {!g.amSeated && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'join' })}>Rejoindre la partie</Button>}
           {g.canStart && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>}
+          {g.amSeated && g.seats.length < 8 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>Inviter ChatGPT</Button>}
         </div>
         {g.amSeated && !g.canStart && <p className="muted" style={{ textAlign: 'center' }}>En attente d'au moins 3 joueuses…</p>}
       </div>

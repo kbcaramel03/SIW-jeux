@@ -1,4 +1,5 @@
 // Moteur de Tir à l'arc 3D (façon Plato), logique pure + balistique.
+import { aiTurn } from '../ai.js';
 // 2 à 6 joueuses, chacune tire 5 flèches, une par tour.
 // Monde en mètres : X = latéral (+ à droite), Y = hauteur, Z = vers la cible.
 // La flèche subit la gravité et un vent latéral à rafales ; le serveur simule
@@ -159,14 +160,10 @@ export function shootArchery(state, userId, { yaw, pitch, power }) {
   state.wind = newWind(state);
 }
 
-// Horloge serveur : une absente tire un coup honnête (petite recherche de la
-// meilleure visée avec le vent du moment, puis un peu de tremblement).
-export function tickArchery(state) {
-  if (state.phase !== 'playing' || !state.turn) return false;
-  if (!isOffline(state, state.turn)) return false;
-  if (!state.turnSince || Date.now() - state.turnSince < OFFLINE_SKIP_MS) return false;
-  let best = { yaw: 0, pitch: 0.05 }, bd = Infinity;
-  for (let yaw = -0.08; yaw <= 0.08; yaw += 0.01) {
+// Meilleure visée locale (compensation totale du vent) pour la distance du moment.
+function bestAim(state) {
+  let best = { yaw: 0, pitch: 0.05 }; let bd = Infinity;
+  for (let yaw = -0.09; yaw <= 0.09; yaw += 0.01) {
     for (let pitch = 0; pitch <= 0.12; pitch += 0.01) {
       const hit = simulateArrow({ yaw, pitch, power: 1 }, state.wind, state.dist);
       if (!hit.plane) continue;
@@ -174,6 +171,42 @@ export function tickArchery(state) {
       if (d < bd) { bd = d; best = { yaw, pitch }; }
     }
   }
+  return best;
+}
+
+// Horloge serveur : ChatGPT (siège bot) choisit son STYLE de visée — appliqué
+// avec une imprécision humaine ; une absente tire un coup honnête après 12 s.
+export function tickArchery(state) {
+  if (state.phase !== 'playing' || !state.turn) return false;
+
+  if (state.turn === 'bot') {
+    const wait = 2500 + (state.turnSince % 3500); // temps de visée humain, variable
+    if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
+    const picked = aiTurn(state, () => ({
+      label: 'le Tir à l\'arc',
+      rules: 'Choisis ta manière de viser cette flèche. Le vent dévie la flèche, surtout de loin ; compenser prend du temps et reste incertain.',
+      situation: `Cible à ${state.dist} m, vent ${state.wind} m/s${state.windy ? ' (GRAND vent)' : ''}. Scores : ${state.seats.map((id) => nm(state, id) + ' ' + (state.scores[id] || 0) + ' pts').join(', ')}.`,
+      options: [
+        'Prendre son temps et compenser tout le vent (visée appliquée)',
+        'Compenser le vent à moitié (tir naturel)',
+        'Tirer vite vers le centre sans trop compenser (risqué par grand vent)',
+      ],
+      moves: [{ comp: 1, noise: 0.013 }, { comp: 0.55, noise: 0.02 }, { comp: 0.15, noise: 0.03 }],
+    }));
+    if (picked === 'wait') return false;
+    const style = picked || { comp: 0.75, noise: 0.02 };
+    const best = bestAim(state);
+    shootArchery(state, 'bot', {
+      yaw: best.yaw * style.comp + (Math.random() - 0.5) * style.noise * 2,
+      pitch: best.pitch + (Math.random() - 0.5) * style.noise * 1.6,
+      power: 1,
+    });
+    return true;
+  }
+
+  if (!isOffline(state, state.turn)) return false;
+  if (!state.turnSince || Date.now() - state.turnSince < OFFLINE_SKIP_MS) return false;
+  const best = bestAim(state);
   shootArchery(state, state.turn, {
     yaw: best.yaw + (Math.random() - 0.5) * 0.02,
     pitch: best.pitch + (Math.random() - 0.5) * 0.02,

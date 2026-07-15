@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Play, Sparkles, Target, Wind } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti, popSound, boomSound } from '../effects.js';
+import botAvatar from '../assets/chatgpt.svg';
 
 // ---- Mêmes constantes que server/games/archery.js (garder synchronisé). ----
 // Monde en mètres : X = latéral, Y = hauteur, Z = vers la cible.
@@ -148,8 +149,10 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
   const me = room.me.id;
   const people = room.roster || room.players;
   const nameById = Object.fromEntries(people.map((p) => [p.id, p.displayName]));
+  nameById.bot = 'ChatGPT';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
+  avatarById.bot = botAvatar;
   const colorBySeat = Object.fromEntries(g.seats.map((id, i) => [id, SEAT_COLORS[i % SEAT_COLORS.length]]));
 
   const mountRef = useRef(null);
@@ -680,7 +683,8 @@ export default function Archery({ room, isHost, onAction, onNewGame }) {
         </div>
         <div className="cn-controls">
           {!g.amSeated && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'join' })}>Rejoindre la partie</Button>}
-          {g.canStart && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>}        </div>
+          {g.canStart && <Button variant="contained" startIcon={<Play size={18} />} onClick={() => onAction({ kind: 'start' })}>Démarrer la partie</Button>}
+          {g.amSeated && g.seats.length < 6 && !g.seats.includes('bot') && <Button variant="outlined" color="secondary" onClick={() => onAction({ kind: 'bot' })}>Inviter ChatGPT</Button>}        </div>
         {g.amSeated && !g.canStart && <p className="muted" style={{ textAlign: 'center' }}>En attente d'autres joueuses…</p>}
       </div>
     );

@@ -296,7 +296,7 @@ function pawnChoices(state, userId) {
 export function tickLudo(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;
-  const wait = state.turn === 'bot' ? 2200 : OFFLINE_SKIP_MS;
+  const wait = state.turn === 'bot' ? 1300 + (state.stepSince % 2400) : OFFLINE_SKIP_MS;
   if (!state.stepSince || Date.now() < state.stepSince + wait) return false;
   if (state.die == null) {
     rollLudo(state, state.turn);

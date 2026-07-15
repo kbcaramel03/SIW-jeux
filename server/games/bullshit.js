@@ -8,6 +8,8 @@
 // Si personne ne conteste, le tour passe à la suivante et le rang monte.
 // Première à vider sa main (en survivant à la contestation) gagne.
 
+import { aiTurn } from '../ai.js';
+
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const SUITS = ['S', 'H', 'D', 'C']; // pique, cœur, carreau, trèfle
 const OFFLINE_SKIP_MS = 10000; // une joueuse absente joue automatiquement après 10 s
@@ -171,9 +173,90 @@ function autoPlayBullshit(state, userId) {
   playBullshit(state, userId, [sortHand(hand)[0].id]);
 }
 
-// Horloge serveur : après 10 s d'absence, on joue/accepte pour la joueuse attendue.
+// --- Bot ChatGPT : il ne connaît QUE sa main, la taille de la pile et les
+// annonces publiques — jamais les cartes des autres. ---------------------
+const nm = (state, id) => (state.names && state.names[id]) || 'quelqu\'un';
+
+function describeHand(hand) {
+  const byRank = {};
+  for (const c of hand) byRank[c.rank] = (byRank[c.rank] || 0) + 1;
+  return RANKS.filter((r) => byRank[r]).map((r) => `${byRank[r]}×${r}`).join(', ') || '(vide)';
+}
+
+// Options de pose : jouer honnête (1 à 4 vraies cartes) ou bluffer.
+function buildPlayChoice(state) {
+  const claim = RANKS[state.rankIndex];
+  const hand = sortHand(state.hands.bot || []);
+  const honest = hand.filter((c) => c.rank === claim);
+  const others = hand.filter((c) => c.rank !== claim);
+  const options = []; const moves = [];
+  for (let k = 1; k <= Math.min(4, honest.length); k++) {
+    options.push(`Poser ${k} vrai(s) ${claim} — honnête`);
+    moves.push(honest.slice(0, k).map((c) => c.id));
+  }
+  // Bluffs : on se débarrasse des cartes hautes (les rangs reviendront plus tard).
+  for (let k = 1; k <= Math.min(3, others.length); k++) {
+    const pick = others.slice(-k);
+    options.push(`Bluffer : poser ${k} carte(s) (${pick.map((c) => c.rank).join(', ')}) en annonçant ${claim}`);
+    moves.push(pick.map((c) => c.id));
+  }
+  if (honest.length && others.length) {
+    const pick = [...honest.slice(0, 1), others[others.length - 1]];
+    options.push(`Mixte : 1 vrai ${claim} + 1 fausse (${pick[1].rank}), annoncés comme 2 ${claim}`);
+    moves.push(pick.map((c) => c.id));
+  }
+  const rivals = state.seats.filter((id) => id !== 'bot').map((id) => `${nm(state, id)} (${state.hands[id].length} cartes)`).join(', ');
+  return {
+    label: 'le Bullshit (jeu du menteur)',
+    rules: 'À ton tour tu poses 1 à 4 cartes face cachée en annonçant le rang imposé — tu as le droit de mentir. Si quelqu\'un crie Bullshit et que tu mentais, tu ramasses toute la pile. Vider sa main fait gagner.',
+    situation: `Ta main : ${describeHand(hand)}. Rang imposé : ${claim}. Pile : ${state.pile.length} carte(s). Adversaires : ${rivals}.`,
+    options,
+    moves,
+  };
+}
+
+// Options de contestation : accepter ou crier Bullshit.
+function buildChallengeChoice(state) {
+  const lp = state.lastPlay;
+  const mine = (state.hands.bot || []).filter((c) => c.rank === lp.claim).length;
+  const warn = state.pendingWinner ? ' ATTENTION : cette joueuse vient de vider sa main — si tu acceptes, elle gagne la partie.' : '';
+  return {
+    label: 'le Bullshit (jeu du menteur)',
+    rules: 'Quelqu\'un vient de poser des cartes face cachée avec une annonce. Si tu cries Bullshit et que c\'était un mensonge, elle ramasse la pile ; si c\'était vrai, c\'est TOI qui ramasses tout.',
+    situation: `${nm(state, lp.by)} annonce ${lp.count} carte(s) de rang ${lp.claim}. Il n'existe que 4 cartes de chaque rang et tu en as ${mine} dans ta main. Pile : ${state.pile.length} carte(s).${warn}`,
+    options: ['Accepter sans rien dire', 'Crier Bullshit !'],
+    moves: ['pass', 'challenge'],
+  };
+}
+
+// Secours local si l'API ne répond pas : conteste l'impossible, sinon au flair.
+function fallbackChallenge(state) {
+  const lp = state.lastPlay;
+  const mine = (state.hands.bot || []).filter((c) => c.rank === lp.claim).length;
+  if (lp.count + mine > 4) return 'challenge';
+  if (state.pendingWinner) return Math.random() < 0.6 ? 'challenge' : 'pass';
+  return Math.random() < (mine >= 2 ? 0.35 : 0.12) ? 'challenge' : 'pass';
+}
+
+// Horloge serveur : le bot joue avec un délai « humain », les absentes après 10 s.
 export function tickBullshit(state) {
-  if (!state.since || Date.now() - state.since < OFFLINE_SKIP_MS) return false;
+  if (!state.since) return false;
+  if (state.turn === 'bot' && (state.phase === 'playing' || state.phase === 'challenge')) {
+    const wait = 1600 + (state.since % 2900);
+    if (!state.aiTask && Date.now() - state.since < wait) return false;
+    const phase = state.phase;
+    const picked = aiTurn(state, () => (phase === 'playing' ? buildPlayChoice(state) : buildChallengeChoice(state)));
+    if (picked === 'wait') return false;
+    if (phase === 'challenge') {
+      const act = picked || fallbackChallenge(state);
+      if (act === 'challenge') challengeBullshit(state, 'bot'); else passBullshit(state, 'bot');
+      return true;
+    }
+    try { if (picked) { playBullshit(state, 'bot', picked); return true; } } catch { /* main changée entre-temps */ }
+    autoPlayBullshit(state, 'bot');
+    return true;
+  }
+  if (Date.now() - state.since < OFFLINE_SKIP_MS) return false;
   if (state.phase === 'playing' && state.turn && isOffline(state, state.turn)) { autoPlayBullshit(state, state.turn); return true; }
   if (state.phase === 'challenge' && state.turn && isOffline(state, state.turn)) { passBullshit(state, state.turn); return true; }
   return false;

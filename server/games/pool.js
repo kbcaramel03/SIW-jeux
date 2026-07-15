@@ -1,4 +1,5 @@
 // Moteur de Billard (8-ball façon Plato), logique pure + physique 2D.
+import { aiTurn } from '../ai.js';
 // 2 joueuses. Table 2×1, 6 poches. La joueuse vise (direction + puissance) ;
 // la simulation (frottements, rebonds, collisions élastiques) se déroule côté
 // serveur jusqu'à l'arrêt des billes — le client rejoue la même simulation
@@ -211,9 +212,113 @@ export function shootPool(state, userId, { dx, dy, power }) {
   if (potted.length) pushLog(state, `${nm(state, userId)} empoche… pour l'adversaire. Tour suivant.`);
 }
 
-// Horloge serveur : une absente tire doucement vers la bille la plus proche.
+// --- ChatGPT au billard -------------------------------------------------------
+const POCKET_FR = ['en haut à gauche', 'en haut au milieu', 'en haut à droite',
+  'en bas à gauche', 'en bas au milieu', 'en bas à droite'];
+
+// Coups jouables calculés localement (la géométrie), décrits pour ChatGPT.
+function candidateShots(state) {
+  const balls = state.balls;
+  const cue = balls.find((b) => b.id === 0);
+  const myGroup = state.groups.bot || null;
+  const cleared = myGroup && remainingOf(state, myGroup) === 0;
+  const targets = balls
+    .filter((b) => !b.pocketed && b.id !== 0)
+    .filter((b) => (cleared ? b.id === 8 : myGroup ? group(b.id) === myGroup : b.id !== 8))
+    .sort((a, b) => ((a.x - cue.x) ** 2 + (a.y - cue.y) ** 2) - ((b.x - cue.x) ** 2 + (b.y - cue.y) ** 2))
+    .slice(0, 4);
+  const options = []; const moves = [];
+  for (const t of targets) {
+    POCKETS.forEach((pk, pi) => {
+      const dx = pk[0] - t.x, dy = pk[1] - t.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const gx = t.x - (dx / d) * 2 * TABLE.R, gy = t.y - (dy / d) * 2 * TABLE.R;
+      const aim = { dx: gx - cue.x, dy: gy - cue.y };
+      const sim = balls.map((b) => ({ ...b }));
+      const potted = simulate(sim, { ...aim, power: 0.75 });
+      if (potted.includes(0)) return;               // blanche : jamais proposé
+      if (potted.includes(8) && !cleared) return;   // noire trop tôt : jamais proposé
+      const pots = potted.filter((id) => id !== 0);
+      if (!pots.includes(t.id)) return;             // le coup ne rentre pas : ignoré
+      options.push(`Empocher la bille ${t.id} dans la poche ${POCKET_FR[pi]}`);
+      moves.push({ dx: aim.dx, dy: aim.dy, power: 0.75, sure: true });
+      if (options.length >= 6) { /* assez d'options nettes */ }
+    });
+    if (options.length >= 6) break;
+  }
+  // Toujours au moins un coup « humain » : pousser sa bille la plus proche.
+  const t0 = targets[0] || balls.find((b) => !b.pocketed && b.id !== 0);
+  if (t0) {
+    options.push(`Jouer simple : pousser la bille ${t0.id} sans viser de poche`);
+    moves.push({ dx: t0.x - cue.x, dy: t0.y - cue.y, power: 0.45, sure: false });
+  }
+  return {
+    label: 'le Billard 8-ball',
+    rules: `Tu joues les ${myGroup === 'stripe' ? 'rayées' : myGroup === 'solid' ? 'pleines' : 'billes (groupe pas encore attribué)'}${cleared ? ' — ton groupe est vidé : la NOIRE fait gagner' : ''}. Empocher une des tiennes te fait rejouer.`,
+    situation: `Il te reste ${cleared ? 'la noire (8)' : targets.map((t) => t.id).join(', ') || 'aucune bille directe'}. Adversaire : ${state.seats.filter((id) => id !== 'bot').map((id) => nm(state, id)).join(', ')}.`,
+    options, moves,
+  };
+}
+
+// La visée « humaine » : une série d'orientations qui convergent vers le coup
+// final (les adversaires la voient bouger), puis un tir imparfait.
+function planBotShot(state, shot) {
+  const finalA = Math.atan2(shot.dy, shot.dx);
+  const steps = [];
+  const n = 3 + Math.floor(Math.random() * 3); // 3 à 5 ajustements visibles
+  const startOff = (Math.random() < 0.5 ? -1 : 1) * (0.25 + Math.random() * 0.35);
+  for (let i = 1; i <= n; i++) {
+    const k = i / n;
+    const a = finalA + startOff * (1 - k) + (Math.random() - 0.5) * 0.05 * (1 - k);
+    steps.push({ dx: Math.cos(a), dy: Math.sin(a), power: shot.power * (0.25 + 0.75 * k) });
+  }
+  // Erreur d'exécution : parfois ça rate, comme tout le monde.
+  const err = (Math.random() - 0.5) * 0.045; // jusqu'à ~1,3 degré
+  const a = finalA + err;
+  state.botPlan = {
+    steps, i: 0, at: Date.now() + 800,
+    final: { dx: Math.cos(a), dy: Math.sin(a), power: Math.max(0.2, Math.min(1, shot.power + (Math.random() - 0.5) * 0.14)) },
+  };
+}
+
+// Horloge serveur : ChatGPT (siège bot) vise sous vos yeux puis tire ;
+// une absente déconnectée tire doucement vers la bille la plus proche.
 export function tickPool(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
+
+  if (state.turn === 'bot') {
+    // Déroulé de la visée visible, puis tir.
+    if (state.botPlan) {
+      const p = state.botPlan;
+      if (Date.now() < p.at) return false;
+      if (p.i < p.steps.length) {
+        state.botAim = p.steps[p.i];
+        p.i += 1;
+        p.at = Date.now() + 650 + Math.random() * 700;
+        return true;
+      }
+      const shot = p.final;
+      state.botPlan = null;
+      state.botAim = null;
+      shootPool(state, 'bot', shot);
+      return true;
+    }
+    // Temps de réflexion humain (variable), puis choix du coup via ChatGPT.
+    const wait = 1500 + (state.turnSince % 2600);
+    if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
+    const picked = aiTurn(state, () => candidateShots(state));
+    if (picked === 'wait') return false;
+    let shot = picked;
+    if (!shot) {
+      // Secours local : premier coup net proposé, sinon poussette.
+      const built = candidateShots(state);
+      shot = built.moves.find((m) => m.sure) || built.moves[built.moves.length - 1];
+    }
+    if (!shot) return false;
+    planBotShot(state, shot);
+    return false;
+  }
+
   if (!isOffline(state, state.turn)) return false;
   if (!state.turnSince || Date.now() - state.turnSince < OFFLINE_SKIP_MS) return false;
   const cue = state.balls.find((b) => b.id === 0);
@@ -242,6 +347,7 @@ export function viewFor(state, userId) {
     turn: state.turn,
     isMyTurn: state.phase === 'playing' && state.turn === userId,
     lastShot: state.lastShot,
+    botAim: state.turn === 'bot' ? state.botAim || null : null,
     remaining: {
       solid: state.balls.filter((b) => !b.pocketed && group(b.id) === 'solid').map((b) => b.id),
       stripe: state.balls.filter((b) => !b.pocketed && group(b.id) === 'stripe').map((b) => b.id),

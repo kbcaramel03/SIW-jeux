@@ -225,7 +225,7 @@ function randomShot(board) {
 export function tickBattleship(state) {
   if (state.phase !== 'playing' || state.turn !== 'bot') return false;
   if (state.botAt && Date.now() < state.botAt) return false;
-  state.botAt = Date.now() + 1100; // petit temps de « réflexion » entre deux tirs
+  state.botAt = Date.now() + 900 + Math.random() * 2400; // temps de réflexion humain, variable
   const human = state.seats.find((id) => id !== 'bot');
   const board = state.boards[human];
   // Étourderie selon le niveau : proportion de tirs qui partent au hasard.

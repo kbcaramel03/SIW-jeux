@@ -146,7 +146,7 @@ export function drawPouilleux(state, userId, cardIndex) {
 export function tickPouilleux(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;
-  const wait = state.turn === 'bot' ? 2500 : OFFLINE_SKIP_MS;
+  const wait = state.turn === 'bot' ? 1700 + (state.turnSince % 2400) : OFFLINE_SKIP_MS;
   if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
   const target = nextActive(state, state.turn);
   if (!target) { checkEnd(state); return true; }

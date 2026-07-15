@@ -208,6 +208,8 @@ function applyBullshitAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join':
       return bullshit.joinBullshit(state, userId);
+    case 'bot':
+      return bullshit.joinBullshit(state, 'bot');
     case 'start':
       return bullshit.startBullshit(state, userId);
     case 'play':
@@ -292,6 +294,7 @@ function applyPouilleuxAction(state, userId, payload) {
 function applyPoolAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return pool.joinPool(state, userId);
+    case 'bot': return pool.joinPool(state, 'bot');
     case 'start': return pool.startPool(state, userId);
     case 'shoot': return pool.shootPool(state, userId, payload);
     default: throw new Error('Action inconnue.');
@@ -313,6 +316,7 @@ function applyPetitBacAction(state, userId, payload) {
 function applyArcheryAction(state, userId, payload) {
   switch (payload.kind) {
     case 'join': return archery.joinArchery(state, userId);
+    case 'bot': return archery.joinArchery(state, 'bot');
     case 'start': return archery.startArchery(state, userId);
     case 'shoot': return archery.shootArchery(state, userId, payload);
     default: throw new Error('Action inconnue.');
