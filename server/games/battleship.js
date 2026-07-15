@@ -1,4 +1,5 @@
 // Moteur de Bataille navale (1 contre 1), logique pure.
+import { aiTurn } from '../ai.js';
 // Grille 10x10, flotte classique : 5, 4, 3, 3, 2.
 // Placement aléatoire (re-mélangeable) puis tirs au tour par tour.
 // Règle choisie : un TOUCHÉ rejoue, un raté passe la main (plus dynamique).
@@ -133,7 +134,7 @@ export function addBot(state, userId, level) {
 // elle ne « voit » que les cases où elle a déjà tiré (touché/raté/coulé).
 // 1) Cible : un bateau est blessé -> on prolonge la ligne ou on tape autour.
 // 2) Chasse : sinon, tir en damier (les bateaux font au moins 2 cases).
-function botPickTarget(board, hard) {
+function candidateCells(board, hard) {
   const damaged = [];
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
@@ -175,7 +176,42 @@ function botPickTarget(board, hard) {
     // Chasse au hasard (niveaux facile/moyen : elle doit rester battable).
     for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) if (unfired(x, y)) candidates.push([x, y]);
   }
+  return candidates;
+}
+function botPickTarget(board, hard) {
+  const candidates = candidateCells(board, hard);
   return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+// Question posée à ChatGPT : grille connue + cases candidates lisibles.
+const COLS = 'ABCDEFGHIJ';
+function buildFireChoice(state, board) {
+  const rows = [];
+  for (let y = 0; y < SIZE; y++) {
+    let line = '';
+    for (let x = 0; x < SIZE; x++) {
+      const c = board.grid[y][x];
+      if (!c.fired) line += '.';
+      else if (c.ship === null) line += 'o';
+      else line += board.ships.find((s) => s.id === c.ship).sunk ? 'X' : 'x';
+    }
+    rows.push((y + 1).toString().padStart(2) + ' ' + line);
+  }
+  // Candidats : la traque en priorité, complétés par des cases de chasse variées.
+  const seen = new Set();
+  const cands = [];
+  for (const [x, y] of candidateCells(board, true)) {
+    const k = x + ',' + y;
+    if (!seen.has(k)) { seen.add(k); cands.push([x, y]); }
+    if (cands.length >= 12) break;
+  }
+  return {
+    label: 'la Bataille navale',
+    rules: 'Grille 10x10 : . = inconnue, o = raté, x = touché (bateau blessé pas coulé), X = coulé. Un bateau blessé continue en ligne droite : vise autour des x.',
+    situation: 'Colonnes A-J, lignes 1-10 :\n   ' + COLS + '\n' + rows.join('\n'),
+    options: cands.map(([x, y]) => 'Tirer en ' + COLS[x] + (y + 1)),
+    moves: cands,
+  };
 }
 
 // Un tir complètement au hasard (l'Amirale se déconcentre parfois exprès).
@@ -194,8 +230,14 @@ export function tickBattleship(state) {
   const board = state.boards[human];
   // Étourderie selon le niveau : proportion de tirs qui partent au hasard.
   const level = state.botLevel || 'moyen';
-  const distraction = level === 'facile' ? 0.6 : level === 'difficile' ? 0 : 0.2;
-  const target = Math.random() < distraction ? randomShot(board) : botPickTarget(board, level === 'difficile');
+  // ChatGPT choisit la case (heuristique locale selon le niveau en secours).
+  const picked = aiTurn(state, () => buildFireChoice(state, board));
+  if (picked === 'wait') return false;
+  let target = picked;
+  if (!target) {
+    const distraction = level === 'facile' ? 0.6 : level === 'difficile' ? 0 : 0.2;
+    target = Math.random() < distraction ? randomShot(board) : botPickTarget(board, level === 'difficile');
+  }
   if (!target) return false;
   fire(state, 'bot', target[0], target[1]);
   return true;

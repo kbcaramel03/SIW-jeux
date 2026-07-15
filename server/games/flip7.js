@@ -1,4 +1,5 @@
 // Moteur de Flip 7 (press-your-luck), logique pure. Cartes face visible (info ouverte).
+import { aiTurn } from '../ai.js';
 // Tour : Tirer (hit) ou Rester (stay). Doublon de nombre = bust (sauf Second Chance).
 // 7 nombres uniques = Flip 7 (+15, fin de manche immédiate). Premier à 200 points gagne.
 //
@@ -263,15 +264,54 @@ export function tickFlip7(state) {
   if (r.pending.length) {
     const pa = r.pending[0];
     if (!isOffline(state, pa.by)) return false;
-    resolveAction(state, pa.by, pa.by); // l'absente se cible elle-même (toujours valide)
+    let target = pa.by; // une absente se cible elle-même (neutre)
+    if (pa.by === 'bot') {
+      const infos = r.active.map((id) => {
+        const l = r.lines[id];
+        return { id, banked: state.scores[id] || 0, enLigne: scoreLine(l), numeros: l.numbers.length };
+      });
+      const others = infos.filter((p) => p.id !== 'bot');
+      const picked = aiTurn(state, () => ({
+        label: 'Flip 7 (jeu de cartes stop ou encore)',
+        rules: pa.type === 'freeze'
+          ? 'Tu as une carte STOP : la cible sort de la manche et banque ses points en ligne. Stopper une adversaire qui a peu en ligne la prive de sa manche ; te stopper toi-même sécurise tes points.'
+          : 'Tu as une carte PIOCHE 3 : la cible tire 3 cartes de force — plus elle a de numéros posés, plus elle risque le doublon (bust = 0 point de manche).',
+        situation: 'Objectif 200 points. ' + infos.map((p) => nm(state, p.id) + ' : ' + p.banked + ' pts banques, ' + p.enLigne + ' pts en ligne, ' + p.numeros + ' numeros poses').join(' ; '),
+        options: r.active.map((id) => (id === 'bot' ? 'Toi-même' : nm(state, id))),
+        moves: r.active.slice(),
+      }));
+      if (picked === 'wait') return false;
+      if (picked != null) target = picked;
+      else {
+        // Secours local : STOP sur la meneuse, PIOCHE 3 sur la plus chargée.
+        const best = others.sort((a, b) => (pa.type === 'freeze'
+          ? (b.banked + b.enLigne) - (a.banked + a.enLigne)
+          : b.numeros - a.numeros))[0];
+        if (best) target = best.id;
+      }
+    }
+    resolveAction(state, pa.by, target);
     return true;
   }
   if (r.turn && isOffline(state, r.turn)) {
-    // Le bot pousse sa chance jusqu'à 4-5 numéros posés, une absente banque direct.
     const line = r.lines[r.turn];
-    const brave = r.turn === 'bot' && line && !line.busted && line.numbers.length < 4 + (Math.random() < 0.4 ? 1 : 0);
-    if (brave) hitFlip7(state, r.turn);
-    else stayFlip7(state, r.turn);
+    if (r.turn === 'bot' && line && !line.busted) {
+      const picked = aiTurn(state, () => ({
+        label: 'Flip 7 (stop ou encore)',
+        rules: 'Tu tires des cartes numéros : un doublon = bust (0 point de manche). 7 numéros uniques = +15. Rester banque tes points en ligne. Objectif 200.',
+        situation: 'Tes numéros posés : [' + line.numbers.join(', ') + ']. Points en ligne : ' + scoreLine(line) + '. Tes points banqués : ' + (state.scores['bot'] || 0) + '. Adversaires : ' + state.seats.filter((id) => id !== 'bot').map((id) => nm(state, id) + ' ' + (state.scores[id] || 0) + ' pts').join(', ') + '.',
+        options: ['Tirer une carte (tenter le coup)', 'Rester (banquer les points en ligne)'],
+        moves: ['hit', 'stay'],
+      }));
+      if (picked === 'wait') return false;
+      if (picked === 'hit') { hitFlip7(state, r.turn); return true; }
+      if (picked === 'stay') { stayFlip7(state, r.turn); return true; }
+      // Secours local : pousser jusqu à 4-5 numéros.
+      if (line.numbers.length < 4 + (Math.random() < 0.4 ? 1 : 0)) hitFlip7(state, r.turn);
+      else stayFlip7(state, r.turn);
+      return true;
+    }
+    stayFlip7(state, r.turn); // absente : choix sûr
     return true;
   }
   return false;

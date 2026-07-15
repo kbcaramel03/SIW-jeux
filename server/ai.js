@@ -101,6 +101,49 @@ export async function speech(text) {
   }
 }
 
+// --- ChatGPT joue : choix d'un coup parmi une liste d'options ----------------
+// On lui donne les règles, la situation et des options numérotées lisibles ;
+// il répond par l'index. Toujours validé, jamais bloquant.
+export async function chooseMove(gameLabel, rules, situation, options) {
+  const out = await chatJSON(
+    `Tu joues à ${gameLabel} contre des joueuses humaines. ${rules} `
+    + 'Comporte-toi comme une VRAIE joueuse humaine : ni trop forte, ni trop faible. '
+    + 'Joue bien la plupart du temps, mais reste naturelle et imprévisible — tu as le droit d\'être sans pitié '
+    + '(capturer, attaquer, bloquer) comme de laisser passer une occasion, selon ton humeur. '
+    + 'Ne cherche pas le coup parfait à chaque fois. Réponds UNIQUEMENT en JSON : {"choix": <numéro de l\'option>}.',
+    { situation, options: options.map((o, i) => `${i}. ${o}`) },
+  );
+  const i = Math.round(Number(out?.choix));
+  return Number.isInteger(i) && i >= 0 && i < options.length ? i : null;
+}
+
+// Décision asynchrone rangée dans state.aiTask (les moteurs sont synchrones :
+// on pose la question à un tick, on applique la réponse à un tick suivant).
+// Renvoie 'wait' (réponse en route), null (pas d'IA / échec -> heuristique
+// locale), ou l'élément de `moves` choisi par ChatGPT.
+export function aiTurn(state, build) {
+  const t = state.aiTask;
+  if (t?.status === 'pending') {
+    if (Date.now() - (t.t0 || 0) > 15000) { state.aiTask = null; return null; } // panne/redémarrage
+    return 'wait';
+  }
+  if (t?.status === 'done') {
+    state.aiTask = null;
+    const i = t.result;
+    return Number.isInteger(i) && t.moves && t.moves[i] !== undefined ? t.moves[i] : null;
+  }
+  if (!aiAvailable()) return null;
+  const built = build();
+  if (!built || !built.options || built.options.length === 0) return null;
+  if (built.options.length === 1) return built.moves[0]; // pas de dilemme : on économise l'appel
+  const task = { status: 'pending', t0: Date.now(), moves: built.moves };
+  state.aiTask = task;
+  chooseMove(built.label, built.rules, built.situation, built.options)
+    .then((i) => { task.status = 'done'; task.result = i; })
+    .catch(() => { task.status = 'done'; task.result = null; });
+  return 'wait';
+}
+
 // --- Arbitre du Petit Bac ----------------------------------------------------
 // items: [{ id, category, word }] pour une lettre donnée.
 // Renvoie { id: true|false } ou null si l'IA est indisponible.

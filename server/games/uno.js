@@ -1,4 +1,5 @@
 // Moteur de Uno (2 à 8 joueurs), logique pure.
+import { aiTurn } from '../ai.js';
 // 108 cartes : 4 couleurs (0 x1, 1-9 x2, skip/reverse/+2 x2) + 4 jokers + 4 joker+4.
 // Les +2/+4 SE CUMULENT : la victime peut renchérir (+2 sur +2, +4 sur tout)
 // et le total glisse à la suivante — sinon elle ramasse tout. On pioche 1 carte
@@ -252,12 +253,68 @@ function autoPlay(state, userId) {
   }
 }
 
+
+// Décrit les coups légaux du bot pour ChatGPT (cartes, cumul, pioche).
+const CARD_FR = { skip: 'Passe-tour', reverse: 'Inversion', draw2: '+2', wild: 'Joker', wild4: '+4' };
+const COLOR_FR = { red: 'rouge', yellow: 'jaune', green: 'vert', blue: 'bleu', wild: 'noir' };
+function cardFr(c) { return (CARD_FR[c.type] || c.type) + (c.color !== 'wild' ? ' ' + COLOR_FR[c.color] : ''); }
+function buildUnoChoice(state) {
+  const hand = state.hands.bot || [];
+  const top = state.discard[state.discard.length - 1];
+  const options = []; const moves = [];
+  const addPlay = (c) => {
+    if (c.color === 'wild') {
+      for (const col of COLORS) {
+        options.push(`Jouer ${cardFr(c)} en choisissant ${COLOR_FR[col]}`);
+        moves.push({ kind: 'play', cardId: c.id, color: col });
+      }
+    } else {
+      options.push(`Jouer ${cardFr(c)}`);
+      moves.push({ kind: 'play', cardId: c.id });
+    }
+  };
+  if (state.pendingDraw > 0) {
+    for (const c of hand) if (c.type === 'wild4' || (c.type === 'draw2' && state.pendingType === 'draw2')) addPlay(c);
+    options.push(`Ramasser les ${state.pendingDraw} cartes du cumul`);
+    moves.push({ kind: 'draw' });
+  } else if (state.drawnCardId !== null) {
+    const drawn = hand.find((c) => c.id === state.drawnCardId);
+    if (drawn && isPlayable(drawn, state.currentColor, top.type)) addPlay(drawn);
+    options.push('Passer le tour');
+    moves.push({ kind: 'pass' });
+  } else {
+    for (const c of hand) if (isPlayable(c, state.currentColor, top.type)) addPlay(c);
+    options.push('Piocher une carte');
+    moves.push({ kind: 'draw' });
+  }
+  const oppos = state.seats.filter((id) => id !== 'bot')
+    .map((id) => `${nm(state, id)} : ${state.hands[id].length} cartes`).join(', ');
+  return {
+    label: 'Uno',
+    rules: 'Défausse toutes tes cartes pour gagner. Les +2/+4 se cumulent. Une adversaire à 1-2 cartes est dangereuse : attaque-la. Garde plutôt les jokers pour les moments utiles.',
+    situation: `Carte visible : ${cardFr(top)} (couleur en cours : ${COLOR_FR[state.currentColor]}). Ta main (${hand.length}) : ${hand.map(cardFr).join(', ')}. Adversaires : ${oppos}.`,
+    options, moves,
+  };
+}
+
 // Horloge serveur : auto-play après 10 s si la joueuse active est déconnectée.
 export function tickUno(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;
   const wait = state.turn === 'bot' ? 2500 : OFFLINE_SKIP_MS;
   if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
+  if (state.turn === 'bot') {
+    const picked = aiTurn(state, () => buildUnoChoice(state));
+    if (picked === 'wait') return false;
+    if (picked) {
+      try {
+        if (picked.kind === 'play') playCard(state, 'bot', picked.cardId, picked.color);
+        else if (picked.kind === 'pass') passUno(state, 'bot');
+        else drawUno(state, 'bot');
+        return true;
+      } catch { /* option devenue invalide : heuristique locale */ }
+    }
+  }
   autoPlay(state, state.turn);
   return true;
 }

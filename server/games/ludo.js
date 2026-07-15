@@ -1,4 +1,5 @@
 // Moteur de Ludo (2 à 4 joueurs), logique pure. Plateau classique en croix :
+import { aiTurn } from '../ai.js';
 // piste de 52 cases, puis colonne d'arrivée privée de 5 cases vers le centre.
 // Règles (comme l'appli Plato) :
 // - on sort de l'écurie avec un 1 OU un 6 ;
@@ -262,8 +263,36 @@ export function moveLudo(state, userId, pawnIdx) {
   if (bonus) replay(state); else nextTurn(state);
 }
 
-// Horloge serveur : si la joueuse dont c'est le tour est déconnectée depuis
-// un moment, on joue pour elle (lancer puis un pion jouable au hasard).
+// Décrit chaque pion jouable (pour ChatGPT) + score local (secours sans API).
+function pawnChoices(state, userId) {
+  const color = state.colors[userId];
+  const die = state.die;
+  const options = []; const moves = []; const scores = [];
+  for (const idx of state.movable) {
+    const p = state.pawns[userId][idx];
+    let label; let score;
+    if (p === -1) {
+      const occ = occupantAt(state, START[color]);
+      const eat = occ && occ.id !== userId;
+      label = `Sortir le pion ${idx + 1} de l'écurie${eat ? ` en MANGEANT un pion de ${nm(state, occ.id)}` : ''}`;
+      score = eat ? 120 : 55;
+    } else {
+      const np = p + die;
+      if (np === GOAL) { label = `Rentrer le pion ${idx + 1} à la maison (case finale)`; score = 90; }
+      else if (np <= TRACK_MAX) {
+        const cell = absCell(color, np);
+        const occ = occupantAt(state, cell);
+        if (occ && occ.id !== userId) { label = `Avancer le pion ${idx + 1} et MANGER un pion de ${nm(state, occ.id)}`; score = 130; }
+        else { label = `Avancer le pion ${idx + 1} de ${die} (progression ${np}/56)`; score = 20 + p; }
+      } else { label = `Faire entrer le pion ${idx + 1} dans sa colonne d'arrivée`; score = 60; }
+    }
+    options.push(label); moves.push(idx); scores.push(score);
+  }
+  return { options, moves, scores };
+}
+
+// Horloge serveur : ChatGPT choisit le pion du bot (heuristique agressive en
+// secours) ; une absente joue automatiquement (le meilleur coup local).
 export function tickLudo(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;
@@ -271,10 +300,26 @@ export function tickLudo(state) {
   if (!state.stepSince || Date.now() < state.stepSince + wait) return false;
   if (state.die == null) {
     rollLudo(state, state.turn);
-  } else {
-    const choice = state.movable[Math.floor(Math.random() * state.movable.length)];
-    moveLudo(state, state.turn, choice);
+    return true;
   }
+  const { options, moves, scores } = pawnChoices(state, state.turn);
+  let choice = null;
+  if (state.turn === 'bot') {
+    const picked = aiTurn(state, () => ({
+      label: 'Ludo (petits chevaux)',
+      rules: 'Manger un pion adverse le renvoie à son écurie (gros avantage). Rentrer ses 4 pions en premier fait gagner.',
+      situation: `Dé : ${state.die}. Pions rentrés — ${state.seats.map((id) => `${nm(state, id)} : ${state.pawns[id].filter((q) => q === GOAL).length}/4`).join(', ')}.`,
+      options, moves,
+    }));
+    if (picked === 'wait') return false;
+    choice = picked;
+  }
+  if (choice == null) {
+    // Secours local : manger > rentrer > sortir > avancer le plus avancé.
+    let bs = -Infinity;
+    moves.forEach((idx, i) => { const sc = scores[i] + Math.random() * 2; if (sc > bs) { bs = sc; choice = idx; } });
+  }
+  moveLudo(state, state.turn, choice);
   return true;
 }
 

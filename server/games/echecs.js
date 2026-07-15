@@ -6,6 +6,7 @@
 // le compteur de répétitions maintenus au fil de l'eau — compatible avec la
 // sauvegarde des salons en base et rapide même en fin de longue partie.
 import { Chess } from 'chess.js';
+import { aiTurn } from '../ai.js';
 
 const FR_RESULT = {
   mate: 'Échec et mat !',
@@ -176,19 +177,34 @@ function botMove(chess, level) {
   return best;
 }
 
-// Horloge serveur : le bot joue son coup ~2 s après le tien.
+// Horloge serveur : ChatGPT choisit le coup du bot (négamax local en secours).
 export function tickEchecs(state) {
   if (state.phase !== 'playing') return false;
   const botColor = state.white === 'bot' ? 'w' : state.black === 'bot' ? 'b' : null;
   if (!botColor) return false;
   const chess = new Chess(state.fen);
-  if (chess.turn() !== botColor) { state.botAt = null; return false; }
-  if (!state.botAt) { state.botAt = Date.now() + 2000; return false; }
-  if (Date.now() < state.botAt) return false;
+  if (chess.turn() !== botColor) { state.botAt = null; state.aiTask = null; return false; }
+  if (!state.aiTask) {
+    if (!state.botAt) { state.botAt = Date.now() + 2000; return false; }
+    if (Date.now() < state.botAt) return false;
+  }
   state.botAt = null;
-  const mv = botMove(chess, state.botLevel);
+  const legal = chess.moves({ verbose: true });
+  const picked = aiTurn(state, () => ({
+    label: 'les Échecs',
+    rules: `Tu joues les ${botColor === 'w' ? 'Blancs' : 'Noirs'}. Les options sont tes coups légaux en notation SAN. Ton niveau affiché est « ${state.botLevel || 'moyen'} » : joue en conséquence.`,
+    situation: `Position (FEN) : ${state.fen}. Derniers coups : ${state.history.slice(-10).join(' ') || '(début de partie)'}.`,
+    options: legal.map((m) => m.san),
+    moves: legal.map((m) => ({ from: m.from, to: m.to, promotion: m.promotion ? 'q' : undefined })),
+  }));
+  if (picked === 'wait') return false;
+  let mv = picked;
+  if (!mv) {
+    const b = botMove(chess, state.botLevel);
+    mv = b ? { from: b.from, to: b.to, promotion: b.promotion ? 'q' : undefined } : null;
+  }
   if (!mv) return false;
-  moveEchecs(state, 'bot', { from: mv.from, to: mv.to, promotion: mv.promotion ? 'q' : undefined });
+  moveEchecs(state, 'bot', mv);
   return true;
 }
 
