@@ -301,7 +301,7 @@ function buildUnoChoice(state) {
 export function tickUno(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
   if (!isOffline(state, state.turn)) return false;
-  const wait = state.turn === 'bot' ? 1400 + (state.turnSince % 2800) : OFFLINE_SKIP_MS;
+  const wait = state.turn === 'bot' ? 1000 + (state.turnSince % 1700) : OFFLINE_SKIP_MS;
   if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
   if (state.turn === 'bot') {
     const picked = aiTurn(state, () => buildUnoChoice(state));

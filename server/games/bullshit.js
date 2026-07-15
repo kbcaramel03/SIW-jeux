@@ -242,7 +242,7 @@ function fallbackChallenge(state) {
 export function tickBullshit(state) {
   if (!state.since) return false;
   if (state.turn === 'bot' && (state.phase === 'playing' || state.phase === 'challenge')) {
-    const wait = 1600 + (state.since % 2900);
+    const wait = 1000 + (state.since % 1700);
     if (!state.aiTask && Date.now() - state.since < wait) return false;
     const phase = state.phase;
     const picked = aiTurn(state, () => (phase === 'playing' ? buildPlayChoice(state) : buildChallengeChoice(state)));

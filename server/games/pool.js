@@ -265,19 +265,19 @@ function candidateShots(state) {
 function planBotShot(state, shot) {
   const finalA = Math.atan2(shot.dy, shot.dx);
   const steps = [];
-  const n = 3 + Math.floor(Math.random() * 3); // 3 à 5 ajustements visibles
-  const startOff = (Math.random() < 0.5 ? -1 : 1) * (0.25 + Math.random() * 0.35);
+  const n = 2 + Math.floor(Math.random() * 2); // 2 à 3 ajustements visibles
+  const startOff = (Math.random() < 0.5 ? -1 : 1) * (0.2 + Math.random() * 0.3);
   for (let i = 1; i <= n; i++) {
     const k = i / n;
     const a = finalA + startOff * (1 - k) + (Math.random() - 0.5) * 0.05 * (1 - k);
     steps.push({ dx: Math.cos(a), dy: Math.sin(a), power: shot.power * (0.25 + 0.75 * k) });
   }
   // Erreur d'exécution : parfois ça rate, comme tout le monde.
-  const err = (Math.random() - 0.5) * 0.045; // jusqu'à ~1,3 degré
+  const err = (Math.random() - 0.5) * 0.028; // jusqu'à ~0,8 degré
   const a = finalA + err;
   state.botPlan = {
-    steps, i: 0, at: Date.now() + 800,
-    final: { dx: Math.cos(a), dy: Math.sin(a), power: Math.max(0.2, Math.min(1, shot.power + (Math.random() - 0.5) * 0.14)) },
+    steps, i: 0, at: Date.now() + 500,
+    final: { dx: Math.cos(a), dy: Math.sin(a), power: Math.max(0.2, Math.min(1, shot.power + (Math.random() - 0.5) * 0.09)) },
   };
 }
 
@@ -294,7 +294,7 @@ export function tickPool(state) {
       if (p.i < p.steps.length) {
         state.botAim = p.steps[p.i];
         p.i += 1;
-        p.at = Date.now() + 650 + Math.random() * 700;
+        p.at = Date.now() + 420 + Math.random() * 430;
         return true;
       }
       const shot = p.final;
@@ -304,7 +304,7 @@ export function tickPool(state) {
       return true;
     }
     // Temps de réflexion humain (variable), puis choix du coup via ChatGPT.
-    const wait = 1500 + (state.turnSince % 2600);
+    const wait = 800 + (state.turnSince % 1400);
     if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
     const picked = aiTurn(state, () => candidateShots(state));
     if (picked === 'wait') return false;

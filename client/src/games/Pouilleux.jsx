@@ -4,7 +4,7 @@ import { Button } from '@mui/material';
 import { Play, Sparkles, Skull, ShieldCheck } from 'lucide-react';
 import MonsterCard, { MONSTERS } from './MonsterCard.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
-import botAvatar from '../assets/chatgpt.svg';
+import botAvatar from '../assets/chatgpt.png';
 import { winConfetti, popSound, boomSound } from '../effects.js';
 
 export default function Pouilleux({ room, isHost, onAction, onNewGame }) {

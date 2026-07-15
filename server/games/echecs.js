@@ -185,7 +185,7 @@ export function tickEchecs(state) {
   const chess = new Chess(state.fen);
   if (chess.turn() !== botColor) { state.botAt = null; state.aiTask = null; return false; }
   if (!state.aiTask) {
-    if (!state.botAt) { state.botAt = Date.now() + 1500 + Math.random() * 5500; return false; } // réfléchit comme une humaine
+    if (!state.botAt) { state.botAt = Date.now() + 1200 + Math.random() * 2600; return false; } // réfléchit comme une humaine
     if (Date.now() < state.botAt) return false;
   }
   state.botAt = null;

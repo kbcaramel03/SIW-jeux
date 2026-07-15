@@ -112,6 +112,7 @@ export async function chooseMove(gameLabel, rules, situation, options) {
     + '(capturer, attaquer, bloquer) comme de laisser passer une occasion, selon ton humeur. '
     + 'Ne cherche pas le coup parfait à chaque fois. Réponds UNIQUEMENT en JSON : {"choix": <numéro de l\'option>}.',
     { situation, options: options.map((o, i) => `${i}. ${o}`) },
+    { timeoutMs: 6500 }, // un coup de jeu doit tomber vite : au-delà, l'heuristique locale joue
   );
   const i = Math.round(Number(out?.choix));
   return Number.isInteger(i) && i >= 0 && i < options.length ? i : null;
@@ -124,7 +125,7 @@ export async function chooseMove(gameLabel, rules, situation, options) {
 export function aiTurn(state, build) {
   const t = state.aiTask;
   if (t?.status === 'pending') {
-    if (Date.now() - (t.t0 || 0) > 15000) { state.aiTask = null; return null; } // panne/redémarrage
+    if (Date.now() - (t.t0 || 0) > 8000) { state.aiTask = null; return null; } // panne/redémarrage
     return 'wait';
   }
   if (t?.status === 'done') {

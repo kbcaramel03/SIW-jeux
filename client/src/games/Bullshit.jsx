@@ -5,7 +5,7 @@ import { Play, Sparkles, Hand, Gavel, Check } from 'lucide-react';
 import PlayingCard from './PlayingCard.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti } from '../effects.js';
-import botAvatar from '../assets/chatgpt.svg';
+import botAvatar from '../assets/chatgpt.png';
 
 export default function Bullshit({ room, isHost, onAction, onNewGame }) {
   const g = room.game;

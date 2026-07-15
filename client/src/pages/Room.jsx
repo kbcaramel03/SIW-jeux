@@ -6,7 +6,7 @@ import { getSocket } from '../socket.js';
 import Chat from '../components/Chat.jsx';
 import GameChat from '../components/GameChat.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
-import chatgptLogo from '../assets/chatgpt.svg';
+import chatgptLogo from '../assets/chatgpt.png';
 
 // Chaque jeu est chargé à la demande : on ne télécharge que celui auquel on joue.
 const Codenames = lazy(() => import('../games/Codenames.jsx'));

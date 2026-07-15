@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@mui/material';
 import { Play, Hand, PauseCircle, Sparkles, Layers } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
-import botAvatar from '../assets/chatgpt.svg';
+import botAvatar from '../assets/chatgpt.png';
 import Flip7Card, { Flip7Back } from './Flip7Card.jsx';
 import { winConfetti } from '../effects.js';
 

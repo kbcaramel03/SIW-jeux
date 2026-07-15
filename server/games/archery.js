@@ -180,7 +180,7 @@ export function tickArchery(state) {
   if (state.phase !== 'playing' || !state.turn) return false;
 
   if (state.turn === 'bot') {
-    const wait = 2500 + (state.turnSince % 3500); // temps de visée humain, variable
+    const wait = 1400 + (state.turnSince % 2000); // temps de visée humain, variable
     if (!state.turnSince || Date.now() - state.turnSince < wait) return false;
     const picked = aiTurn(state, () => ({
       label: 'le Tir à l\'arc',
@@ -191,10 +191,10 @@ export function tickArchery(state) {
         'Compenser le vent à moitié (tir naturel)',
         'Tirer vite vers le centre sans trop compenser (risqué par grand vent)',
       ],
-      moves: [{ comp: 1, noise: 0.013 }, { comp: 0.55, noise: 0.02 }, { comp: 0.15, noise: 0.03 }],
+      moves: [{ comp: 1, noise: 0.01 }, { comp: 0.6, noise: 0.016 }, { comp: 0.2, noise: 0.026 }],
     }));
     if (picked === 'wait') return false;
-    const style = picked || { comp: 0.75, noise: 0.02 };
+    const style = picked || { comp: 0.8, noise: 0.016 };
     const best = bestAim(state);
     shootArchery(state, 'bot', {
       yaw: best.yaw * style.comp + (Math.random() - 0.5) * style.noise * 2,

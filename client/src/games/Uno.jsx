@@ -4,7 +4,7 @@ import { Button } from '@mui/material';
 import { Play, Hand, SkipForward, Sparkles, RotateCw } from 'lucide-react';
 import UnoCard from './UnoCard.jsx';
 import { Avatar } from '../components/OnlineRail.jsx';
-import botAvatar from '../assets/chatgpt.svg';
+import botAvatar from '../assets/chatgpt.png';
 import { winConfetti } from '../effects.js';
 
 const COLORS = ['red', 'yellow', 'green', 'blue'];

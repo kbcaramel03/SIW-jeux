@@ -3,7 +3,7 @@ import { Button } from '@mui/material';
 import { Play, Sparkles, Flag, Handshake } from 'lucide-react';
 import { FaChessKing, FaChessQueen, FaChessRook, FaChessBishop, FaChessKnight, FaChessPawn } from 'react-icons/fa';
 import { Avatar } from '../components/OnlineRail.jsx';
-import botAvatar from '../assets/chatgpt.svg';
+import botAvatar from '../assets/chatgpt.png';
 import { winConfetti, boomSound, popSound } from '../effects.js';
 
 const ICONS = { k: FaChessKing, q: FaChessQueen, r: FaChessRook, b: FaChessBishop, n: FaChessKnight, p: FaChessPawn };

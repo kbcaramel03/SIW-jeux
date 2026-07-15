@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Eye, Crown, Users, Check, SkipForward, Sparkles, ShieldCheck, Timer, UserSearch, Swords, Handshake } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
-import chatgptLogo from '../assets/chatgpt.svg';
+import chatgptLogo from '../assets/chatgpt.png';
 
 const CLUE_COUNTS = Array.from({ length: 10 }, (_, value) => value);
 

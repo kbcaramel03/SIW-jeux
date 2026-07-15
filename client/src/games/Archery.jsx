@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { Play, Sparkles, Target, Wind } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { winConfetti, popSound, boomSound } from '../effects.js';
-import botAvatar from '../assets/chatgpt.svg';
+import botAvatar from '../assets/chatgpt.png';
 
 // ---- Mêmes constantes que server/games/archery.js (garder synchronisé). ----
 // Monde en mètres : X = latéral, Y = hauteur, Z = vers la cible.

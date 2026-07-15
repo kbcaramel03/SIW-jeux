@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Button, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import { Play, Sparkles, Star, ArrowRight } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
-import botAvatar from '../assets/chatgpt.svg';
+import botAvatar from '../assets/chatgpt.png';
 import { winConfetti, boomSound, diceSound, popSound, burstAtEl } from '../effects.js';
 
 // ---- Géométrie du plateau classique (grille 15×15, coordonnées en cases) ----

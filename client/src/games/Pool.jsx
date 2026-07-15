@@ -4,6 +4,7 @@ import { Play, Sparkles, Target } from 'lucide-react';
 import { Avatar } from '../components/OnlineRail.jsx';
 import { getSocket } from '../socket.js';
 import { winConfetti, popSound, boomSound } from '../effects.js';
+import botAvatar from '../assets/chatgpt.png';
 
 // ---- Physique locale : COPIE de server/games/pool.js (garder synchronisé). --
 // Le serveur reste l'autorité : on anime localement le même tir, puis on se
@@ -234,6 +235,7 @@ export default function Pool({ room, isHost, onAction, onNewGame }) {
   nameById.bot = 'ChatGPT';
   const genderById = Object.fromEntries(people.map((p) => [p.id, p.gender]));
   const avatarById = Object.fromEntries(people.map((p) => [p.id, p.avatar]));
+  avatarById.bot = botAvatar;
 
   const canvasRef = useRef(null);
   const prevBallsRef = useRef(null);
