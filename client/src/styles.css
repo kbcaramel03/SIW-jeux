@@ -1723,7 +1723,8 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 }
 .mono-center {
   grid-row: 2 / 11; grid-column: 2 / 11; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 8px; padding: 10px; text-align: center; min-height: 0;
+  align-items: center; justify-content: center; gap: 8px; padding: 10px; text-align: center;
+  min-height: 0; min-width: 0; overflow: hidden; /* le contenu ne doit JAMAIS étirer le plateau carré */
 }
 .mono-logo {
   font-family: var(--font-head); font-weight: 700; letter-spacing: 2px; color: #fff;
@@ -1752,8 +1753,14 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 
 /* Fiches / actes de propriété */
 .mono-overlay {
-  position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
+  position: absolute; inset: 0; z-index: 10; display: flex; align-items: flex-start; justify-content: center;
   background: rgba(70, 60, 82, 0.45); backdrop-filter: blur(2px); border-radius: var(--radius); padding: 12px;
+  overflow-y: auto; /* les panneaux plus hauts que le plateau défilent (petits écrans) */
+}
+.mono-overlay > * { margin: auto; max-width: 100%; }
+.mono-mobilebar {
+  background: #fff; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm);
+  padding: 10px 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; align-items: center;
 }
 .mono-deed { background: #fff; border-radius: 12px; padding: 8px; width: 200px; box-shadow: var(--shadow); border: 1px solid #e4dbc9; }
 .mono-deed-head {
@@ -1779,3 +1786,57 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 @media (max-width: 700px) {
   .mono-board { border-radius: var(--radius-sm); padding: 4px; gap: 1.5px; }
 }
+
+/* ===================== Présages (cartes arcanes) ===================== */
+.pres-table {
+  background: radial-gradient(ellipse at center, #3b3153 0%, #292138 75%);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 12px;
+  display: flex; flex-direction: column; gap: 12px; align-items: center; min-height: 260px;
+}
+.pres-teams { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.pres-team {
+  display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 4px 10px; color: #efe9dc; font-weight: 700; font-size: 13px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+}
+.pres-team .stars { color: #f2c11f; letter-spacing: 1px; }
+.pres-trick { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; min-height: 120px; align-items: center; }
+.pres-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.pres-slot .who { font-size: 11px; color: #cfc6e0; font-weight: 700; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pres-card {
+  width: 72px; height: 104px; border-radius: 12px; position: relative; flex-shrink: 0;
+  background: linear-gradient(160deg, #453a63, #2c2440); color: #f4eede;
+  border: 2.5px solid var(--pc, #8a76a6); box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: var(--font-head); transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer; user-select: none;
+}
+.pres-card .val { font-size: 30px; font-weight: 700; line-height: 1; text-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+.pres-card .sym { font-size: 15px; margin-top: 3px; opacity: 0.95; }
+.pres-card .corner { position: absolute; top: 4px; left: 7px; font-size: 12px; font-weight: 700; color: var(--pc, #8a76a6); }
+.pres-card.absolu { background: linear-gradient(160deg, #4d3a63, #241a33); border-color: #f2c11f; }
+.pres-card.absolu .corner { color: #f2c11f; }
+.pres-card.absolu::after {
+  content: 'ABSOLU'; position: absolute; bottom: 6px; font-size: 8px; letter-spacing: 2px; color: #f2c11f; opacity: 0.9;
+}
+.pres-card.small { width: 58px; height: 84px; }
+.pres-card.small .val { font-size: 24px; }
+.pres-card.discarded { opacity: 0.45; transform: rotate(-8deg) scale(0.92); }
+.pres-card.discarded::before {
+  content: '✂ défaussée'; position: absolute; inset: auto 0 32px 0; text-align: center;
+  font-size: 9px; color: #ff9d8a; font-weight: 700; transform: rotate(8deg);
+}
+.pres-card.winner-card { box-shadow: 0 0 16px rgba(242, 193, 31, 0.75); }
+.pres-hand { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 4px 0 0; }
+.pres-hand .pres-card.sel { transform: translateY(-10px) scale(1.06); box-shadow: 0 8px 18px rgba(0,0,0,0.45), 0 0 0 3px #fff; }
+.pres-hand .pres-card.illegal { opacity: 0.35; cursor: not-allowed; }
+.pres-effect-hint {
+  background: #fff; border-radius: 12px; padding: 8px 14px; font-size: 13px; font-weight: 600;
+  color: var(--ink); box-shadow: var(--shadow-sm); max-width: 420px; text-align: center; animation: fade-up 0.2s ease;
+}
+.pres-constraint {
+  background: #f2c11f; color: #463c52; font-weight: 800; border-radius: 10px;
+  padding: 3px 12px; font-size: 13px; box-shadow: var(--shadow-sm);
+}
+.pres-log { font-size: 12px; color: #cfc6e0; max-height: 84px; overflow-y: auto; width: 100%; text-align: center; font-weight: 600; }
+.pres-log div:first-child { color: #fff; }

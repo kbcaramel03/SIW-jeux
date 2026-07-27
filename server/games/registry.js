@@ -20,6 +20,7 @@ import * as minigolf from './minigolf.js';
 import * as bounce from './bounce.js';
 import * as monopoly from './monopoly.js';
 import * as shadowhunters from './shadowhunters.js';
+import * as presages from './presages.js';
 
 export const GAMES = {
   codenames: {
@@ -166,6 +167,13 @@ export const GAMES = {
     view: shadowhunters.viewFor,
     action: applyShadowAction,
     tick: shadowhunters.tickShadow,
+  },
+  presages: {
+    key: 'presages', label: 'Présages', emoji: '🔮', minPlayers: 4, maxPlayers: 6, ready: true,
+    create: presages.createPresages,
+    view: presages.viewFor,
+    action: applyPresagesAction,
+    tick: presages.tickPresages,
   },
 };
 
@@ -341,6 +349,16 @@ function applyPetitBacAction(state, userId, payload) {
     case 'submit': return petitbac.submitPetitBac(state, userId, payload);
     case 'vote': return petitbac.votePetitBac(state, userId, payload);
     case 'next': return petitbac.nextPetitBac(state, userId);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyPresagesAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return presages.joinPresages(state, userId);
+    case 'bot': return presages.joinPresages(state, 'bot');
+    case 'start': return presages.startPresages(state, userId);
+    case 'play': return presages.playPresages(state, userId, payload.card);
     default: throw new Error('Action inconnue.');
   }
 }

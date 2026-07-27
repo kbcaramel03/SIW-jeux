@@ -29,6 +29,7 @@ const MiniGolf = lazy(() => import('../games/MiniGolf.jsx'));
 const Bounce = lazy(() => import('../games/Bounce.jsx'));
 const Monopoly = lazy(() => import('../games/Monopoly.jsx'));
 const ShadowHunters = lazy(() => import('../games/ShadowHunters.jsx'));
+const Presages = lazy(() => import('../games/Presages.jsx'));
 
 // Qui a gagné ? (formats variés selon les jeux : winner id, winners[], équipes…)
 function winnerOf(g) {
@@ -231,6 +232,9 @@ export default function Room() {
           )}
           {room.gameKey === 'shadow' && (
             <ShadowHunters room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'presages' && (
+            <Presages room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
           </Suspense>
         </div>

@@ -166,6 +166,14 @@ export default function Monopoly({ room, isHost, onAction, onNewGame }) {
   const [draft, setDraft] = useState(null); // { to, give:[], ask:[], giveCash, askCash }
   const [, forceTick] = useState(0);        // re-rendu du compte à rebours d'enchère
   const auctionRef = useRef(null);
+  // Écran étroit (téléphone) : les actions passent SOUS le plateau, sinon le
+  // contenu du centre étire le carré et casse la mise en page.
+  const [narrow, setNarrow] = useState(typeof window !== 'undefined' && window.innerWidth < 640);
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => { if (g.phase === 'waiting' && !g.amSeated) onAction({ kind: 'join' }); }, [g.phase, g.amSeated]);
   useEffect(() => {
@@ -265,6 +273,60 @@ export default function Monopoly({ room, isHost, onAction, onNewGame }) {
 
   const closeOverlays = () => { setDetail(null); setManageOpen(false); setTradeOpen(false); };
 
+  // Morceaux d'interface partagés : au centre du plateau sur grand écran,
+  // dans une barre SOUS le plateau sur téléphone (le carré reste carré).
+  const diceJsx = g.dice && (
+    <div className="mono-dice">
+      <Die value={g.dice[0]} rollKey={`a${g.round}-${g.dice[0]}-${g.dice[1]}-${g.turn}`} />
+      <Die value={g.dice[1]} rollKey={`b${g.round}-${g.dice[0]}-${g.dice[1]}-${g.turn}`} />
+    </div>
+  );
+  const cardJsx = g.lastCard && (
+    <div className={`mono-card-draw ${g.lastCard.deck === 'Chance' ? 'chance' : 'caisse'}`}>
+      <b>{g.lastCard.deck}</b> — {g.lastCard.text}
+    </div>
+  );
+  const rollActionsJsx = g.phase === 'playing' && g.isMyTurn && g.stage === 'roll' && (
+    <div className="mono-actions">
+      <Button variant="contained" size="large" startIcon={<Dices size={20} />} onClick={() => onAction({ kind: 'roll' })}>
+        {my?.jail ? 'Tenter le double' : 'Lancer les dés'}
+      </Button>
+      {my?.jail && (
+        <div style={{ display: 'flex', gap: 6 }}>
+          {my.cash >= 50 && <Button variant="outlined" size="small" onClick={() => onAction({ kind: 'bail' })}>Payer 50 €</Button>}
+          {(my.gooj || 0) > 0 && (
+            <Button variant="outlined" size="small" startIcon={<KeyRound size={14} />} onClick={() => onAction({ kind: 'gooj' })}>
+              Ma carte
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+  const mgmtButtonsJsx = g.phase === 'playing' && g.players[me]?.alive && (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+      {myProps.length > 0 && (
+        <Button variant="outlined" size="small" startIcon={<Home size={14} />} onClick={() => { closeOverlays(); setManageOpen(true); }}>
+          Gérer
+        </Button>
+      )}
+      {!g.trade && (
+        <Button variant="outlined" size="small" startIcon={<ArrowLeftRight size={14} />} onClick={() => {
+          closeOverlays();
+          setDraft({ to: g.seats.find((id) => id !== me && g.players[id].alive) || null, give: [], ask: [], giveCash: 0, askCash: 0 });
+          setTradeOpen(true);
+        }}>
+          Échanger
+        </Button>
+      )}
+    </div>
+  );
+  const logJsx = (
+    <div className="mono-log">
+      {g.log.slice().reverse().map((l, i) => <div key={i}>{l}</div>)}
+    </div>
+  );
+
   return (
     <div className="pool fade-up">
       <div className={`gf-banner ${g.isMyTurn ? 'mine' : ''}`}>{banner}</div>
@@ -292,59 +354,25 @@ export default function Monopoly({ room, isHost, onAction, onNewGame }) {
 
           <div className="mono-center">
             <div className="mono-logo">MONOPOLY</div>
-            {g.dice && (
-              <div className="mono-dice">
-                <Die value={g.dice[0]} rollKey={`a${g.round}-${g.dice[0]}-${g.dice[1]}-${g.turn}`} />
-                <Die value={g.dice[1]} rollKey={`b${g.round}-${g.dice[0]}-${g.dice[1]}-${g.turn}`} />
-              </div>
-            )}
-            {g.lastCard && (
-              <div className={`mono-card-draw ${g.lastCard.deck === 'Chance' ? 'chance' : 'caisse'}`}>
-                <b>{g.lastCard.deck}</b> — {g.lastCard.text}
-              </div>
-            )}
-
-            {g.phase === 'playing' && g.isMyTurn && g.stage === 'roll' && (
-              <div className="mono-actions">
-                <Button variant="contained" size="large" startIcon={<Dices size={20} />} onClick={() => onAction({ kind: 'roll' })}>
-                  {my?.jail ? 'Tenter le double' : 'Lancer les dés'}
-                </Button>
-                {my?.jail && (
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {my.cash >= 50 && <Button variant="outlined" size="small" onClick={() => onAction({ kind: 'bail' })}>Payer 50 €</Button>}
-                    {(my.gooj || 0) > 0 && (
-                      <Button variant="outlined" size="small" startIcon={<KeyRound size={14} />} onClick={() => onAction({ kind: 'gooj' })}>
-                        Ma carte
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            {g.phase === 'playing' && g.players[me]?.alive && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {myProps.length > 0 && (
-                  <Button variant="outlined" size="small" startIcon={<Home size={14} />} onClick={() => { closeOverlays(); setManageOpen(true); }}>
-                    Gérer
-                  </Button>
-                )}
-                {!g.trade && (
-                  <Button variant="outlined" size="small" startIcon={<ArrowLeftRight size={14} />} onClick={() => {
-                    closeOverlays();
-                    setDraft({ to: g.seats.find((id) => id !== me && g.players[id].alive) || null, give: [], ask: [], giveCash: 0, askCash: 0 });
-                    setTradeOpen(true);
-                  }}>
-                    Échanger
-                  </Button>
-                )}
-              </div>
-            )}
-            <div className="mono-log">
-              {g.log.slice().reverse().map((l, i) => <div key={i}>{l}</div>)}
-            </div>
+            {diceJsx}
+            {!narrow && cardJsx}
+            {!narrow && rollActionsJsx}
+            {!narrow && mgmtButtonsJsx}
+            {!narrow && logJsx}
           </div>
 
           <div className="mono-tokens">{tokens}</div>
+        </div>
+
+        {/* Téléphone : les actions vivent sous le plateau (le carré reste carré) */}
+        {narrow && (
+          <div className="mono-mobilebar">
+            {cardJsx}
+            {rollActionsJsx}
+            {mgmtButtonsJsx}
+            {logJsx}
+          </div>
+        )}
 
           {/* Fiche d'une case */}
           {detail !== null && !manageOpen && !tradeOpen && (
@@ -543,7 +571,6 @@ export default function Monopoly({ room, isHost, onAction, onNewGame }) {
               </div>
             </div>
           )}
-        </div>
       </div>
 
       {g.phase === 'over' && isHost && (
