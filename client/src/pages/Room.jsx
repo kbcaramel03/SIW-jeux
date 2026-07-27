@@ -25,6 +25,10 @@ const GuessMe = lazy(() => import('../games/GuessMe.jsx'));
 const Pool = lazy(() => import('../games/Pool.jsx'));
 const Archery = lazy(() => import('../games/Archery.jsx'));
 const PetitBac = lazy(() => import('../games/PetitBac.jsx'));
+const MiniGolf = lazy(() => import('../games/MiniGolf.jsx'));
+const Bounce = lazy(() => import('../games/Bounce.jsx'));
+const Monopoly = lazy(() => import('../games/Monopoly.jsx'));
+const ShadowHunters = lazy(() => import('../games/ShadowHunters.jsx'));
 
 // Qui a gagné ? (formats variés selon les jeux : winner id, winners[], équipes…)
 function winnerOf(g) {
@@ -215,6 +219,18 @@ export default function Room() {
           )}
           {room.gameKey === 'petitbac' && (
             <PetitBac room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'golf' && (
+            <MiniGolf room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'bounce' && (
+            <Bounce room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'monopoly' && (
+            <Monopoly room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
+          )}
+          {room.gameKey === 'shadow' && (
+            <ShadowHunters room={room} isHost={isHost} onAction={sendAction} onNewGame={newGame} />
           )}
           </Suspense>
         </div>

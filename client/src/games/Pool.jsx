@@ -15,47 +15,55 @@ const POCKETS = [
   [0.02, 0.98], [1, 1.012], [1.98, 0.98],
 ];
 const FRICTION = 0.992, STOP = 0.00028, CUSHION = 0.92;
+// Sous-pas : comme côté serveur, aucun déplacement ne dépasse ~0,18 rayon entre
+// deux contrôles de collision — la trajectoire animée suit la flèche de visée.
+const SUBSTEPS = 8;
 
 function stepBalls(balls) {
   const { R, W, H, POCKET_R } = TABLE;
   let moving = false;
-  for (const b of balls) {
-    if (b.pocketed) continue;
-    b.x += b.vx; b.y += b.vy;
-    b.vx *= FRICTION; b.vy *= FRICTION;
-    if (Math.sqrt(b.vx * b.vx + b.vy * b.vy) < STOP) { b.vx = 0; b.vy = 0; } else moving = true;
-    for (const [px, py] of POCKETS) {
-      const dx = b.x - px, dy = b.y - py;
-      if (dx * dx + dy * dy < POCKET_R * POCKET_R) { b.pocketed = true; b.vx = 0; b.vy = 0; break; }
+  for (let ss = 0; ss < SUBSTEPS; ss++) {
+    for (const b of balls) {
+      if (b.pocketed) continue;
+      b.x += b.vx / SUBSTEPS; b.y += b.vy / SUBSTEPS;
+      for (const [px, py] of POCKETS) {
+        const dx = b.x - px, dy = b.y - py;
+        if (dx * dx + dy * dy < POCKET_R * POCKET_R) { b.pocketed = true; b.vx = 0; b.vy = 0; break; }
+      }
+      if (b.pocketed) continue;
+      if (b.x < R && b.vx < 0) { b.x = R; b.vx = -b.vx * CUSHION; }
+      if (b.x > W - R && b.vx > 0) { b.x = W - R; b.vx = -b.vx * CUSHION; }
+      if (b.y < R && b.vy < 0) { b.y = R; b.vy = -b.vy * CUSHION; }
+      if (b.y > H - R && b.vy > 0) { b.y = H - R; b.vy = -b.vy * CUSHION; }
     }
-    if (b.pocketed) continue;
-    if (b.x < R && b.vx < 0) { b.x = R; b.vx = -b.vx * CUSHION; }
-    if (b.x > W - R && b.vx > 0) { b.x = W - R; b.vx = -b.vx * CUSHION; }
-    if (b.y < R && b.vy < 0) { b.y = R; b.vy = -b.vy * CUSHION; }
-    if (b.y > H - R && b.vy > 0) { b.y = H - R; b.vy = -b.vy * CUSHION; }
-  }
-  for (let i = 0; i < balls.length; i++) {
-    const a = balls[i]; if (a.pocketed) continue;
-    for (let j = i + 1; j < balls.length; j++) {
-      const c = balls[j]; if (c.pocketed) continue;
-      const dx = c.x - a.x, dy = c.y - a.y;
-      const d2 = dx * dx + dy * dy;
-      if (d2 > 0 && d2 < (2 * TABLE.R) * (2 * TABLE.R)) {
-        const d = Math.sqrt(d2);
-        const nx = dx / d, ny = dy / d;
-        const overlap = (2 * TABLE.R - d) / 2;
-        a.x -= nx * overlap; a.y -= ny * overlap;
-        c.x += nx * overlap; c.y += ny * overlap;
-        const va = a.vx * nx + a.vy * ny;
-        const vc = c.vx * nx + c.vy * ny;
-        const diff = va - vc;
-        if (diff > 0) {
-          a.vx -= diff * nx; a.vy -= diff * ny;
-          c.vx += diff * nx; c.vy += diff * ny;
-          moving = true;
+    for (let i = 0; i < balls.length; i++) {
+      const a = balls[i]; if (a.pocketed) continue;
+      for (let j = i + 1; j < balls.length; j++) {
+        const c = balls[j]; if (c.pocketed) continue;
+        const dx = c.x - a.x, dy = c.y - a.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > 0 && d2 < (2 * TABLE.R) * (2 * TABLE.R)) {
+          const d = Math.sqrt(d2);
+          const nx = dx / d, ny = dy / d;
+          const overlap = (2 * TABLE.R - d) / 2;
+          a.x -= nx * overlap; a.y -= ny * overlap;
+          c.x += nx * overlap; c.y += ny * overlap;
+          const va = a.vx * nx + a.vy * ny;
+          const vc = c.vx * nx + c.vy * ny;
+          const diff = va - vc;
+          if (diff > 0) {
+            a.vx -= diff * nx; a.vy -= diff * ny;
+            c.vx += diff * nx; c.vy += diff * ny;
+            moving = true;
+          }
         }
       }
     }
+  }
+  for (const b of balls) {
+    if (b.pocketed) continue;
+    b.vx *= FRICTION; b.vy *= FRICTION;
+    if (Math.sqrt(b.vx * b.vx + b.vy * b.vy) < STOP) { b.vx = 0; b.vy = 0; } else moving = true;
   }
   return moving;
 }

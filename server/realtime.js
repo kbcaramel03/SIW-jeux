@@ -479,6 +479,20 @@ export function createRealtime(httpServer) {
       });
     });
 
+    // Mini Golf : même relais de visée léger que le billard.
+    socket.on('golf:aim', (data) => {
+      const room = rooms.get(socket.data.roomId);
+      if (!room || room.gameKey !== 'golf' || !room.game) return;
+      if (room.game.turn !== socket.data.user.id) return;
+      const dx = Number(data?.dx), dy = Number(data?.dy);
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+      socket.to(room.id).emit('golf:aim', {
+        dx, dy,
+        power: Math.max(0, Math.min(1, Number(data?.power) || 0)),
+        by: socket.data.user.id,
+      });
+    });
+
     socket.on('game:action', async (payload, ack) => {
       const room = rooms.get(socket.data.roomId);
       if (!room || !room.game) return ack?.({ error: 'Aucune partie en cours.' });

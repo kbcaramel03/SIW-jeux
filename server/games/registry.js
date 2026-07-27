@@ -16,6 +16,10 @@ import * as guessme from './guessme.js';
 import * as pool from './pool.js';
 import * as archery from './archery.js';
 import * as petitbac from './petitbac.js';
+import * as minigolf from './minigolf.js';
+import * as bounce from './bounce.js';
+import * as monopoly from './monopoly.js';
+import * as shadowhunters from './shadowhunters.js';
 
 export const GAMES = {
   codenames: {
@@ -134,6 +138,34 @@ export const GAMES = {
     view: petitbac.viewFor,
     action: applyPetitBacAction,
     tick: petitbac.tickPetitBac,
+  },
+  golf: {
+    key: 'golf', label: 'Mini Golf', emoji: '⛳', minPlayers: 2, maxPlayers: 6, ready: true,
+    create: minigolf.createGolf,
+    view: minigolf.viewFor,
+    action: applyGolfAction,
+    tick: minigolf.tickGolf,
+  },
+  bounce: {
+    key: 'bounce', label: 'Bounce', emoji: '🟠', minPlayers: 2, maxPlayers: 6, ready: true,
+    create: bounce.createBounce,
+    view: bounce.viewFor,
+    action: applyBounceAction,
+    tick: bounce.tickBounce,
+  },
+  monopoly: {
+    key: 'monopoly', label: 'Monopoly', emoji: '🎩', minPlayers: 2, maxPlayers: 6, ready: true,
+    create: monopoly.createMonopoly,
+    view: monopoly.viewFor,
+    action: applyMonopolyAction,
+    tick: monopoly.tickMonopoly,
+  },
+  shadow: {
+    key: 'shadow', label: 'Shadow Hunters', emoji: '🌘', minPlayers: 4, maxPlayers: 8, ready: true,
+    create: shadowhunters.createShadow,
+    view: shadowhunters.viewFor,
+    action: applyShadowAction,
+    tick: shadowhunters.tickShadow,
   },
 };
 
@@ -309,6 +341,61 @@ function applyPetitBacAction(state, userId, payload) {
     case 'submit': return petitbac.submitPetitBac(state, userId, payload);
     case 'vote': return petitbac.votePetitBac(state, userId, payload);
     case 'next': return petitbac.nextPetitBac(state, userId);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyShadowAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return shadowhunters.joinShadow(state, userId);
+    case 'start': return shadowhunters.startShadow(state, userId);
+    case 'roll': return shadowhunters.rollShadow(state, userId);
+    case 'place': return shadowhunters.placeShadow(state, userId, payload.area);
+    case 'act': return shadowhunters.actShadow(state, userId, payload.choice);
+    case 'target': return shadowhunters.targetShadow(state, userId, payload.targetId);
+    case 'attack': return shadowhunters.attackShadow(state, userId, payload.targetId || null);
+    case 'reveal': return shadowhunters.revealShadow(state, userId, payload.targetId);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyMonopolyAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return monopoly.joinMonopoly(state, userId);
+    case 'bot': return monopoly.joinMonopoly(state, 'bot');
+    case 'start': return monopoly.startMonopoly(state, userId);
+    case 'roll': return monopoly.rollMonopoly(state, userId);
+    case 'buy': return monopoly.buyMonopoly(state, userId, true);
+    case 'pass': return monopoly.buyMonopoly(state, userId, false);
+    case 'bid': return monopoly.bidMonopoly(state, userId, payload.amount);
+    case 'bail': return monopoly.bailMonopoly(state, userId);
+    case 'gooj': return monopoly.useGoojMonopoly(state, userId);
+    case 'build': return monopoly.buildMonopoly(state, userId, Number(payload.idx), !!payload.sell);
+    case 'mortgage': return monopoly.mortgageMonopoly(state, userId, Number(payload.idx), !!payload.lift);
+    case 'offer': return monopoly.offerTrade(state, userId, payload);
+    case 'tradeAccept': return monopoly.respondTrade(state, userId, true);
+    case 'tradeRefuse': return monopoly.respondTrade(state, userId, false);
+    case 'tradeCancel': return monopoly.respondTrade(state, userId, false);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyBounceAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return bounce.joinBounce(state, userId);
+    case 'bot': return bounce.joinBounce(state, 'bot');
+    case 'start': return bounce.startBounce(state, userId);
+    case 'shoot': return bounce.shootBounce(state, userId, payload);
+    default: throw new Error('Action inconnue.');
+  }
+}
+
+function applyGolfAction(state, userId, payload) {
+  switch (payload.kind) {
+    case 'join': return minigolf.joinGolf(state, userId);
+    case 'bot': return minigolf.joinGolf(state, 'bot');
+    case 'start': return minigolf.startGolf(state, userId);
+    case 'shoot': return minigolf.shootGolf(state, userId, payload);
     default: throw new Error('Action inconnue.');
   }
 }

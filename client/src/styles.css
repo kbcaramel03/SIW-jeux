@@ -1684,3 +1684,98 @@ button, [role="button"], .ludo-token, .ch-sq, .game-tile {
 .pb-rank b { margin-left: auto; }
 .pb-rank.winner { border: 2px solid #f2c11f; }
 .pb-rank-pos { width: 24px; text-align: center; font-weight: 800; color: var(--ink-soft); }
+
+/* ===================== Monopoly (plateau + actes + enchères) ===================== */
+.mono-wrap { position: relative; width: 100%; max-width: 660px; margin: 0 auto; }
+.mono-board {
+  position: relative; display: grid; width: 100%; aspect-ratio: 1; gap: 2px;
+  grid-template-rows: 1.55fr repeat(9, 1fr) 1.55fr;
+  grid-template-columns: 1.55fr repeat(9, 1fr) 1.55fr;
+  background: #cfe4d2; padding: 6px; border-radius: var(--radius);
+  box-shadow: var(--shadow); border: 2px solid #b9d4bf;
+}
+.mono-cell {
+  position: relative; display: flex; flex-direction: column; overflow: hidden;
+  background: #fdfaf3; border-radius: 4px; cursor: pointer; min-width: 0; min-height: 0;
+  box-shadow: inset 0 0 0 1px #e4dbc9; transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mono-cell:active { transform: scale(0.96); }
+.mono-cell.highlight { box-shadow: inset 0 0 0 2px var(--gold), 0 0 12px rgba(194, 163, 107, 0.55); z-index: 2; }
+.mono-cap { height: 24%; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; gap: 1px; }
+.mono-cell-name {
+  flex: 1; display: flex; align-items: center; justify-content: center; text-align: center;
+  font-family: var(--font-head); font-weight: 600; color: #55492f;
+  font-size: clamp(5px, 1.35vw, 9px); line-height: 1.06; padding: 1px 2px; overflow: hidden;
+}
+.mono-cell-price { font-size: clamp(5px, 1.15vw, 8px); text-align: center; color: #98917d; font-weight: 700; padding-bottom: 2px; }
+.mono-cell.corner .mono-cell-name { font-size: clamp(12px, 2.6vw, 24px); }
+.mono-owner-dot { position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+.mono-house { width: 20%; max-width: 9px; aspect-ratio: 1; border-radius: 2px; background: #2e9c5c; box-shadow: 0 1px 1px rgba(0,0,0,0.3); }
+.mono-house.hotel { background: #d23c31; max-width: 15px; aspect-ratio: 1.6; }
+.mono-mortgaged { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.55); display: flex; align-items: center; justify-content: center; }
+.mono-mortgaged span { font-size: clamp(6px, 1.3vw, 9px); font-weight: 800; color: #c0392b; border: 1.5px solid #c0392b; border-radius: 4px; padding: 0 3px; transform: rotate(-18deg); background: rgba(255,255,255,0.8); }
+.mono-tokens { position: absolute; inset: 6px; pointer-events: none; z-index: 3; }
+.mono-token {
+  position: absolute; width: 4.2%; aspect-ratio: 1; border-radius: 50%;
+  border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  transform: translate(-50%, -50%);
+  transition: left 0.65s cubic-bezier(0.35, 0.9, 0.35, 1), top 0.65s cubic-bezier(0.35, 0.9, 0.35, 1);
+}
+.mono-center {
+  grid-row: 2 / 11; grid-column: 2 / 11; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px; padding: 10px; text-align: center; min-height: 0;
+}
+.mono-logo {
+  font-family: var(--font-head); font-weight: 700; letter-spacing: 2px; color: #fff;
+  background: linear-gradient(180deg, #e05a4e, #c73e33); padding: 4px 18px; border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(199, 62, 51, 0.4); font-size: clamp(14px, 3vw, 24px); transform: rotate(-2deg);
+}
+.mono-dice { display: flex; gap: 10px; }
+.mono-die {
+  width: clamp(28px, 6vw, 42px); aspect-ratio: 1; background: #fff; border-radius: 22%;
+  box-shadow: 0 3px 8px rgba(70, 60, 82, 0.25), inset 0 -2px 0 rgba(0,0,0,0.06);
+  display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 15%;
+}
+.mono-die.rolling { animation: mono-shake 0.45s ease; }
+@keyframes mono-shake { 0% { transform: rotate(0) scale(0.6); } 50% { transform: rotate(18deg) scale(1.12); } 100% { transform: rotate(0) scale(1); } }
+.mono-pip { width: 70%; height: 70%; border-radius: 50%; background: #463c52; place-self: center; }
+.mono-card-draw {
+  background: #fff; border-radius: 12px; padding: 8px 12px; max-width: 260px;
+  box-shadow: var(--shadow-sm); font-size: clamp(10px, 1.9vw, 13px); font-weight: 600; color: var(--ink);
+  border-top: 6px solid var(--gold); animation: fade-up 0.3s ease;
+}
+.mono-card-draw.chance { border-top-color: #f28322; }
+.mono-card-draw.caisse { border-top-color: #94b1cd; }
+.mono-actions { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.mono-log { font-size: clamp(9px, 1.7vw, 12px); color: var(--ink-soft); max-height: 66px; overflow-y: auto; width: 100%; font-weight: 600; }
+.mono-log div:first-child { color: var(--ink); }
+
+/* Fiches / actes de propriété */
+.mono-overlay {
+  position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
+  background: rgba(70, 60, 82, 0.45); backdrop-filter: blur(2px); border-radius: var(--radius); padding: 12px;
+}
+.mono-deed { background: #fff; border-radius: 12px; padding: 8px; width: 200px; box-shadow: var(--shadow); border: 1px solid #e4dbc9; }
+.mono-deed-head {
+  border-radius: 8px; padding: 8px 6px; text-align: center; color: #fff; font-family: var(--font-head);
+  font-weight: 700; font-size: 14px; text-shadow: 0 1px 2px rgba(0,0,0,0.3); margin-bottom: 6px;
+}
+.mono-deed-row { display: flex; justify-content: space-between; font-size: 12px; padding: 1.5px 4px; color: var(--ink); font-weight: 600; }
+.mono-deed-row.total { border-top: 1px dashed #d9cfc0; margin-top: 4px; padding-top: 4px; }
+.mono-panel { background: #fff; border-radius: var(--radius-sm); padding: 14px 16px; box-shadow: var(--shadow); max-width: 94%; max-height: 94%; overflow-y: auto; min-width: 240px; }
+.mono-panel h4 { margin: 0 0 10px; font-family: var(--font-head); color: var(--ink); text-align: center; }
+.mono-bid { font-family: var(--font-head); font-size: 26px; font-weight: 700; color: #1f7a52; text-align: center; }
+.mono-timerbar { height: 6px; border-radius: 3px; background: #eee4f0; overflow: hidden; margin: 6px 0; }
+.mono-timerbar > div { height: 100%; background: linear-gradient(90deg, var(--pink), var(--purple)); transition: width 1s linear; }
+.mono-manage-row { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px dashed #eee4f0; font-size: 13px; font-weight: 600; color: var(--ink); }
+.mono-group-dot { width: 11px; height: 11px; border-radius: 4px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
+.mono-chip-btn {
+  border: 1.5px solid #e0d5e5; background: #faf6f2; border-radius: 10px; padding: 4px 8px; font-size: 12px;
+  font-weight: 700; color: var(--ink); cursor: pointer; font-family: var(--font-body); transition: all 0.15s;
+}
+.mono-chip-btn.sel { background: var(--pink-soft); border-color: var(--pink); color: #a5476b; }
+.mono-chip-btn:disabled { opacity: 0.4; cursor: default; }
+.mono-cash-pill { background: #e7f5ec; color: #1f7a52; font-weight: 800; border-radius: 10px; padding: 1px 8px; }
+@media (max-width: 700px) {
+  .mono-board { border-radius: var(--radius-sm); padding: 4px; gap: 1.5px; }
+}
